@@ -1,0 +1,6 @@
+{
+  "name": "ROCAM Frota & Manutenção",
+  "description": "Sistema tático de controle de frota de motocicletas e viaturas 4 rodas, registros de manutenções preventivas e corretivas, alertas automáticos e relatórios diários e mensais.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
