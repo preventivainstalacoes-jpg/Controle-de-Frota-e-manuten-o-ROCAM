@@ -14,6 +14,7 @@ import { CautelaModal } from './components/CautelaModal';
 import { DescautelaModal } from './components/DescautelaModal';
 import { DescautelaSelectModal } from './components/DescautelaSelectModal';
 import { CautelaDetailModal } from './components/CautelaDetailModal';
+import { DatabaseModal } from './components/DatabaseModal';
 import { Vehicle, MaintenanceRecord, MaintenanceCategory, CautelaRecord } from './types';
 import { Shield, Bike, Car, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
@@ -57,6 +58,9 @@ function AppContent() {
 
   const [isCautelaDetailOpen, setIsCautelaDetailOpen] = useState(false);
   const [selectedCautelaForDetail, setSelectedCautelaForDetail] = useState<CautelaRecord | null>(null);
+
+  // Database Management Modal state
+  const [isDatabaseModalOpen, setIsDatabaseModalOpen] = useState(false);
 
   // Handlers - Vehicles
   const handleOpenNewVehicle = () => {
@@ -152,6 +156,7 @@ function AppContent() {
         onOpenNewMaintenance={handleOpenNewMaintenance}
         onOpenNewCautela={() => handleOpenNewCautela()}
         onOpenDescautelar={handleOpenDescautelarSelector}
+        onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)}
       />
 
       {/* Main Container */}
@@ -309,6 +314,12 @@ function AppContent() {
           setIsCautelaDetailOpen(false);
           handleOpenDescautela(c);
         }}
+      />
+
+      {/* Central de Banco de Dados & Armazenamento */}
+      <DatabaseModal
+        isOpen={isDatabaseModalOpen}
+        onClose={() => setIsDatabaseModalOpen(false)}
       />
     </div>
   );

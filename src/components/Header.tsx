@@ -16,7 +16,8 @@ import {
   Clock,
   ClipboardCheck,
   RotateCcw,
-  Trash2
+  Trash2,
+  Database
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -24,6 +25,7 @@ interface HeaderProps {
   onOpenNewMaintenance: () => void;
   onOpenNewCautela?: () => void;
   onOpenDescautelar?: () => void;
+  onOpenDatabaseModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -31,6 +33,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNewMaintenance,
   onOpenNewCautela,
   onOpenDescautelar,
+  onOpenDatabaseModal,
 }) => {
   const {
     activeTab,
@@ -195,11 +198,24 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               id="btn-header-nova-vtr"
               onClick={onOpenNewVehicle}
-              className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition active:scale-95 cursor-pointer"
+              className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-750 text-zinc-200 border border-zinc-750 transition active:scale-95 cursor-pointer"
             >
               <Plus className="w-4 h-4 text-amber-400" />
               <span>+ Viatura</span>
             </button>
+
+            {/* Banco de Dados Central Button */}
+            {onOpenDatabaseModal && (
+              <button
+                id="btn-header-banco-dados"
+                onClick={onOpenDatabaseModal}
+                className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-750 shadow-sm transition active:scale-95 cursor-pointer"
+                title="Central de Banco de Dados, Exportação SQL e Backups"
+              >
+                <Database className="w-4 h-4 text-amber-400" />
+                <span className="hidden md:inline">Banco de Dados</span>
+              </button>
+            )}
 
             {/* Menu Opções e Backup */}
             <div className="relative">
@@ -213,12 +229,21 @@ export const Header: React.FC<HeaderProps> = ({
 
               {showConfigMenu && (
                 <div
-                  className="absolute right-0 mt-2 w-56 rounded-xl bg-zinc-900 border border-zinc-750 shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-100"
+                  className="absolute right-0 mt-2 w-64 rounded-xl bg-zinc-900 border border-zinc-750 shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-100"
                   onClick={() => setShowConfigMenu(false)}
                 >
                   <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 px-3 py-1.5">
                     Gerenciar Base de Dados
                   </div>
+                  {onOpenDatabaseModal && (
+                    <button
+                      onClick={onOpenDatabaseModal}
+                      className="w-full text-left flex items-center space-x-2 px-3 py-2 text-xs text-amber-300 hover:bg-zinc-800 rounded-lg transition font-semibold"
+                    >
+                      <Database className="w-4 h-4 text-amber-400" />
+                      <span>Abrir Central de Banco de Dados</span>
+                    </button>
+                  )}
                   <button
                     onClick={exportDatabaseJSON}
                     className="w-full text-left flex items-center space-x-2 px-3 py-2 text-xs text-zinc-200 hover:bg-zinc-800 rounded-lg transition"
