@@ -8,7 +8,9 @@ import {
   VehicleStatus,
   CautelaRecord,
   ChecklistItem,
-  DamagePhoto
+  DamagePhoto,
+  MonthlyBackup,
+  BackupScheduleConfig,
 } from '../types';
 import {
   INITIAL_VEHICLES,
@@ -17,6 +19,21 @@ import {
 } from '../data/mockData';
 import { INITIAL_CAUTELAS } from '../data/defaultChecklist';
 import { calculateMaintenanceAlerts } from '../utils/alertEngine';
+import {
+  getAllMonthlyBackups,
+  saveMonthlyBackup,
+  deleteMonthlyBackup,
+  getBackupScheduleConfig,
+  saveBackupScheduleConfig,
+  DEFAULT_BACKUP_CONFIG,
+} from '../utils/indexedDBStorage';
+import {
+  buildMonthlyBackup,
+  checkShouldRunMonthlyBackup,
+  downloadMonthlyBackupFile,
+  downloadMonthlySQLDump,
+  formatMonthLabel,
+} from '../utils/monthlyBackupEngine';
 
 interface FleetContextType {
   vehicles: Vehicle[];
@@ -68,6 +85,18 @@ interface FleetContextType {
   clearAllRecords: () => void;
   exportDatabaseJSON: () => void;
   importDatabaseJSON: (jsonStr: string) => boolean;
+
+  // Monthly Backups
+  monthlyBackups: MonthlyBackup[];
+  backupConfig: BackupScheduleConfig;
+  backupNotification: string | null;
+  setBackupNotification: (msg: string | null) => void;
+  generateMonthlyBackupNow: (mesReferencia?: string, tipo?: 'AUTOMATICO' | 'MANUAL') => Promise<MonthlyBackup>;
+  restoreFromMonthlyBackup: (backup: MonthlyBackup) => boolean;
+  deleteMonthlyBackupItem: (id: string) => Promise<void>;
+  updateBackupConfig: (updates: Partial<BackupScheduleConfig>) => Promise<void>;
+  downloadBackupFile: (backup: MonthlyBackup) => void;
+  downloadBackupSQL: (backup: MonthlyBackup) => void;
 
   // Computed
   alerts: MaintenanceAlert[];
@@ -155,6 +184,11 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<'TODAS' | VehicleType>('TODAS');
   const [statusFilter, setStatusFilter] = useState<'TODOS' | VehicleStatus>('TODOS');
+
+  // Monthly Backups & Database Vault
+  const [monthlyBackups, setMonthlyBackups] = useState<MonthlyBackup[]>([]);
+  const [backupConfig, setBackupConfig] = useState<BackupScheduleConfig>(DEFAULT_BACKUP_CONFIG);
+  const [backupNotification, setBackupNotification] = useState<string | null>(null);
 
   // Persistence
   useEffect(() => {
@@ -464,6 +498,122 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  // Load monthly backups vault & check scheduled auto-backup on mount
+  useEffect(() => {
+    let isMounted = true;
+    async function initMonthlyBackups() {
+      try {
+        const [loadedBackups, loadedConfig] = await Promise.all([
+          getAllMonthlyBackups(),
+          getBackupScheduleConfig(),
+        ]);
+        if (!isMounted) return;
+        setMonthlyBackups(loadedBackups);
+        setBackupConfig(loadedConfig);
+
+        // Check if an automated monthly backup needs to run
+        const check = checkShouldRunMonthlyBackup(loadedConfig, loadedBackups);
+        if (check.shouldRun && check.targetMonth) {
+          const autoBackup = buildMonthlyBackup(
+            check.targetMonth,
+            'AUTOMATICO',
+            vehicles,
+            maintenanceRecords,
+            rules,
+            cautelas
+          );
+          await saveMonthlyBackup(autoBackup);
+          const updatedConfig: BackupScheduleConfig = {
+            ...loadedConfig,
+            ultimoBackupAutomatico: new Date().toISOString(),
+            ultimoMesBackupAutomatico: check.targetMonth,
+          };
+          await saveBackupScheduleConfig(updatedConfig);
+          if (isMounted) {
+            setBackupConfig(updatedConfig);
+            setMonthlyBackups((prev) => [autoBackup, ...prev.filter((b) => b.id !== autoBackup.id)]);
+            if (loadedConfig.notificarNovoBackup) {
+              setBackupNotification(
+                `Backup mensal de ${formatMonthLabel(check.targetMonth)} gerado e arquivado com sucesso no banco de dados!`
+              );
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar cofre de backups mensais', err);
+      }
+    }
+
+    initMonthlyBackups();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const generateMonthlyBackupNow = async (
+    mesReferencia?: string,
+    tipo: 'AUTOMATICO' | 'MANUAL' = 'MANUAL'
+  ): Promise<MonthlyBackup> => {
+    const today = new Date();
+    const targetMonth =
+      mesReferencia || `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    const newBackup = buildMonthlyBackup(
+      targetMonth,
+      tipo,
+      vehicles,
+      maintenanceRecords,
+      rules,
+      cautelas
+    );
+    await saveMonthlyBackup(newBackup);
+    setMonthlyBackups((prev) => [newBackup, ...prev.filter((b) => b.id !== newBackup.id)]);
+    setBackupNotification(`Backup de ${newBackup.labelMes} salvo com sucesso no banco de dados!`);
+    return newBackup;
+  };
+
+  const restoreFromMonthlyBackup = (backup: MonthlyBackup): boolean => {
+    try {
+      if (backup && backup.dados) {
+        if (Array.isArray(backup.dados.vehicles)) {
+          setVehicles(backup.dados.vehicles);
+        }
+        if (Array.isArray(backup.dados.maintenanceRecords)) {
+          setMaintenanceRecords(backup.dados.maintenanceRecords);
+        }
+        if (Array.isArray(backup.dados.rules)) {
+          setRules(backup.dados.rules);
+        }
+        if (Array.isArray(backup.dados.cautelas)) {
+          setCautelas(backup.dados.cautelas);
+        }
+        setBackupNotification(`Banco de dados restaurado com sucesso a partir do backup de ${backup.labelMes}.`);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  const deleteMonthlyBackupItem = async (id: string): Promise<void> => {
+    await deleteMonthlyBackup(id);
+    setMonthlyBackups((prev) => prev.filter((b) => b.id !== id));
+  };
+
+  const updateBackupConfig = async (updates: Partial<BackupScheduleConfig>): Promise<void> => {
+    const updated = { ...backupConfig, ...updates };
+    setBackupConfig(updated);
+    await saveBackupScheduleConfig(updated);
+  };
+
+  const downloadBackupFile = (backup: MonthlyBackup): void => {
+    downloadMonthlyBackupFile(backup);
+  };
+
+  const downloadBackupSQL = (backup: MonthlyBackup): void => {
+    downloadMonthlySQLDump(backup);
+  };
+
   // Alerts
   const alerts = useMemo(() => {
     return calculateMaintenanceAlerts(vehicles, maintenanceRecords, rules);
@@ -534,6 +684,16 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         clearAllRecords,
         exportDatabaseJSON,
         importDatabaseJSON,
+        monthlyBackups,
+        backupConfig,
+        backupNotification,
+        setBackupNotification,
+        generateMonthlyBackupNow,
+        restoreFromMonthlyBackup,
+        deleteMonthlyBackupItem,
+        updateBackupConfig,
+        downloadBackupFile,
+        downloadBackupSQL,
         alerts,
         criticalAlertCount,
         warningAlertCount,

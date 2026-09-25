@@ -13,18 +13,42 @@ import {
   AlertTriangle,
   TrendingUp,
   PackageCheck,
-  CheckCheck
+  CheckCheck,
+  Database,
+  Archive,
 } from 'lucide-react';
 import { formatKm, getCategoryLabel, formatDate } from '../utils/formatters';
 
 export const MonthlyReport: React.FC = () => {
-  const { maintenanceRecords, vehicles } = useFleet();
+  const {
+    maintenanceRecords,
+    vehicles,
+    generateMonthlyBackupNow,
+    downloadBackupFile,
+  } = useFleet();
 
   // Current year-month default
   const today = new Date();
   const defaultYearMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   const [selectedMonth, setSelectedMonth] = useState<string>(defaultYearMonth);
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [backupNotice, setBackupNotice] = useState<string | null>(null);
+  const [isBackingUp, setIsBackingUp] = useState(false);
+
+  const handleGenerateMonthBackup = async () => {
+    try {
+      setIsBackingUp(true);
+      const b = await generateMonthlyBackupNow(selectedMonth, 'MANUAL');
+      downloadBackupFile(b);
+      setBackupNotice(`Backup mensal de ${b.labelMes} gerado, salvo no cofre e baixado com sucesso!`);
+      setTimeout(() => setBackupNotice(null), 5000);
+    } catch {
+      setBackupNotice('Erro ao gerar backup deste mês.');
+      setTimeout(() => setBackupNotice(null), 3000);
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
 
   // Filter records for this month (by dataEntrada)
   const monthRecords = useMemo(() => {
@@ -205,6 +229,16 @@ export const MonthlyReport: React.FC = () => {
           </button>
 
           <button
+            onClick={handleGenerateMonthBackup}
+            disabled={isBackingUp}
+            title="Gerar e Baixar Backup Completo do Banco deste Mês"
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-750 text-amber-400 border border-zinc-700 text-xs font-bold transition cursor-pointer disabled:opacity-50"
+          >
+            <Archive className="w-4 h-4 text-amber-400" />
+            <span className="hidden sm:inline">Backup Deste Mês</span>
+          </button>
+
+          <button
             id="btn-imprimir-relatorio-mensal"
             onClick={() => setShowPrintModal(true)}
             className="flex items-center space-x-1.5 px-3.5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-bold shadow-md shadow-amber-500/20 transition cursor-pointer"
@@ -214,6 +248,14 @@ export const MonthlyReport: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Backup Notification Toast */}
+      {backupNotice && (
+        <div className="p-3.5 rounded-xl bg-emerald-950/80 border border-emerald-700/60 text-emerald-300 text-xs font-semibold flex items-center space-x-2 animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{backupNotice}</span>
+        </div>
+      )}
 
       {/* Main Operational KPI Cards for the Month */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

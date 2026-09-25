@@ -46,9 +46,13 @@ export const Header: React.FC<HeaderProps> = ({
     clearAllRecords,
     exportDatabaseJSON,
     importDatabaseJSON,
+    monthlyBackups,
+    backupNotification,
+    setBackupNotification,
   } = useFleet();
 
   const [showConfigMenu, setShowConfigMenu] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -59,10 +63,11 @@ export const Header: React.FC<HeaderProps> = ({
       if (content) {
         const success = importDatabaseJSON(content);
         if (success) {
-          alert('Dados importados com sucesso!');
+          setToastMessage({ text: 'Dados restaurados com sucesso!', type: 'success' });
         } else {
-          alert('Arquivo inválido para importação.');
+          setToastMessage({ text: 'Arquivo inválido para restauração.', type: 'error' });
         }
+        setTimeout(() => setToastMessage(null), 4000);
       }
     };
     reader.readAsText(file);
@@ -209,11 +214,16 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 id="btn-header-banco-dados"
                 onClick={onOpenDatabaseModal}
-                className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-750 shadow-sm transition active:scale-95 cursor-pointer"
-                title="Central de Banco de Dados, Exportação SQL e Backups"
+                className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-750 shadow-sm transition active:scale-95 cursor-pointer relative"
+                title="Central de Banco de Dados, Backups Mensais Automatizados e Exportação SQL"
               >
                 <Database className="w-4 h-4 text-amber-400" />
                 <span className="hidden md:inline">Banco de Dados</span>
+                {monthlyBackups.length > 0 && (
+                  <span className="hidden lg:inline-flex px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                    {monthlyBackups.length}m
+                  </span>
+                )}
               </button>
             )}
 
@@ -241,7 +251,7 @@ export const Header: React.FC<HeaderProps> = ({
                       className="w-full text-left flex items-center space-x-2 px-3 py-2 text-xs text-amber-300 hover:bg-zinc-800 rounded-lg transition font-semibold"
                     >
                       <Database className="w-4 h-4 text-amber-400" />
-                      <span>Abrir Central de Banco de Dados</span>
+                      <span>Central de Banco de Dados & Backups</span>
                     </button>
                   )}
                   <button
@@ -249,7 +259,7 @@ export const Header: React.FC<HeaderProps> = ({
                     className="w-full text-left flex items-center space-x-2 px-3 py-2 text-xs text-zinc-200 hover:bg-zinc-800 rounded-lg transition"
                   >
                     <Download className="w-4 h-4 text-amber-400" />
-                    <span>Fazer Backup (JSON)</span>
+                    <span>Fazer Backup Completo (JSON)</span>
                   </button>
                   <label className="w-full text-left flex items-center space-x-2 px-3 py-2 text-xs text-zinc-200 hover:bg-zinc-800 rounded-lg transition cursor-pointer">
                     <Upload className="w-4 h-4 text-blue-400" />
@@ -258,11 +268,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </label>
                   <div className="my-1 border-t border-zinc-800" />
                   <button
-                    onClick={() => {
-                      if (window.confirm('Confirma apagar todos os registros de cautelas e manutenções? Todas as viaturas retornarão ao estado operacional.')) {
-                        clearAllRecords();
-                      }
-                    }}
+                    onClick={clearAllRecords}
                     className="w-full text-left flex items-center space-x-2 px-3 py-2 text-xs text-rose-400 hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4 text-rose-400" />
@@ -280,6 +286,41 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Dynamic Backup Notification Strip */}
+        {backupNotification && (
+          <div className="bg-emerald-950/90 border-b border-emerald-800/80 px-4 py-2 flex items-center justify-between text-xs text-emerald-200 animate-in fade-in">
+            <div className="flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="font-medium">{backupNotification}</span>
+            </div>
+            <button
+              onClick={() => setBackupNotification(null)}
+              className="text-emerald-400 hover:text-emerald-200 p-1 cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Generic Toast Notification */}
+        {toastMessage && (
+          <div
+            className={`px-4 py-2 flex items-center justify-between text-xs font-medium border-b ${
+              toastMessage.type === 'success'
+                ? 'bg-emerald-950/90 border-emerald-800 text-emerald-200'
+                : 'bg-rose-950/90 border-rose-800 text-rose-200'
+            }`}
+          >
+            <span>{toastMessage.text}</span>
+            <button
+              onClick={() => setToastMessage(null)}
+              className="p-1 text-zinc-400 hover:text-zinc-200 cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Navigation Tabs */}
         <nav className="flex space-x-1 sm:space-x-2 overflow-x-auto py-2 no-scrollbar">

@@ -195,3 +195,45 @@ export interface CautelaRecord {
   fotosAvariasRetorno?: DamagePhoto[]; // Registro fotográfico no retorno
 }
 
+export interface MonthlyBackupSummary {
+  kmRodadosNoMes: number;
+  cautelasRealizadas: number;
+  cautelasComAvaria: number;
+  manutencoesRealizadas: number;
+  veiculosAtivos: number;
+}
+
+export interface MonthlyBackupData {
+  exportDate: string;
+  mesReferencia: string; // Ex: "2026-09"
+  labelMes: string; // Ex: "Setembro / 2026"
+  vehicles: Vehicle[];
+  maintenanceRecords: MaintenanceRecord[];
+  rules: MaintenanceRule[];
+  cautelas: CautelaRecord[];
+}
+
+export interface MonthlyBackup {
+  id: string; // Ex: "mb-2026-09-1727284000"
+  mesReferencia: string; // "2026-09"
+  labelMes: string; // "Setembro / 2026"
+  criadoEm: string; // ISO string
+  tipo: 'AUTOMATICO' | 'MANUAL';
+  totalViaturas: number;
+  totalCautelas: number;
+  totalManutencoes: number;
+  totalRegras: number;
+  tamanhoBytes: number;
+  tamanhoFormatado: string;
+  resumoMensal: MonthlyBackupSummary;
+  dados: MonthlyBackupData;
+}
+
+export interface BackupScheduleConfig {
+  autoBackupMonthlyEnabled: boolean;
+  diaDoMesAgendado: number; // 1 = primeiro dia do mês, 28 = fechamento
+  ultimoBackupAutomatico?: string; // ISO string da última execução
+  ultimoMesBackupAutomatico?: string; // Ex: "2026-08" ou "2026-09"
+  notificarNovoBackup: boolean;
+}
+
