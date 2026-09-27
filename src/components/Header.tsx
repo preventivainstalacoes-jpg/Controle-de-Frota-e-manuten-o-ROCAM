@@ -171,10 +171,6 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center space-x-3">
             <div>
               <div className="flex items-center space-x-2">
-                <span className="text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                  Polícia Militar
-                </span>
-                <span className="text-zinc-500 text-xs hidden sm:inline">•</span>
                 <span className="text-zinc-400 text-xs font-mono hidden sm:inline">
                   {isOperator ? 'Módulo Operador • Cautelas & Avarias' : 'Comando & Logística ROCAM'}
                 </span>
