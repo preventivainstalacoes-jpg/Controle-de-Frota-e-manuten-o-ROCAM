@@ -226,13 +226,36 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Shared Supabase data layer
   const fromDbVehicle = (v: any): Vehicle => ({
-    id:v.id,prefixo:v.prefix,placa:v.plate||'',tipo:v.vehicle_type==='QUATRO_RODAS'?'QUATRO_RODAS':'MOTOCICLETA',marca:v.brand||'',modelo:v.model||'',ano:v.year||new Date().getFullYear(),kmAtual:v.mileage||0,status:v.status||'OPERACIONAL',pelotao:v.pelotao||'ROCAM',batalhao:v.batalhao||'ROCAM',motivoBaixa:v.motivo_baixa,condutorPadrao:v.condutor_padrao,dataUltimaAtualizacaoKm:v.updated_at?.split('T')[0]||new Date().toISOString().split('T')[0],observacoes:v.notes||''
+    id:v.id,prefixo:v.prefix,placa:v.plate||'',tipo:v.vehicle_type==='viatura_4_rodas'?'QUATRO_RODAS':'MOTOCICLETA',marca:v.brand||'',modelo:v.model||'',ano:v.year||new Date().getFullYear(),kmAtual:v.mileage||0,
+    status:v.status==='manutencao'?'EM_MANUTENCAO':v.status==='indisponivel'?'BAIXADA':v.status==='reserva'?'RESERVA':'OPERACIONAL',
+    pelotao:v.pelotao||'ROCAM',batalhao:v.batalhao||'ROCAM',motivoBaixa:v.motivo_baixa,condutorPadrao:v.condutor_padrao,dataUltimaAtualizacaoKm:v.updated_at?.split('T')[0]||new Date().toISOString().split('T')[0],observacoes:v.notes||''
+  });
+  const toDbVehicleType = (t: VehicleType) => t === 'QUATRO_RODAS' ? 'viatura_4_rodas' : 'moto';
+  const toDbVehicleStatus = (s: VehicleStatus) => s === 'EM_MANUTENCAO' ? 'manutencao' : s === 'BAIXADA' ? 'indisponivel' : s === 'RESERVA' ? 'reserva' : 'disponivel';
+  const fromDbCautela = (c:any): CautelaRecord => ({
+    id:c.id,numeroTermo:c.numero_termo,viaturaId:c.vehicle_id,prefixoViatura:c.prefixo_viatura||'',tipoViatura:c.tipo_viatura==='viatura_4_rodas'?'QUATRO_RODAS':'MOTOCICLETA',modeloViatura:c.modelo_viatura||'',placaViatura:c.placa_viatura||'',pelotao:c.pelotao||'ROCAM',
+    dataHoraSaida:c.data_hora_saida,kmSaida:c.km_saida,combustivelSaida:c.combustivel_saida,condutorNome:c.condutor_nome,condutorRE:c.condutor_re,condutorGraduacao:c.condutor_graduacao,encarregadoVtr:c.encarregado_vtr,observacoesSaida:c.observacoes_saida,checklistSaida:c.checklist_saida||[],fotosAvariasSaida:c.fotos_saida||[],
+    status:c.status==='CONCLUIDA'?'CONCLUIDA':'EM_PATRULHAMENTO',dataHoraRetorno:c.data_hora_retorno,kmRetorno:c.km_retorno,kmPercorrido:c.km_percorrido,combustivelRetorno:c.combustivel_retorno,recebedorNome:c.recebedor_nome,recebedorRE:c.recebedor_re,observacoesRetorno:c.observacoes_retorno,checklistRetorno:c.checklist_retorno||[],houveAvaria:c.houve_avaria,descricaoAvaria:c.descricao_avaria,viaturaBaixadaAposRetorno:c.viatura_baixada,fotosAvariasRetorno:c.fotos_retorno||[]
   });
   useEffect(()=>{
     let alive=true;
-    (async()=>{const [vr,mr]=await Promise.all([supabase.from('vehicles').select('*').order('prefix'),supabase.from('maintenance').select('*').order('opened_at',{ascending:false})]);
+    (async()=>{
+      const [vr,mr,cr]=await Promise.all([
+        supabase.from('vehicles').select('*').order('prefix'),
+        supabase.from('maintenance').select('*').order('opened_at',{ascending:false}),
+        supabase.from('cautelas').select('*').order('data_hora_saida',{ascending:false})
+      ]);
       if(alive&&!vr.error&&vr.data?.length)setVehicles(vr.data.map(fromDbVehicle));
-      if(alive&&!mr.error&&mr.data?.length)setMaintenanceRecords(mr.data.map((r:any)=>({id:r.id,numeroOS:r.id,viaturaId:r.vehicle_id,prefixoViatura:'',tipoViatura:'MOTOCICLETA',tipoManutencao:r.maintenance_type==='PREVENTIVA'?'PREVENTIVA':'CORRETIVA',categoria:'OUTROS',status:r.status||'AGENDADA',dataEntrada:r.opened_at?.split('T')[0],dataConclusao:r.closed_at?.split('T')[0],kmEntrada:r.mileage||0,descricaoProblema:r.description||'',servicosExecutados:r.service_performed||'',pecasSubstituidas:[],oficinaResponsavel:'',mecanicoResponsavel:'',policialSolicitante:'',matriculaRE:'',urgencia:'MEDIA'})));})();
+      if(alive&&!mr.error&&mr.data?.length)setMaintenanceRecords(mr.data.map((r:any)=>({
+        id:r.id,numeroOS:r.id,viaturaId:r.vehicle_id,prefixoViatura:'',tipoViatura:'MOTOCICLETA',
+        tipoManutencao:r.maintenance_type==='preventiva'?'PREVENTIVA':'CORRETIVA',categoria:'OUTROS',
+        status:r.status==='em_andamento'?'EM_EXECUCAO':r.status==='concluida'?'CONCLUIDA':r.status==='cancelada'?'CANCELADA':'AGENDADA',
+        dataEntrada:r.opened_at?.split('T')[0],dataConclusao:r.closed_at?.split('T')[0],kmEntrada:r.mileage||0,
+        descricaoProblema:r.description||'',servicosExecutados:r.service_performed||'',pecasSubstituidas:[],oficinaResponsavel:'',
+        mecanicoResponsavel:'',policialSolicitante:'',matriculaRE:'',urgencia:'MEDIA'
+      })));
+      if(alive&&!cr.error&&cr.data?.length)setCautelas(cr.data.map(fromDbCautela));
+    })();
     return()=>{alive=false};
   },[]);
 
@@ -245,13 +268,13 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       dataUltimaAtualizacaoKm: today,
     };
     setVehicles((prev) => [newVehicle, ...prev]);
-    supabase.from('vehicles').insert({id:newVehicle.id,vehicle_type:newVehicle.tipo,prefix:newVehicle.prefixo,plate:newVehicle.placa,brand:newVehicle.marca,model:newVehicle.modelo,year:newVehicle.ano,mileage:newVehicle.kmAtual,status:newVehicle.status,notes:newVehicle.observacoes||''}).then(({error})=>{if(error)console.error(error)});
+    supabase.from('vehicles').insert({id:newVehicle.id,vehicle_type:toDbVehicleType(newVehicle.tipo),prefix:newVehicle.prefixo,plate:newVehicle.placa,brand:newVehicle.marca,model:newVehicle.modelo,year:newVehicle.ano,mileage:newVehicle.kmAtual,status:toDbVehicleStatus(newVehicle.status),notes:newVehicle.observacoes||''}).then(({error})=>{if(error)console.error('Erro ao salvar viatura:',error)});
   };
 
   const updateVehicle = (id: string, updates: Partial<Vehicle>) => {
     setVehicles((prev) => prev.map((v) => (v.id === id ? { ...v, ...updates } : v)));
-    const db:any={}; if(updates.prefixo!==undefined)db.prefix=updates.prefixo;if(updates.placa!==undefined)db.plate=updates.placa;if(updates.marca!==undefined)db.brand=updates.marca;if(updates.modelo!==undefined)db.model=updates.modelo;if(updates.ano!==undefined)db.year=updates.ano;if(updates.kmAtual!==undefined)db.mileage=updates.kmAtual;if(updates.status!==undefined)db.status=updates.status;if(updates.observacoes!==undefined)db.notes=updates.observacoes;
-    if(Object.keys(db).length)supabase.from('vehicles').update(db).eq('id',id).then(({error})=>{if(error)console.error(error)});
+    const db:any={}; if(updates.prefixo!==undefined)db.prefix=updates.prefixo;if(updates.placa!==undefined)db.plate=updates.placa;if(updates.marca!==undefined)db.brand=updates.marca;if(updates.modelo!==undefined)db.model=updates.modelo;if(updates.ano!==undefined)db.year=updates.ano;if(updates.kmAtual!==undefined)db.mileage=updates.kmAtual;if(updates.status!==undefined)db.status=toDbVehicleStatus(updates.status);if(updates.observacoes!==undefined)db.notes=updates.observacoes;
+    if(updates.status==='RESERVA') db.status='disponivel'; if(Object.keys(db).length)supabase.from('vehicles').update(db).eq('id',id).then(({error})=>{if(error)console.error('Erro ao atualizar viatura:',error)});
   };
 
   const deleteVehicle = (id: string) => {
@@ -274,6 +297,9 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return v;
       })
     );
+    const db:any={mileage:newKm};
+    if(observacao) db.notes = observacao;
+    supabase.from('vehicles').update(db).eq('id',id).then(({error})=>{if(error)console.error('Erro ao salvar hodômetro:',error)});
   };
 
   const addMaintenanceRecord = (recordData: Omit<MaintenanceRecord, 'id' | 'numeroOS'>) => {
@@ -289,7 +315,11 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     setMaintenanceRecords((prev) => [newRecord, ...prev]);
-    supabase.from('maintenance').insert({id:newRecord.id,vehicle_id:newRecord.viaturaId,maintenance_type:newRecord.tipoManutencao,status:newRecord.status,mileage:newRecord.kmEntrada,description:newRecord.descricaoProblema,service_performed:newRecord.servicosExecutados,parts:JSON.stringify(newRecord.pecasSubstituidas||[]),opened_at:newRecord.dataEntrada}).then(({error})=>{if(error)console.error(error)});
+    supabase.auth.getUser().then(({data:{user}})=>{
+      if(!user){console.error('Usuário não autenticado para salvar manutenção.');return;}
+      const dbStatus = newRecord.status==='EM_EXECUCAO'||newRecord.status==='AGUARDANDO_PECAS'?'em_andamento':newRecord.status==='CONCLUIDA'?'concluida':newRecord.status==='CANCELADA'?'cancelada':'aberta';
+      supabase.from('maintenance').insert({id:newRecord.id,vehicle_id:newRecord.viaturaId,reported_by:user.id,maintenance_type:newRecord.tipoManutencao==='PREVENTIVA'?'preventiva':'corretiva',status:dbStatus,mileage:newRecord.kmEntrada,description:newRecord.descricaoProblema,service_performed:newRecord.servicosExecutados,parts:JSON.stringify(newRecord.pecasSubstituidas||[]),opened_at:newRecord.dataEntrada}).then(({error})=>{if(error)console.error('Erro ao salvar manutenção:',error)});
+    });
 
     // Also update vehicle status and km if relevant
     const vehicle = vehicles.find((v) => v.id === recordData.viaturaId);
@@ -313,7 +343,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const updateMaintenanceRecord = (id: string, updates: Partial<MaintenanceRecord>) => {
-    const db:any={}; if(updates.status!==undefined)db.status=updates.status;if(updates.kmEntrada!==undefined)db.mileage=updates.kmEntrada;if(updates.descricaoProblema!==undefined)db.description=updates.descricaoProblema;if(updates.servicosExecutados!==undefined)db.service_performed=updates.servicosExecutados;if(updates.dataConclusao!==undefined)db.closed_at=updates.dataConclusao;
+    const db:any={}; if(updates.status!==undefined)db.status=updates.status==='EM_EXECUCAO'||updates.status==='AGUARDANDO_PECAS'?'em_andamento':updates.status==='CONCLUIDA'?'concluida':updates.status==='CANCELADA'?'cancelada':'aberta';if(updates.kmEntrada!==undefined)db.mileage=updates.kmEntrada;if(updates.descricaoProblema!==undefined)db.description=updates.descricaoProblema;if(updates.servicosExecutados!==undefined)db.service_performed=updates.servicosExecutados;if(updates.dataConclusao!==undefined)db.closed_at=updates.dataConclusao;
     if(Object.keys(db).length)supabase.from('maintenance').update(db).eq('id',id).then(({error})=>{if(error)console.error(error)});
     setMaintenanceRecords((prev) =>
       prev.map((r) => {
@@ -359,6 +389,14 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     setCautelas((prev) => [newRecord, ...prev]);
+    supabase.from('cautelas').insert({
+      id:newRecord.id,numero_termo:newRecord.numeroTermo,vehicle_id:newRecord.viaturaId,data_hora_saida:newRecord.dataHoraSaida,
+      km_saida:newRecord.kmSaida,combustivel_saida:newRecord.combustivelSaida,condutor_nome:newRecord.condutorNome,condutor_re:newRecord.condutorRE,
+      condutor_graduacao:newRecord.condutorGraduacao,encarregado_vtr:newRecord.encarregadoVtr,observacoes_saida:newRecord.observacoesSaida,
+      checklist_saida:newRecord.checklistSaida||[],fotos_saida:newRecord.fotosAvariasSaida||[],status:newRecord.status,
+      prefixo_viatura:newRecord.prefixoViatura,modelo_viatura:newRecord.modeloViatura,placa_viatura:newRecord.placaViatura,
+      tipo_viatura:newRecord.tipoViatura==='QUATRO_RODAS'?'viatura_4_rodas':'moto',pelotao:newRecord.pelotao
+    }).then(({error})=>{if(error)console.error('Erro ao salvar cautela:',error)});
 
     // Update vehicle km if departure km is higher
     const vehicle = vehicles.find((v) => v.id === cautelaData.viaturaId);
@@ -409,6 +447,15 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       })
     );
 
+    const dbUpdate = {
+      status:'CONCLUIDA',data_hora_retorno:descautelaData.dataHoraRetorno,km_retorno:descautelaData.kmRetorno,
+      km_percorrido:Math.max(0,descautelaData.kmRetorno-(cautelas.find(c=>c.id===id)?.kmSaida||0)),
+      combustivel_retorno:descautelaData.combustivelRetorno,recebedor_nome:descautelaData.recebedorNome,recebedor_re:descautelaData.recebedorRE,
+      observacoes_retorno:descautelaData.observacoesRetorno,checklist_retorno:descautelaData.checklistRetorno||[],houve_avaria:descautelaData.houveAvaria,
+      descricao_avaria:descautelaData.descricaoAvaria,viatura_baixada:descautelaData.baixarViatura||false,fotos_retorno:descautelaData.fotosAvariasRetorno||[]
+    };
+    supabase.from('cautelas').update(dbUpdate).eq('id',id).then(({error})=>{if(error)console.error('Erro ao salvar descautela:',error)});
+
     // Find cautela to get viaturaId
     const currentCautela = cautelas.find((c) => c.id === id);
     if (currentCautela) {
@@ -431,6 +478,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const deleteCautela = (id: string) => {
     setCautelas((prev) => prev.filter((c) => c.id !== id));
+    supabase.from('cautelas').delete().eq('id',id).then(({error})=>{if(error)console.error('Erro ao excluir cautela:',error)});
   };
 
   const updateRule = (id: string, updates: Partial<MaintenanceRule>) => {
