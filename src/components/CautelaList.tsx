@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFleet } from '../context/FleetContext';
+import { useAuth } from '../context/AuthContext';
 import { CautelaRecord, VehicleType } from '../types';
 import {
   ClipboardCheck,
@@ -21,7 +22,8 @@ import {
   Calendar,
   Eye,
   Check,
-  Camera
+  Camera,
+  UserCheck
 } from 'lucide-react';
 
 interface CautelaListProps {
@@ -36,10 +38,12 @@ export const CautelaList: React.FC<CautelaListProps> = ({
   onViewCautelaDetail,
 }) => {
   const { cautelas, deleteCautela, activeCautelasCount, vehicles } = useFleet();
+  const { currentUser, isAdmin, isOperator } = useAuth();
 
   const [activeSubTab, setActiveSubTab] = useState<'ativas' | 'historico'>('ativas');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'TODAS' | VehicleType>('TODAS');
+  const [onlyMyCautelas, setOnlyMyCautelas] = useState<boolean>(isOperator);
   const [cautelaToDelete, setCautelaToDelete] = useState<CautelaRecord | null>(null);
 
   // Filtered cautelas
@@ -50,6 +54,17 @@ export const CautelaList: React.FC<CautelaListProps> = ({
 
     // Type filter
     if (filterType !== 'TODAS' && c.tipoViatura !== filterType) return false;
+
+    // Filter by logged user's cautelas if enabled
+    if (onlyMyCautelas && currentUser) {
+      const userREDigits = currentUser.re.replace(/[^0-9]/g, '');
+      const condutorREDigits = c.condutorRE.replace(/[^0-9]/g, '');
+      const matchRE = userREDigits && condutorREDigits && userREDigits === condutorREDigits;
+      const matchName =
+        currentUser.name.toLowerCase().includes(c.condutorNome.toLowerCase()) ||
+        c.condutorNome.toLowerCase().includes(currentUser.username.toLowerCase());
+      if (!matchRE && !matchName) return false;
+    }
 
     // Search query
     if (searchQuery.trim()) {
@@ -194,6 +209,22 @@ export const CautelaList: React.FC<CautelaListProps> = ({
             <option value="MOTOCICLETA">Motocicletas</option>
             <option value="QUATRO_RODAS">04 Rodas</option>
           </select>
+
+          {/* Toggle Minhas Cautelas */}
+          {currentUser && (
+            <button
+              onClick={() => setOnlyMyCautelas(!onlyMyCautelas)}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                onlyMyCautelas
+                  ? 'bg-emerald-500 text-zinc-950 shadow-md shadow-emerald-500/20'
+                  : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-750 border border-zinc-700'
+              }`}
+              title={onlyMyCautelas ? 'Exibindo apenas cautelas do seu RE/Nome' : 'Exibir todas as cautelas da unidade'}
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>{onlyMyCautelas ? `Minhas Cautelas (${currentUser.re})` : 'Todas as Cautelas'}</span>
+            </button>
+          )}
 
           <button
             onClick={onOpenNewCautela}
@@ -434,13 +465,15 @@ export const CautelaList: React.FC<CautelaListProps> = ({
                         <span>Descautelar (Fim de Serviço)</span>
                       </button>
                     ) : (
-                      <button
-                        onClick={() => setCautelaToDelete(cautela)}
-                        title="Excluir Registro"
-                        className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-950/30 rounded-lg transition cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      isAdmin && (
+                        <button
+                          onClick={() => setCautelaToDelete(cautela)}
+                          title="Excluir Registro (Administrador)"
+                          className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-950/30 rounded-lg transition cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )
                     )}
                   </div>
                 </div>

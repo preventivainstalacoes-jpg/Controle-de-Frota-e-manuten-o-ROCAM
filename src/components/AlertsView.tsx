@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFleet } from '../context/FleetContext';
+import { useAuth } from '../context/AuthContext';
 import { MaintenanceAlert, MaintenanceRule, VehicleType } from '../types';
 import {
   AlertTriangle,
@@ -23,6 +24,7 @@ interface AlertsViewProps {
 
 export const AlertsView: React.FC<AlertsViewProps> = ({ onScheduleMaintenance }) => {
   const { alerts, criticalAlertCount, warningAlertCount, rules, updateRule } = useFleet();
+  const { isAdmin } = useAuth();
 
   const [typeFilter, setTypeFilter] = useState<'TODAS' | VehicleType>('TODAS');
   const [showConfigRulesModal, setShowConfigRulesModal] = useState(false);
@@ -61,16 +63,18 @@ export const AlertsView: React.FC<AlertsViewProps> = ({ onScheduleMaintenance })
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
-          {/* Rules Config Button */}
-          <button
-            onClick={() => setShowConfigRulesModal(true)}
-            className="flex items-center space-x-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-750 text-zinc-200 border border-zinc-700 transition cursor-pointer"
-          >
-            <Settings className="w-4 h-4 text-amber-400" />
-            <span>Configurar Intervalos (KM)</span>
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="flex items-center space-x-2">
+            {/* Rules Config Button */}
+            <button
+              onClick={() => setShowConfigRulesModal(true)}
+              className="flex items-center space-x-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-750 text-zinc-200 border border-zinc-700 transition cursor-pointer"
+            >
+              <Settings className="w-4 h-4 text-amber-400" />
+              <span>Configurar Intervalos (KM)</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Filter by Vehicle Type */}
@@ -163,13 +167,15 @@ export const AlertsView: React.FC<AlertsViewProps> = ({ onScheduleMaintenance })
                   </div>
                 </div>
 
-                <button
-                  onClick={() => onScheduleMaintenance(alert.viaturaId, alert.categoria)}
-                  className="w-full flex items-center justify-center space-x-2 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold transition shadow-md cursor-pointer"
-                >
-                  <Wrench className="w-4 h-4" />
-                  <span>Abrir O.S. Preventiva Imediata</span>
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => onScheduleMaintenance(alert.viaturaId, alert.categoria)}
+                    className="w-full flex items-center justify-center space-x-2 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold transition shadow-md cursor-pointer"
+                  >
+                    <Wrench className="w-4 h-4" />
+                    <span>Abrir O.S. Preventiva Imediata</span>
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -239,13 +245,15 @@ export const AlertsView: React.FC<AlertsViewProps> = ({ onScheduleMaintenance })
                   </div>
                 </div>
 
-                <button
-                  onClick={() => onScheduleMaintenance(alert.viaturaId, alert.categoria)}
-                  className="w-full flex items-center justify-center space-x-2 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 rounded-lg text-xs font-semibold transition cursor-pointer"
-                >
-                  <Wrench className="w-4 h-4" />
-                  <span>Agendar Revisão Preventiva</span>
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => onScheduleMaintenance(alert.viaturaId, alert.categoria)}
+                    className="w-full flex items-center justify-center space-x-2 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 rounded-lg text-xs font-semibold transition cursor-pointer"
+                  >
+                    <Wrench className="w-4 h-4" />
+                    <span>Agendar Revisão Preventiva</span>
+                  </button>
+                )}
               </div>
             ))}
           </div>

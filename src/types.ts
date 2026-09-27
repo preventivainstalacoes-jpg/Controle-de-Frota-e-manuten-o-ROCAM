@@ -237,3 +237,125 @@ export interface BackupScheduleConfig {
   notificarNovoBackup: boolean;
 }
 
+export type UserRole = 'ADMIN' | 'OPERADOR';
+export type UserAccountStatus = 'ATIVO' | 'PENDENTE' | 'INATIVO' | 'REJEITADO';
+
+export interface UserProfile {
+  id: string;
+  username: string; // ex: 'admin', 'operador'
+  name: string; // ex: 'Cap PM Souza', 'Cb PM Oliveira'
+  re: string; // ex: '000.001-0'
+  graduacao: string; // ex: 'CAP PM', 'CB PM', '1º SGT PM', etc.
+  role: UserRole;
+  pelotao: string;
+  passwordHash: string;
+  salt: string;
+  createdAt: string;
+  lastLogin?: string;
+  isActive: boolean;
+  status: UserAccountStatus;
+  solicitadoEm?: string;
+  aprovadoPor?: string;
+  aprovadoEm?: string;
+  motivoRejeicao?: string;
+}
+
+export interface AuthSession {
+  token: string;
+  userId: string;
+  username: string;
+  role: UserRole;
+  createdAt: string;
+  expiresAt: string;
+}
+
+// ==========================================
+// TRABALHO EM EQUIPE & COMPARTILHAMENTO
+// ==========================================
+
+export type TeamNoticeCategory =
+  | 'PASSAGEM_SERVICO'    // Passagem de Serviço e Turno
+  | 'ALERTA_OPERACIONAL'  // Alerta Tático / Operação
+  | 'LOGISTICA_OFICINA'   // Oficina, Manutenção e Abastecimento
+  | 'ORDEM_DO_DIA'        // Ordem do Dia do Comando
+  | 'INFORMATIVO';        // Informações Gerais
+
+export type TeamNoticePriority = 'URGENTE' | 'ALTA' | 'NORMAL' | 'INFORMATIVO';
+
+export interface NoticeAcknowledgement {
+  userId: string;
+  userName: string;
+  userRE: string;
+  userGraduacao: string;
+  acknowledgedAt: string; // ISO string
+}
+
+export interface TeamNotice {
+  id: string;
+  titulo: string;
+  conteudo: string;
+  categoria: TeamNoticeCategory;
+  prioridade: TeamNoticePriority;
+  autorId: string;
+  autorNome: string;
+  autorRE: string;
+  autorGraduacao: string;
+  criadoEm: string;
+  atualizadoEm?: string;
+  fixado?: boolean;
+  viaturaRelacionadaId?: string;
+  viaturaRelacionadaPrefixo?: string;
+  confirmacoes: NoticeAcknowledgement[]; // Quem deu QSL / Ciente
+}
+
+export interface TeamMessage {
+  id: string;
+  remetenteId: string;
+  remetenteNome: string;
+  remetenteRE: string;
+  remetenteGraduacao: string;
+  remetenteRole: UserRole;
+  texto: string;
+  viaturaId?: string;
+  viaturaPrefixo?: string;
+  criadoEm: string;
+  tipo: 'TEXTO' | 'ALERTA_AVARIA' | 'CAUTELA_INICIADA' | 'DESCAUTELA_FINALIZADA' | 'HODOMETRO_ATUALIZADO';
+}
+
+export interface TeamActivityLog {
+  id: string;
+  tipo:
+    | 'CAUTELA'
+    | 'DESCAUTELA'
+    | 'MANUTENCAO'
+    | 'HODOMETRO'
+    | 'AVARIA'
+    | 'COMUNICADO'
+    | 'SISTEMA';
+  titulo: string;
+  descricao: string;
+  usuarioNome: string;
+  usuarioRE: string;
+  usuarioRole: UserRole;
+  dataHora: string;
+  badge?: string;
+  linkTab?: string;
+}
+
+export interface TeamMemberPresence {
+  userId: string;
+  userName: string;
+  userRE: string;
+  graduacao: string;
+  role: UserRole;
+  pelotao: string;
+  isOnline: boolean;
+  statusServico: 'EM_SERVICO' | 'PATRULHAMENTO' | 'BASE_LOGISTICA' | 'FOLGA';
+  viaturaAtual?: {
+    id: string;
+    prefixo: string;
+    modelo: string;
+  };
+  ultimoAcesso: string;
+}
+

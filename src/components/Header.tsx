@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
 import { useFleet } from '../context/FleetContext';
+import { useAuth } from '../context/AuthContext';
+import { useTeam } from '../context/TeamContext';
+import { UserManagementModal } from './UserManagementModal';
+import { ChangePasswordModal } from './ChangePasswordModal';
+import { UserProfileModal } from './UserProfileModal';
 import {
   Shield,
   Bike,
@@ -17,7 +22,14 @@ import {
   ClipboardCheck,
   RotateCcw,
   Trash2,
-  Database
+  Database,
+  Users,
+  KeyRound,
+  LogOut,
+  User,
+  ChevronDown,
+  Lock,
+  MessageSquareShare
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -51,7 +63,15 @@ export const Header: React.FC<HeaderProps> = ({
     setBackupNotification,
   } = useFleet();
 
+  const { currentUser, isAdmin, isOperator, logout } = useAuth();
+  const { unreadNoticesCount, isOnlineSync } = useTeam();
+
   const [showConfigMenu, setShowConfigMenu] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [userModalInitialTab, setUserModalInitialTab] = useState<'list' | 'create'>('create');
+  const [isChangePassOpen, setIsChangePassOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,13 +94,23 @@ export const Header: React.FC<HeaderProps> = ({
     e.target.value = '';
   };
 
-  const navItems = [
+  // Build navigation items filtered by RBAC
+  const allNavItems = [
     {
       id: 'frota',
       label: 'Frota ROCAM',
       icon: Bike,
       badge: `${stats.total}`,
       badgeColor: 'bg-zinc-800 text-zinc-300',
+      allowedRoles: ['ADMIN', 'OPERADOR'],
+    },
+    {
+      id: 'equipe',
+      label: 'Equipe & Comunicação',
+      icon: Users,
+      badge: unreadNoticesCount > 0 ? `${unreadNoticesCount} Novo${unreadNoticesCount > 1 ? 's' : ''}` : undefined,
+      badgeColor: 'bg-amber-500 text-zinc-950 font-bold',
+      allowedRoles: ['ADMIN', 'OPERADOR'],
     },
     {
       id: 'cautelas',
@@ -88,19 +118,30 @@ export const Header: React.FC<HeaderProps> = ({
       icon: ClipboardCheck,
       badge: activeCautelasCount > 0 ? `${activeCautelasCount} em serviço` : undefined,
       badgeColor: 'bg-emerald-500 text-zinc-950 font-bold',
+      allowedRoles: ['ADMIN', 'OPERADOR'],
     },
     {
       id: 'manutencao',
       label: 'Manutenções',
       icon: Wrench,
       badge: undefined,
+      allowedRoles: ['ADMIN'], // Restrito a Admin
     },
     {
       id: 'alertas',
       label: 'Alertas de Manutenção',
       icon: AlertTriangle,
-      badge: criticalAlertCount > 0 ? `${criticalAlertCount} Crítico${criticalAlertCount > 1 ? 's' : ''}` : warningAlertCount > 0 ? `${warningAlertCount}` : undefined,
-      badgeColor: criticalAlertCount > 0 ? 'bg-rose-500 text-white animate-pulse' : 'bg-amber-500 text-black font-semibold',
+      badge:
+        criticalAlertCount > 0
+          ? `${criticalAlertCount} Crítico${criticalAlertCount > 1 ? 's' : ''}`
+          : warningAlertCount > 0
+          ? `${warningAlertCount}`
+          : undefined,
+      badgeColor:
+        criticalAlertCount > 0
+          ? 'bg-rose-500 text-white animate-pulse'
+          : 'bg-amber-500 text-black font-semibold',
+      allowedRoles: ['ADMIN', 'OPERADOR'],
     },
     {
       id: 'relatorio-diario',
@@ -108,20 +149,25 @@ export const Header: React.FC<HeaderProps> = ({
       icon: FileText,
       badge: stats.baixadas > 0 ? `${stats.baixadas} Baixada${stats.baixadas > 1 ? 's' : ''}` : undefined,
       badgeColor: 'bg-rose-900/80 text-rose-200 border border-rose-700/60',
+      allowedRoles: ['ADMIN', 'OPERADOR'],
     },
     {
       id: 'relatorio-mensal',
       label: 'Relatório Mensal',
       icon: Calendar,
       badge: undefined,
+      allowedRoles: ['ADMIN'], // Restrito a Admin
     },
   ];
+
+  const currentRole = currentUser?.role || 'OPERADOR';
+  const navItems = allNavItems.filter((item) => item.allowedRoles.includes(currentRole));
 
   return (
     <header className="bg-zinc-950 border-b border-zinc-800 sticky top-0 z-30 shadow-xl">
       {/* Top Banner Tático */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between py-3 border-b border-zinc-850">
+        <div className="flex items-center justify-between py-2.5 border-b border-zinc-850">
           <div className="flex items-center space-x-3">
             <div>
               <div className="flex items-center space-x-2">
@@ -129,42 +175,72 @@ export const Header: React.FC<HeaderProps> = ({
                   Polícia Militar
                 </span>
                 <span className="text-zinc-500 text-xs hidden sm:inline">•</span>
-                <span className="text-zinc-400 text-xs font-mono hidden sm:inline">Setor de Logística e Manutenção</span>
+                <span className="text-zinc-400 text-xs font-mono hidden sm:inline">
+                  {isOperator ? 'Módulo Operador • Cautelas & Avarias' : 'Comando & Logística ROCAM'}
+                </span>
               </div>
               <h1 className="text-lg sm:text-xl font-extrabold text-zinc-100 tracking-tight flex items-center gap-2">
-                ROCAM <span className="text-amber-400 font-semibold text-base sm:text-lg">— Controle de Frota & Manutenção</span>
+                ROCAM <span className="text-amber-400 font-semibold text-base sm:text-lg">— Controle de Frota</span>
               </h1>
             </div>
           </div>
 
-          {/* KPI de Prontidão e Ações Rápidas */}
-          <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* Indicador de Prontidão */}
-            <div className="hidden md:flex items-center bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 shadow-inner">
-              <div className="mr-2.5">
-                <div className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Prontidão Operacional</div>
-                <div className="flex items-center gap-1.5">
-                  <span className={`text-base font-black font-mono ${
-                    stats.taxaProntidao >= 80 ? 'text-emerald-400' : stats.taxaProntidao >= 60 ? 'text-amber-400' : 'text-rose-400'
-                  }`}>
+          {/* User Profile & Actions */}
+          <div className="flex items-center space-x-2 sm:space-x-2.5">
+            {/* Indicador de Prontidão (Desktop) */}
+            <div className="hidden lg:flex items-center bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1 shadow-inner">
+              <div className="mr-2">
+                <div className="text-[9px] uppercase font-bold text-zinc-400 tracking-wider">Prontidão</div>
+                <div className="flex items-center gap-1">
+                  <span
+                    className={`text-sm font-black font-mono ${
+                      stats.taxaProntidao >= 80
+                        ? 'text-emerald-400'
+                        : stats.taxaProntidao >= 60
+                        ? 'text-amber-400'
+                        : 'text-rose-400'
+                    }`}
+                  >
                     {stats.taxaProntidao}%
                   </span>
-                  <span className="text-xs text-zinc-500 font-medium">
-                    ({stats.operacionais + stats.reserva}/{stats.total} Vtr)
+                  <span className="text-[11px] text-zinc-500">
+                    ({stats.operacionais + stats.reserva}/{stats.total})
                   </span>
                 </div>
               </div>
-              <div className={`w-3 h-3 rounded-full ${
-                stats.taxaProntidao >= 80 ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.7)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.7)]'
-              }`} />
+              <div
+                className={`w-2.5 h-2.5 rounded-full ${
+                  stats.taxaProntidao >= 80 ? 'bg-emerald-500' : 'bg-amber-500'
+                }`}
+              />
             </div>
 
-            {/* Nova Cautela Button */}
+            {/* Indicador de Equipe Sincronizada */}
+            <button
+              onClick={() => setActiveTab('equipe')}
+              className="hidden md:flex items-center space-x-2 px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 transition cursor-pointer"
+              title="Rede de Trabalho em Equipe ROCAM. Clique para acessar o Mural e Mensagens."
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <div className="text-left">
+                <div className="text-[9px] font-mono text-zinc-400 font-bold uppercase tracking-wider">Rede ROCAM</div>
+                <div className="text-[11px] text-emerald-400 font-bold leading-none flex items-center gap-1">
+                  <span>Equipe Online</span>
+                  {unreadNoticesCount > 0 && (
+                    <span className="px-1 py-0.2 rounded-full text-[9px] font-extrabold bg-amber-500 text-zinc-950">
+                      {unreadNoticesCount}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </button>
+
+            {/* Nova Cautela Button - Em destaque para ambos, especialmente o Operador */}
             {onOpenNewCautela && (
               <button
                 id="btn-header-nova-cautela"
                 onClick={onOpenNewCautela}
-                className="flex items-center space-x-1.5 px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 transition active:scale-95 cursor-pointer"
+                className="flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 transition active:scale-95 cursor-pointer"
                 title="Registrar Cautela de Saída para Patrulhamento"
               >
                 <ClipboardCheck className="w-4 h-4" />
@@ -177,113 +253,284 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 id="btn-header-descautelar"
                 onClick={onOpenDescautelar}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition active:scale-95 cursor-pointer ${
+                className={`flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition active:scale-95 cursor-pointer ${
                   activeCautelasCount > 0
                     ? 'bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow-md shadow-amber-500/20 font-bold'
                     : 'bg-zinc-800 hover:bg-zinc-750 text-zinc-300 border border-zinc-700'
                 }`}
-                title="Descautelar viatura ao final do serviço policial (conferência de retorno)"
+                title="Descautelar viatura ao final do serviço policial"
               >
                 <RotateCcw className="w-4 h-4" />
-                <span>Descautelar{activeCautelasCount > 0 ? ` (${activeCautelasCount})` : ''}</span>
+                <span className="hidden sm:inline">Descautelar</span>
+                {activeCautelasCount > 0 && <span className="font-bold">({activeCautelasCount})</span>}
               </button>
             )}
 
-            {/* Nova O.S. Button */}
-            <button
-              id="btn-header-nova-os"
-              onClick={onOpenNewMaintenance}
-              className="flex items-center space-x-1.5 px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow-md shadow-amber-500/20 transition active:scale-95 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Nova O.S.</span>
-            </button>
+            {/* Ações Exclusivas de Administrador */}
+            {isAdmin && (
+              <>
+                {/* Nova O.S. Button */}
+                <button
+                  id="btn-header-nova-os"
+                  onClick={onOpenNewMaintenance}
+                  className="hidden md:flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow-md shadow-amber-500/20 transition active:scale-95 cursor-pointer"
+                  title="Abrir Ordem de Serviço de Manutenção"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Nova O.S.</span>
+                </button>
 
-            {/* Novo Veículo */}
-            <button
-              id="btn-header-nova-vtr"
-              onClick={onOpenNewVehicle}
-              className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-750 text-zinc-200 border border-zinc-750 transition active:scale-95 cursor-pointer"
-            >
-              <Plus className="w-4 h-4 text-amber-400" />
-              <span>+ Viatura</span>
-            </button>
+                {/* Novo Veículo */}
+                <button
+                  id="btn-header-nova-vtr"
+                  onClick={onOpenNewVehicle}
+                  className="hidden lg:flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-750 text-zinc-200 border border-zinc-750 transition active:scale-95 cursor-pointer"
+                  title="Cadastrar Nova Viatura na Frota"
+                >
+                  <Plus className="w-4 h-4 text-amber-400" />
+                  <span>+ Vtr</span>
+                </button>
 
-            {/* Banco de Dados Central Button */}
-            {onOpenDatabaseModal && (
-              <button
-                id="btn-header-banco-dados"
-                onClick={onOpenDatabaseModal}
-                className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-750 shadow-sm transition active:scale-95 cursor-pointer relative"
-                title="Central de Banco de Dados, Backups Mensais Automatizados e Exportação SQL"
-              >
-                <Database className="w-4 h-4 text-amber-400" />
-                <span className="hidden md:inline">Banco de Dados</span>
-                {monthlyBackups.length > 0 && (
-                  <span className="hidden lg:inline-flex px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                    {monthlyBackups.length}m
-                  </span>
+                {/* Cadastrar Usuário (Admin) */}
+                <button
+                  id="btn-header-cadastrar-usuario"
+                  onClick={() => {
+                    setUserModalInitialTab('create');
+                    setIsUserModalOpen(true);
+                  }}
+                  className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-750 text-amber-300 border border-zinc-700 shadow-sm transition active:scale-95 cursor-pointer"
+                  title="Cadastrar Novo Usuário ou Gerenciar Acessos"
+                >
+                  <Users className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden sm:inline">+ Usuário</span>
+                </button>
+
+                {/* Banco de Dados Central Button */}
+                {onOpenDatabaseModal && (
+                  <button
+                    id="btn-header-banco-dados"
+                    onClick={onOpenDatabaseModal}
+                    className="flex items-center space-x-1 px-2 sm:px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-750 shadow-sm transition active:scale-95 cursor-pointer relative"
+                    title="Central de Banco de Dados, Backups Mensais e Exportação SQL"
+                  >
+                    <Database className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="hidden xl:inline">Banco de Dados</span>
+                    {monthlyBackups.length > 0 && (
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                        {monthlyBackups.length}m
+                      </span>
+                    )}
+                  </button>
                 )}
-              </button>
+
+                {/* Menu Opções e Backup Rápido */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowConfigMenu(!showConfigMenu)}
+                    title="Opções de Base de Dados"
+                    className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-zinc-800 transition cursor-pointer"
+                  >
+                    <Layers className="w-4 h-4" />
+                  </button>
+
+                  {showConfigMenu && (
+                    <div
+                      className="absolute right-0 mt-2 w-64 rounded-xl bg-zinc-900 border border-zinc-750 shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-100"
+                      onClick={() => setShowConfigMenu(false)}
+                    >
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 px-3 py-1.5">
+                        Gerenciar Base de Dados
+                      </div>
+                      {onOpenDatabaseModal && (
+                        <button
+                          onClick={onOpenDatabaseModal}
+                          className="w-full text-left flex items-center space-x-2 px-3 py-2 text-xs text-amber-300 hover:bg-zinc-800 rounded-lg transition font-semibold"
+                        >
+                          <Database className="w-4 h-4 text-amber-400" />
+                          <span>Central de Banco & Backups</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={exportDatabaseJSON}
+                        className="w-full text-left flex items-center space-x-2 px-3 py-2 text-xs text-zinc-200 hover:bg-zinc-800 rounded-lg transition"
+                      >
+                        <Download className="w-4 h-4 text-amber-400" />
+                        <span>Fazer Backup JSON</span>
+                      </button>
+                      <label className="w-full text-left flex items-center space-x-2 px-3 py-2 text-xs text-zinc-200 hover:bg-zinc-800 rounded-lg transition cursor-pointer">
+                        <Upload className="w-4 h-4 text-blue-400" />
+                        <span>Restaurar Backup JSON</span>
+                        <input type="file" accept=".json" onChange={handleImportFile} className="hidden" />
+                      </label>
+                      <div className="my-1 border-t border-zinc-800" />
+                      <button
+                        onClick={clearAllRecords}
+                        className="w-full text-left flex items-center space-x-2 px-3 py-2 text-xs text-rose-400 hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4 text-rose-400" />
+                        <span>Apagar Cautelas e O.S.</span>
+                      </button>
+                      <button
+                        onClick={resetToDefaultData}
+                        className="w-full text-left flex items-center space-x-2 px-3 py-2 text-xs text-zinc-400 hover:bg-zinc-800 rounded-lg transition cursor-pointer"
+                      >
+                        <RefreshCw className="w-4 h-4 text-zinc-400" />
+                        <span>Restaurar Frota Padrão</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
 
-            {/* Menu Opções e Backup */}
+            {/* Divisor Visual */}
+            <div className="h-6 w-px bg-zinc-800 mx-0.5" />
+
+            {/* User Profile Button & Dropdown Menu */}
             <div className="relative">
               <button
-                onClick={() => setShowConfigMenu(!showConfigMenu)}
-                title="Opções da Base de Dados"
-                className="p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-zinc-800 transition cursor-pointer"
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className={`flex items-center space-x-2 pl-2 pr-2.5 py-1 rounded-xl border transition cursor-pointer ${
+                  isAdmin
+                    ? 'bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 text-zinc-100'
+                    : 'bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20 text-zinc-100'
+                }`}
+                title={`Usuário conectado: ${currentUser?.name || 'Policial'}`}
               >
-                <Layers className="w-4 h-4" />
+                <div
+                  className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold ${
+                    isAdmin ? 'bg-amber-500 text-zinc-950' : 'bg-emerald-500 text-zinc-950'
+                  }`}
+                >
+                  {isAdmin ? <Shield className="w-3.5 h-3.5" /> : <ClipboardCheck className="w-3.5 h-3.5" />}
+                </div>
+
+                <div className="text-left hidden sm:block">
+                  <div className="text-xs font-bold leading-tight flex items-center gap-1.5">
+                    <span className="truncate max-w-[120px]">{currentUser?.name || 'Policial'}</span>
+                  </div>
+                  <div className="text-[10px] font-mono leading-none text-zinc-400 flex items-center gap-1">
+                    <span
+                      className={`font-bold ${
+                        isAdmin ? 'text-amber-400' : 'text-emerald-400'
+                      }`}
+                    >
+                      {isAdmin ? 'ADMIN' : 'OPERADOR'}
+                    </span>
+                    <span>•</span>
+                    <span>{currentUser?.re || ''}</span>
+                  </div>
+                </div>
+
+                <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
               </button>
 
-              {showConfigMenu && (
+              {/* User Dropdown Box */}
+              {showUserMenu && (
                 <div
-                  className="absolute right-0 mt-2 w-64 rounded-xl bg-zinc-900 border border-zinc-750 shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-100"
-                  onClick={() => setShowConfigMenu(false)}
+                  className="absolute right-0 mt-2 w-72 rounded-2xl bg-zinc-900 border border-zinc-750 shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-100"
+                  onClick={() => setShowUserMenu(false)}
                 >
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 px-3 py-1.5">
-                    Gerenciar Base de Dados
+                  {/* User info card */}
+                  <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 mb-2">
+                    <div className="flex items-center space-x-2.5">
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs ${
+                          isAdmin ? 'bg-amber-500 text-zinc-950' : 'bg-emerald-500 text-zinc-950'
+                        }`}
+                      >
+                        {isAdmin ? <Shield className="w-5 h-5" /> : <ClipboardCheck className="w-5 h-5" />}
+                      </div>
+                      <div className="overflow-hidden">
+                        <div className="text-xs font-bold text-white truncate">{currentUser?.name}</div>
+                        <div className="text-[11px] text-zinc-400 font-mono">RE: {currentUser?.re}</div>
+                        <div className="text-[10px] text-zinc-500 truncate">{currentUser?.pelotao}</div>
+                      </div>
+                    </div>
+                    <div className="mt-2 pt-2 border-t border-zinc-850 flex items-center justify-between text-[11px]">
+                      <span className="text-zinc-400">Nível de Acesso:</span>
+                      <span
+                        className={`font-mono font-bold px-1.5 py-0.2 rounded text-[10px] ${
+                          isAdmin
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                            : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                        }`}
+                      >
+                        {isAdmin ? '👑 ADMIN (Total)' : '🛡️ OPERADOR (Limitado)'}
+                      </span>
+                    </div>
                   </div>
-                  {onOpenDatabaseModal && (
+
+                  {/* Actions */}
+                  <div className="space-y-1">
+                    {/* Meu Perfil & Excluir Conta */}
                     <button
-                      onClick={onOpenDatabaseModal}
-                      className="w-full text-left flex items-center space-x-2 px-3 py-2 text-xs text-amber-300 hover:bg-zinc-800 rounded-lg transition font-semibold"
+                      onClick={() => setIsProfileModalOpen(true)}
+                      className="w-full text-left flex items-center space-x-2.5 px-3 py-2 text-xs text-zinc-100 hover:bg-zinc-800 rounded-lg transition font-medium cursor-pointer"
                     >
-                      <Database className="w-4 h-4 text-amber-400" />
-                      <span>Central de Banco de Dados & Backups</span>
+                      <User className="w-4 h-4 text-amber-400" />
+                      <span>Meu Perfil & Configurações</span>
                     </button>
-                  )}
-                  <button
-                    onClick={exportDatabaseJSON}
-                    className="w-full text-left flex items-center space-x-2 px-3 py-2 text-xs text-zinc-200 hover:bg-zinc-800 rounded-lg transition"
-                  >
-                    <Download className="w-4 h-4 text-amber-400" />
-                    <span>Fazer Backup Completo (JSON)</span>
-                  </button>
-                  <label className="w-full text-left flex items-center space-x-2 px-3 py-2 text-xs text-zinc-200 hover:bg-zinc-800 rounded-lg transition cursor-pointer">
-                    <Upload className="w-4 h-4 text-blue-400" />
-                    <span>Restaurar Backup (JSON)</span>
-                    <input type="file" accept=".json" onChange={handleImportFile} className="hidden" />
-                  </label>
-                  <div className="my-1 border-t border-zinc-800" />
-                  <button
-                    onClick={clearAllRecords}
-                    className="w-full text-left flex items-center space-x-2 px-3 py-2 text-xs text-rose-400 hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
-                  >
-                    <Trash2 className="w-4 h-4 text-rose-400" />
-                    <span>Apagar Cautelas e O.S.</span>
-                  </button>
-                  <button
-                    onClick={resetToDefaultData}
-                    className="w-full text-left flex items-center space-x-2 px-3 py-2 text-xs text-zinc-400 hover:bg-zinc-800 rounded-lg transition cursor-pointer"
-                  >
-                    <RefreshCw className="w-4 h-4 text-zinc-400" />
-                    <span>Restaurar Padrão Limpo</span>
-                  </button>
+
+                    {/* User Management (Admin only) */}
+                    {isAdmin && (
+                      <>
+                        <button
+                          onClick={() => {
+                            setUserModalInitialTab('create');
+                            setIsUserModalOpen(true);
+                          }}
+                          className="w-full text-left flex items-center space-x-2.5 px-3 py-2 text-xs text-amber-300 hover:bg-zinc-800 rounded-lg transition font-medium cursor-pointer"
+                        >
+                          <Users className="w-4 h-4 text-amber-400" />
+                          <span>+ Cadastrar Novo Usuário</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setUserModalInitialTab('list');
+                            setIsUserModalOpen(true);
+                          }}
+                          className="w-full text-left flex items-center space-x-2.5 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800 rounded-lg transition font-medium cursor-pointer"
+                        >
+                          <Users className="w-4 h-4 text-zinc-400" />
+                          <span>Listar Policiais & Acessos</span>
+                        </button>
+                      </>
+                    )}
+
+                    {/* Change Password */}
+                    <button
+                      onClick={() => setIsChangePassOpen(true)}
+                      className="w-full text-left flex items-center space-x-2.5 px-3 py-2 text-xs text-zinc-200 hover:bg-zinc-800 rounded-lg transition cursor-pointer"
+                    >
+                      <KeyRound className="w-4 h-4 text-zinc-400" />
+                      <span>Alterar Minha Senha</span>
+                    </button>
+
+                    <div className="my-1 border-t border-zinc-800" />
+
+                    {/* Logout */}
+                    <button
+                      onClick={logout}
+                      className="w-full text-left flex items-center space-x-2.5 px-3 py-2 text-xs text-rose-400 hover:bg-rose-950/40 rounded-lg transition cursor-pointer font-semibold"
+                    >
+                      <LogOut className="w-4 h-4 text-rose-400" />
+                      <span>Sair do Sistema (Logout)</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
+
+            {/* Direct Logout Quick Button */}
+            <button
+              onClick={logout}
+              title="Sair do Sistema (Logout)"
+              className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-zinc-900 hover:bg-rose-950/60 border border-zinc-800 hover:border-rose-800/80 text-zinc-400 hover:text-rose-400 transition cursor-pointer flex items-center space-x-1"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="text-xs font-semibold hidden md:inline">Sair</span>
+            </button>
           </div>
         </div>
 
@@ -341,7 +588,11 @@ export const Header: React.FC<HeaderProps> = ({
                 <Icon className={`w-4 h-4 ${isActive ? 'text-amber-400' : 'text-zinc-400'}`} />
                 <span>{item.label}</span>
                 {item.badge && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${item.badgeColor || 'bg-zinc-800 text-zinc-300'}`}>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                      item.badgeColor || 'bg-zinc-800 text-zinc-300'
+                    }`}
+                  >
                     {item.badge}
                   </span>
                 )}
@@ -350,6 +601,23 @@ export const Header: React.FC<HeaderProps> = ({
           })}
         </nav>
       </div>
+
+      {/* User Management Modal */}
+      <UserManagementModal
+        isOpen={isUserModalOpen}
+        onClose={() => setIsUserModalOpen(false)}
+        initialTab={userModalInitialTab}
+      />
+
+      {/* User Profile Modal with Delete Account Option */}
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        onOpenChangePassword={() => setIsChangePassOpen(true)}
+      />
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal isOpen={isChangePassOpen} onClose={() => setIsChangePassOpen(false)} />
     </header>
   );
 };

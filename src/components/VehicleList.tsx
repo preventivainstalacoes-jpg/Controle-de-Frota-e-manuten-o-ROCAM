@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFleet } from '../context/FleetContext';
+import { useAuth } from '../context/AuthContext';
 import { Vehicle, VehicleType, VehicleStatus, CautelaRecord } from '../types';
 import {
   Bike,
@@ -55,6 +56,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
     setStatusFilter,
     updateVehicle,
   } = useFleet();
+  const { isAdmin, isOperator } = useAuth();
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [vehicleToDelete, setVehicleToDelete] = useState<Vehicle | null>(null);
@@ -222,14 +224,17 @@ export const VehicleList: React.FC<VehicleListProps> = ({
               </button>
             </div>
 
-            <button
-              id="btn-cadastrar-viatura"
-              onClick={onOpenNewVehicle}
-              className="flex items-center space-x-1.5 px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow-md shadow-amber-500/20 transition cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Cadastrar Viatura</span>
-            </button>
+            {/* Cadastrar Viatura (Admin Only) */}
+            {isAdmin && (
+              <button
+                id="btn-cadastrar-viatura"
+                onClick={onOpenNewVehicle}
+                className="flex items-center space-x-1.5 px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow-md shadow-amber-500/20 transition cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Cadastrar Viatura</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -533,44 +538,48 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                       </button>
                     )}
 
-                    <button
-                      onClick={() => onOpenMaintenanceForVehicle(vehicle)}
-                      className="flex items-center space-x-1 text-xs font-semibold text-amber-400 hover:text-amber-300 px-2 py-1 transition cursor-pointer"
-                    >
-                      <Wrench className="w-3.5 h-3.5" />
-                      <span>O.S.</span>
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => onOpenMaintenanceForVehicle(vehicle)}
+                        className="flex items-center space-x-1 text-xs font-semibold text-amber-400 hover:text-amber-300 px-2 py-1 transition cursor-pointer"
+                      >
+                        <Wrench className="w-3.5 h-3.5" />
+                        <span>O.S.</span>
+                      </button>
+                    )}
                   </div>
 
-                  <div className="flex items-center space-x-1">
-                    <button
-                      onClick={() => handleOpenStatusModal(vehicle)}
-                      title={vehicle.status === 'OPERACIONAL' ? 'Baixar viatura' : 'Liberar como Operacional'}
-                      className={`px-2 py-1 rounded text-[11px] font-semibold transition cursor-pointer ${
-                        vehicle.status === 'OPERACIONAL'
-                          ? 'bg-zinc-800 hover:bg-rose-950/80 text-zinc-400 hover:text-rose-300'
-                          : 'bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300'
-                      }`}
-                    >
-                      {vehicle.status === 'OPERACIONAL' ? 'Baixar' : 'Pronta'}
-                    </button>
+                  {isAdmin && (
+                    <div className="flex items-center space-x-1">
+                      <button
+                        onClick={() => handleOpenStatusModal(vehicle)}
+                        title={vehicle.status === 'OPERACIONAL' ? 'Baixar viatura' : 'Liberar como Operacional'}
+                        className={`px-2 py-1 rounded text-[11px] font-semibold transition cursor-pointer ${
+                          vehicle.status === 'OPERACIONAL'
+                            ? 'bg-zinc-800 hover:bg-rose-950/80 text-zinc-400 hover:text-rose-300'
+                            : 'bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300'
+                        }`}
+                      >
+                        {vehicle.status === 'OPERACIONAL' ? 'Baixar' : 'Pronta'}
+                      </button>
 
-                    <button
-                      onClick={() => onEditVehicle(vehicle)}
-                      title="Editar viatura"
-                      className="p-1.5 rounded text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition cursor-pointer"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
+                      <button
+                        onClick={() => onEditVehicle(vehicle)}
+                        title="Editar viatura"
+                        className="p-1.5 rounded text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition cursor-pointer"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
 
-                    <button
-                      onClick={() => setVehicleToDelete(vehicle)}
-                      title="Excluir viatura"
-                      className="p-1.5 rounded text-zinc-400 hover:text-rose-400 hover:bg-zinc-800 transition cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                      <button
+                        onClick={() => setVehicleToDelete(vehicle)}
+                        title="Excluir viatura"
+                        className="p-1.5 rounded text-zinc-400 hover:text-rose-400 hover:bg-zinc-800 transition cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -682,27 +691,31 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                           >
                             <Gauge className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            onClick={() => onOpenMaintenanceForVehicle(vehicle)}
-                            title="Nova O.S."
-                            className="p-1 rounded bg-zinc-800 hover:bg-zinc-750 text-amber-400 transition"
-                          >
-                            <Wrench className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => onEditVehicle(vehicle)}
-                            title="Editar"
-                            className="p-1 rounded bg-zinc-800 hover:bg-zinc-750 text-zinc-300 transition"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => setVehicleToDelete(vehicle)}
-                            title="Excluir"
-                            className="p-1 rounded bg-zinc-800 hover:bg-zinc-750 text-rose-400 transition"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {isAdmin && (
+                            <>
+                              <button
+                                onClick={() => onOpenMaintenanceForVehicle(vehicle)}
+                                title="Nova O.S."
+                                className="p-1 rounded bg-zinc-800 hover:bg-zinc-750 text-amber-400 transition"
+                              >
+                                <Wrench className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => onEditVehicle(vehicle)}
+                                title="Editar"
+                                className="p-1 rounded bg-zinc-800 hover:bg-zinc-750 text-zinc-300 transition"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setVehicleToDelete(vehicle)}
+                                title="Excluir"
+                                className="p-1 rounded bg-zinc-800 hover:bg-zinc-750 text-rose-400 transition"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Vehicle, ChecklistItem, CautelaRecord, DamagePhoto } from '../types';
 import { STANDARD_CHECKLIST_ITEMS, generateDefaultChecklist } from '../data/defaultChecklist';
 import { DamagePhotoManager } from './DamagePhotoManager';
+import { useAuth } from '../context/AuthContext';
 import {
   X,
   ClipboardCheck,
@@ -36,6 +37,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
   initialVehicleId,
   onSaveCautela,
 }) => {
+  const { currentUser } = useAuth();
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
   const [dataHoraSaida, setDataHoraSaida] = useState<string>('');
   const [kmSaida, setKmSaida] = useState<number>(0);
@@ -80,12 +82,18 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
         ? activeCautelas.some((c) => c.viaturaId === initialVehicleId && c.status === 'EM_PATRULHAMENTO')
         : false;
 
+      if (currentUser) {
+        setCondutorGraduacao(currentUser.graduacao || 'CB PM');
+        setCondutorNome(currentUser.name.replace(currentUser.graduacao, '').trim());
+        setCondutorRE(currentUser.re);
+      }
+
       if (initialVehicleId && !isInitialVehicleOut) {
         setSelectedVehicleId(initialVehicleId);
         const v = vehicles.find((veh) => veh.id === initialVehicleId);
         if (v) {
           setKmSaida(v.kmAtual);
-          if (v.condutorPadrao) {
+          if (!currentUser && v.condutorPadrao) {
             // Try extracting graduacao, nome, re
             const parts = v.condutorPadrao.split(' ');
             if (parts.length >= 2) {
@@ -97,7 +105,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
       } else if (eligibleVehicles.length > 0) {
         setSelectedVehicleId(eligibleVehicles[0].id);
         setKmSaida(eligibleVehicles[0].kmAtual);
-        if (eligibleVehicles[0].condutorPadrao) {
+        if (!currentUser && eligibleVehicles[0].condutorPadrao) {
           const parts = eligibleVehicles[0].condutorPadrao.split(' ');
           if (parts.length >= 2) {
             setCondutorGraduacao(parts[0] + ' PM');
