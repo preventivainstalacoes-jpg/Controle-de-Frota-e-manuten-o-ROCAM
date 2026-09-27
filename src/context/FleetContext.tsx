@@ -274,7 +274,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const updateVehicle = (id: string, updates: Partial<Vehicle>) => {
     setVehicles((prev) => prev.map((v) => (v.id === id ? { ...v, ...updates } : v)));
     const db:any={}; if(updates.prefixo!==undefined)db.prefix=updates.prefixo;if(updates.placa!==undefined)db.plate=updates.placa;if(updates.marca!==undefined)db.brand=updates.marca;if(updates.modelo!==undefined)db.model=updates.modelo;if(updates.ano!==undefined)db.year=updates.ano;if(updates.kmAtual!==undefined)db.mileage=updates.kmAtual;if(updates.status!==undefined)db.status=toDbVehicleStatus(updates.status);if(updates.observacoes!==undefined)db.notes=updates.observacoes;
-    if(updates.status==='RESERVA') db.status='disponivel'; if(Object.keys(db).length)supabase.from('vehicles').update(db).eq('id',id).then(({error})=>{if(error)console.error('Erro ao atualizar viatura:',error)});
+    if(Object.keys(db).length)supabase.from('vehicles').update(db).eq('id',id).then(({error})=>{if(error)console.error('Erro ao atualizar viatura:',error)});
   };
 
   const deleteVehicle = (id: string) => {
