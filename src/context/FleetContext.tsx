@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { supabase } from '../lib/supabase';
 import {
   Vehicle,
   MaintenanceRecord,
@@ -223,25 +224,37 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [cautelas]);
 
+  // Shared Supabase data layer
+  const fromDbVehicle = (v: any): Vehicle => ({
+    id:v.id,prefixo:v.prefix,placa:v.plate||'',tipo:v.vehicle_type==='QUATRO_RODAS'?'QUATRO_RODAS':'MOTOCICLETA',marca:v.brand||'',modelo:v.model||'',ano:v.year||new Date().getFullYear(),kmAtual:v.mileage||0,status:v.status||'OPERACIONAL',pelotao:v.pelotao||'ROCAM',batalhao:v.batalhao||'ROCAM',motivoBaixa:v.motivo_baixa,condutorPadrao:v.condutor_padrao,dataUltimaAtualizacaoKm:v.updated_at?.split('T')[0]||new Date().toISOString().split('T')[0],observacoes:v.notes||''
+  });
+  useEffect(()=>{
+    let alive=true;
+    (async()=>{const {data,error}=await supabase.from('vehicles').select('*').order('prefix');if(alive&&!error&&data?.length)setVehicles(data.map(fromDbVehicle));})();
+    return()=>{alive=false};
+  },[]);
+
   // Actions
   const addVehicle = (vehicleData: Omit<Vehicle, 'id' | 'dataUltimaAtualizacaoKm'>) => {
     const today = new Date().toISOString().split('T')[0];
     const newVehicle: Vehicle = {
       ...vehicleData,
-      id: `v-${Date.now()}`,
+      id: crypto.randomUUID(),
       dataUltimaAtualizacaoKm: today,
     };
     setVehicles((prev) => [newVehicle, ...prev]);
+    supabase.from('vehicles').insert({id:newVehicle.id,vehicle_type:newVehicle.tipo,prefix:newVehicle.prefixo,plate:newVehicle.placa,brand:newVehicle.marca,model:newVehicle.modelo,year:newVehicle.ano,mileage:newVehicle.kmAtual,status:newVehicle.status,notes:newVehicle.observacoes||''}).then(({error})=>{if(error)console.error(error)});
   };
 
   const updateVehicle = (id: string, updates: Partial<Vehicle>) => {
-    setVehicles((prev) =>
-      prev.map((v) => (v.id === id ? { ...v, ...updates } : v))
-    );
+    setVehicles((prev) => prev.map((v) => (v.id === id ? { ...v, ...updates } : v)));
+    const db:any={}; if(updates.prefixo!==undefined)db.prefix=updates.prefixo;if(updates.placa!==undefined)db.plate=updates.placa;if(updates.marca!==undefined)db.brand=updates.marca;if(updates.modelo!==undefined)db.model=updates.modelo;if(updates.ano!==undefined)db.year=updates.ano;if(updates.kmAtual!==undefined)db.mileage=updates.kmAtual;if(updates.status!==undefined)db.status=updates.status;if(updates.observacoes!==undefined)db.notes=updates.observacoes;
+    if(Object.keys(db).length)supabase.from('vehicles').update(db).eq('id',id).then(({error})=>{if(error)console.error(error)});
   };
 
   const deleteVehicle = (id: string) => {
     setVehicles((prev) => prev.filter((v) => v.id !== id));
+    supabase.from('vehicles').delete().eq('id',id).then(({error})=>{if(error)console.error(error)});
   };
 
   const updateOdometer = (id: string, newKm: number, observacao?: string) => {
