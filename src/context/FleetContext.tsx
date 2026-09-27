@@ -230,7 +230,9 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
   useEffect(()=>{
     let alive=true;
-    (async()=>{const {data,error}=await supabase.from('vehicles').select('*').order('prefix');if(alive&&!error&&data?.length)setVehicles(data.map(fromDbVehicle));})();
+    (async()=>{const [vr,mr]=await Promise.all([supabase.from('vehicles').select('*').order('prefix'),supabase.from('maintenance').select('*').order('opened_at',{ascending:false})]);
+      if(alive&&!vr.error&&vr.data?.length)setVehicles(vr.data.map(fromDbVehicle));
+      if(alive&&!mr.error&&mr.data?.length)setMaintenanceRecords(mr.data.map((r:any)=>({id:r.id,numeroOS:r.id,viaturaId:r.vehicle_id,prefixoViatura:'',tipoViatura:'MOTOCICLETA',tipoManutencao:r.maintenance_type==='PREVENTIVA'?'PREVENTIVA':'CORRETIVA',categoria:'OUTROS',status:r.status||'AGENDADA',dataEntrada:r.opened_at?.split('T')[0],dataConclusao:r.closed_at?.split('T')[0],kmEntrada:r.mileage||0,descricaoProblema:r.description||'',servicosExecutados:r.service_performed||'',pecasSubstituidas:[],oficinaResponsavel:'',mecanicoResponsavel:'',policialSolicitante:'',matriculaRE:'',urgencia:'MEDIA'})));})();
     return()=>{alive=false};
   },[]);
 
@@ -287,6 +289,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     setMaintenanceRecords((prev) => [newRecord, ...prev]);
+    supabase.from('maintenance').insert({id:newRecord.id,vehicle_id:newRecord.viaturaId,maintenance_type:newRecord.tipoManutencao,status:newRecord.status,mileage:newRecord.kmEntrada,description:newRecord.descricaoProblema,service_performed:newRecord.servicosExecutados,parts:JSON.stringify(newRecord.pecasSubstituidas||[]),opened_at:newRecord.dataEntrada}).then(({error})=>{if(error)console.error(error)});
 
     // Also update vehicle status and km if relevant
     const vehicle = vehicles.find((v) => v.id === recordData.viaturaId);
@@ -310,6 +313,8 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const updateMaintenanceRecord = (id: string, updates: Partial<MaintenanceRecord>) => {
+    const db:any={}; if(updates.status!==undefined)db.status=updates.status;if(updates.kmEntrada!==undefined)db.mileage=updates.kmEntrada;if(updates.descricaoProblema!==undefined)db.description=updates.descricaoProblema;if(updates.servicosExecutados!==undefined)db.service_performed=updates.servicosExecutados;if(updates.dataConclusao!==undefined)db.closed_at=updates.dataConclusao;
+    if(Object.keys(db).length)supabase.from('maintenance').update(db).eq('id',id).then(({error})=>{if(error)console.error(error)});
     setMaintenanceRecords((prev) =>
       prev.map((r) => {
         if (r.id === id) {
@@ -330,6 +335,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const deleteMaintenanceRecord = (id: string) => {
     setMaintenanceRecords((prev) => prev.filter((r) => r.id !== id));
+    supabase.from('maintenance').delete().eq('id',id).then(({error})=>{if(error)console.error(error)});
   };
 
   // Cautela Actions
