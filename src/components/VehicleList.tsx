@@ -286,6 +286,76 @@ export const VehicleList: React.FC<VehicleListProps> = ({
       </div>
 
       {/* Banner de Viaturas em Patrulhamento / Final de Serviço */}
+      {/* Painel de acompanhamento operacional — Administradores */}
+      {isAdmin && (
+        <section className="mb-5 rounded-2xl border border-emerald-700/50 bg-emerald-950/30 shadow-lg overflow-hidden">
+          <div className="px-4 py-3 border-b border-emerald-800/50 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-emerald-500/15 text-emerald-400">
+                <Shield className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-white">Viaturas em Operação / Cauteladas</h2>
+                <p className="text-[11px] text-emerald-300">
+                  Acompanhamento em tempo real das viaturas retiradas para patrulhamento.
+                </p>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-600/40 text-emerald-300 text-xs font-bold">
+              {cautelas.filter((c) => c.status === 'EM_PATRULHAMENTO').length} em operação
+            </span>
+          </div>
+          <div className="p-3">
+            {cautelas.filter((c) => c.status === 'EM_PATRULHAMENTO').length === 0 ? (
+              <div className="py-4 text-center text-xs text-zinc-500">
+                Nenhuma viatura cautelada no momento.
+              </div>
+            ) : (
+              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                {cautelas
+                  .filter((c) => c.status === 'EM_PATRULHAMENTO')
+                  .map((c) => (
+                    <div key={c.id} className="rounded-xl border border-emerald-800/50 bg-zinc-950/70 p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="text-sm font-bold text-white">{c.prefixoViatura}</div>
+                          <div className="text-[10px] uppercase text-zinc-500">
+                            {c.tipoViatura === 'QUATRO_RODAS' ? '04 rodas' : 'Motocicleta'} • {c.numeroTermo}
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold text-emerald-400">EM OPERAÇÃO</span>
+                      </div>
+                      <div className="mt-2 space-y-1 text-[11px]">
+                        <div className="flex items-center gap-2 text-zinc-300">
+                          <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                          <span><strong>Condutor:</strong> {c.condutorGraduacao} {c.condutorNome}</span>
+                        </div>
+                        {c.condutorRE && (
+                          <div className="text-zinc-400 pl-5">RE: {c.condutorRE}</div>
+                        )}
+                        <div className="flex items-center gap-2 text-zinc-400">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Saída: {formatDate(c.dataHoraSaida)}</span>
+                        </div>
+                        <div className="text-zinc-400">KM saída: {formatKm(c.kmSaida)}</div>
+                      </div>
+                      {onOpenDescautelaForVehicle && (
+                        <button
+                          onClick={() => onOpenDescautelaForVehicle(c)}
+                          className="mt-3 w-full rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 py-2 text-[11px] font-bold transition"
+                        >
+                          DESCAUTELAR / VER RETORNO
+                        </button>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+      )}
+
       {cautelas.filter((c) => c.status === 'EM_PATRULHAMENTO').length > 0 && (
         <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-800/70 text-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
           <div className="flex items-center space-x-2.5">
