@@ -91,16 +91,27 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
   const kmPercorrido = Math.max(0, kmRetorno - cautela.kmSaida);
 
   const handleToggleCheckItem = (id: string) => {
+    if (!id) return;
+
     setChecklist((prev) =>
       prev.map((item) => {
         if (!item || item.id !== id) return item;
-        const nextConforme = item.conforme === true ? false : true;
+
+        const nextConforme = item.conforme !== true;
+
         return {
-          id: item.id,
-          item: item.item || 'Item do checklist',
-          categoria: item.categoria,
+          ...item,
+          id: String(item.id),
+          item: typeof item.item === 'string' && item.item.trim()
+            ? item.item
+            : 'Item do checklist',
+          categoria: item.categoria || 'ESTRUTURA',
           conforme: nextConforme,
-          observacao: nextConforme ? '' : (item.observacao || 'Constatada avaria no retorno'),
+          observacao: nextConforme
+            ? ''
+            : (typeof item.observacao === 'string' && item.observacao.trim()
+                ? item.observacao
+                : 'Constatada avaria no retorno'),
         };
       })
     );
@@ -318,14 +329,6 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={handleMarkAllConforme}
-                className="flex items-center space-x-1.5 px-2.5 py-1 text-xs font-semibold text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-950/70 border border-emerald-800/60 rounded-lg transition cursor-pointer"
-              >
-                <Check className="w-3.5 h-3.5" />
-                <span>Marcar Todos Conformes (OK)</span>
-              </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
