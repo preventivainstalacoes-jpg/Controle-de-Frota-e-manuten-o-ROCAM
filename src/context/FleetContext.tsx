@@ -118,68 +118,14 @@ interface FleetContextType {
 
 const FleetContext = createContext<FleetContextType | undefined>(undefined);
 
-const STORAGE_KEY_VEHICLES = 'rocam_frota_vehicles_v3';
-const STORAGE_KEY_RECORDS = 'rocam_frota_records_v3';
-const STORAGE_KEY_RULES = 'rocam_frota_rules_v3';
-const STORAGE_KEY_CAUTELAS = 'rocam_frota_cautelas_v3';
-
-// Cleanup any legacy mock storage keys on module initialization
-try {
-  localStorage.removeItem('rocam_frota_records_v2');
-  localStorage.removeItem('rocam_frota_cautelas_v2');
-  localStorage.removeItem('rocam_frota_records_v1');
-  localStorage.removeItem('rocam_frota_cautelas_v1');
-} catch {
-  // ignore storage errors
-}
-
+// Supabase is the single source of truth for shared operational data.
+// Do not initialize fleet records from localStorage/mock data: that causes each
+// phone/browser to keep a different copy of the fleet.
 export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_VEHICLES);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Ensure vehicles don't remain in maintenance if records are erased
-        return Array.isArray(parsed)
-          ? parsed.map((v: Vehicle) =>
-              v.status === 'EM_MANUTENCAO'
-                ? { ...v, status: 'OPERACIONAL', motivoBaixa: undefined }
-                : v
-            )
-          : INITIAL_VEHICLES;
-      }
-      return INITIAL_VEHICLES;
-    } catch {
-      return INITIAL_VEHICLES;
-    }
-  });
-
-  const [maintenanceRecords, setMaintenanceRecords] = useState<MaintenanceRecord[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_RECORDS);
-      return saved ? JSON.parse(saved) : INITIAL_MAINTENANCE_RECORDS;
-    } catch {
-      return INITIAL_MAINTENANCE_RECORDS;
-    }
-  });
-
-  const [rules, setRules] = useState<MaintenanceRule[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_RULES);
-      return saved ? JSON.parse(saved) : INITIAL_RULES;
-    } catch {
-      return INITIAL_RULES;
-    }
-  });
-
-  const [cautelas, setCautelas] = useState<CautelaRecord[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_CAUTELAS);
-      return saved ? JSON.parse(saved) : INITIAL_CAUTELAS;
-    } catch {
-      return INITIAL_CAUTELAS;
-    }
-  });
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [maintenanceRecords, setMaintenanceRecords] = useState<MaintenanceRecord[]>([]);
+  const [rules, setRules] = useState<MaintenanceRule[]>(INITIAL_RULES);
+  const [cautelas, setCautelas] = useState<CautelaRecord[]>([]);
 
   const [activeTab, setActiveTab] = useState<string>('frota');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -190,39 +136,6 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [monthlyBackups, setMonthlyBackups] = useState<MonthlyBackup[]>([]);
   const [backupConfig, setBackupConfig] = useState<BackupScheduleConfig>(DEFAULT_BACKUP_CONFIG);
   const [backupNotification, setBackupNotification] = useState<string | null>(null);
-
-  // Persistence
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_VEHICLES, JSON.stringify(vehicles));
-    } catch (e) {
-      console.error('Failed to save vehicles to localStorage', e);
-    }
-  }, [vehicles]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_RECORDS, JSON.stringify(maintenanceRecords));
-    } catch (e) {
-      console.error('Failed to save records to localStorage', e);
-    }
-  }, [maintenanceRecords]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_RULES, JSON.stringify(rules));
-    } catch (e) {
-      console.error('Failed to save rules to localStorage', e);
-    }
-  }, [rules]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_CAUTELAS, JSON.stringify(cautelas));
-    } catch (e) {
-      console.error('Failed to save cautelas to localStorage', e);
-    }
-  }, [cautelas]);
 
   // Shared Supabase data layer
   const fromDbVehicle = (v: any): Vehicle => ({
@@ -237,27 +150,57 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     dataHoraSaida:c.data_hora_saida,kmSaida:c.km_saida,combustivelSaida:c.combustivel_saida,condutorNome:c.condutor_nome,condutorRE:c.condutor_re,condutorGraduacao:c.condutor_graduacao,encarregadoVtr:c.encarregado_vtr,observacoesSaida:c.observacoes_saida,checklistSaida:c.checklist_saida||[],fotosAvariasSaida:c.fotos_saida||[],
     status:c.status==='CONCLUIDA'?'CONCLUIDA':'EM_PATRULHAMENTO',dataHoraRetorno:c.data_hora_retorno,kmRetorno:c.km_retorno,kmPercorrido:c.km_percorrido,combustivelRetorno:c.combustivel_retorno,recebedorNome:c.recebedor_nome,recebedorRE:c.recebedor_re,observacoesRetorno:c.observacoes_retorno,checklistRetorno:c.checklist_retorno||[],houveAvaria:c.houve_avaria,descricaoAvaria:c.descricao_avaria,viaturaBaixadaAposRetorno:c.viatura_baixada,fotosAvariasRetorno:c.fotos_retorno||[]
   });
-  useEffect(()=>{
-    let alive=true;
-    (async()=>{
-      const [vr,mr,cr]=await Promise.all([
-        supabase.from('vehicles').select('*').order('prefix'),
-        supabase.from('maintenance').select('*').order('opened_at',{ascending:false}),
-        supabase.from('cautelas').select('*').order('data_hora_saida',{ascending:false})
-      ]);
-      if(alive&&!vr.error&&vr.data?.length)setVehicles(vr.data.map(fromDbVehicle));
-      if(alive&&!mr.error&&mr.data?.length)setMaintenanceRecords(mr.data.map((r:any)=>({
-        id:r.id,numeroOS:r.id,viaturaId:r.vehicle_id,prefixoViatura:'',tipoViatura:'MOTOCICLETA',
-        tipoManutencao:r.maintenance_type==='preventiva'?'PREVENTIVA':'CORRETIVA',categoria:'OUTROS',
-        status:r.status==='em_andamento'?'EM_EXECUCAO':r.status==='concluida'?'CONCLUIDA':r.status==='cancelada'?'CANCELADA':'AGENDADA',
-        dataEntrada:r.opened_at?.split('T')[0],dataConclusao:r.closed_at?.split('T')[0],kmEntrada:r.mileage||0,
-        descricaoProblema:r.description||'',servicosExecutados:r.service_performed||'',pecasSubstituidas:[],oficinaResponsavel:'',
-        mecanicoResponsavel:'',policialSolicitante:'',matriculaRE:'',urgencia:'MEDIA'
-      })));
-      if(alive&&!cr.error&&cr.data?.length)setCautelas(cr.data.map(fromDbCautela));
-    })();
-    return()=>{alive=false};
-  },[]);
+  const loadSharedFleet = async () => {
+    const [vr, mr, cr] = await Promise.all([
+      supabase.from('vehicles').select('*').order('prefix'),
+      supabase.from('maintenance').select('*').order('opened_at', { ascending: false }),
+      supabase.from('cautelas').select('*').order('data_hora_saida', { ascending: false }),
+    ]);
+
+    if (vr.error) console.error('Erro ao carregar viaturas do Supabase:', vr.error);
+    else setVehicles((vr.data || []).map(fromDbVehicle));
+
+    if (mr.error) console.error('Erro ao carregar manutenções do Supabase:', mr.error);
+    else setMaintenanceRecords((mr.data || []).map((r: any) => ({
+      id:r.id,numeroOS:r.id,viaturaId:r.vehicle_id,prefixoViatura:'',tipoViatura:'MOTOCICLETA',
+      tipoManutencao:r.maintenance_type==='preventiva'?'PREVENTIVA':'CORRETIVA',categoria:'OUTROS',
+      status:r.status==='em_andamento'?'EM_EXECUCAO':r.status==='concluida'?'CONCLUIDA':r.status==='cancelada'?'CANCELADA':'AGENDADA',
+      dataEntrada:r.opened_at?.split('T')[0],dataConclusao:r.closed_at?.split('T')[0],kmEntrada:r.mileage||0,
+      descricaoProblema:r.description||'',servicosExecutados:r.service_performed||'',pecasSubstituidas:[],
+      oficinaResponsavel:'',mecanicoResponsavel:'',policialSolicitante:'',matriculaRE:'',urgencia:'MEDIA'
+    })));
+
+    if (cr.error) console.error('Erro ao carregar cautelas do Supabase:', cr.error);
+    else setCautelas((cr.data || []).map(fromDbCautela));
+  };
+
+  // Initial load + realtime refresh. Every device reads the same Supabase state.
+  useEffect(() => {
+    let alive = true;
+    void loadSharedFleet();
+
+    const channel = supabase
+      .channel('rocam-frota-shared-data')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, () => {
+        if (alive) void loadSharedFleet();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance' }, () => {
+        if (alive) void loadSharedFleet();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cautelas' }, () => {
+        if (alive) void loadSharedFleet();
+      })
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error('Falha no canal realtime do ROCAM FROTA.');
+        }
+      });
+
+    return () => {
+      alive = false;
+      void supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Actions
   const addVehicle = (vehicleData: Omit<Vehicle, 'id' | 'dataUltimaAtualizacaoKm'>) => {
@@ -497,16 +440,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           : v
       )
     );
-    try {
-      localStorage.setItem(STORAGE_KEY_RECORDS, JSON.stringify([]));
-      localStorage.setItem(STORAGE_KEY_CAUTELAS, JSON.stringify([]));
-      localStorage.removeItem('rocam_frota_records_v2');
-      localStorage.removeItem('rocam_frota_cautelas_v2');
-      localStorage.removeItem('rocam_frota_records_v1');
-      localStorage.removeItem('rocam_frota_cautelas_v1');
-    } catch (e) {
-      console.error('Failed to clear records in localStorage', e);
-    }
+    // Shared records are maintained in Supabase; localStorage is intentionally unused.
   };
 
   const resetToDefaultData = () => {
@@ -514,18 +448,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setMaintenanceRecords(INITIAL_MAINTENANCE_RECORDS);
     setRules(INITIAL_RULES);
     setCautelas(INITIAL_CAUTELAS);
-    try {
-      localStorage.removeItem(STORAGE_KEY_VEHICLES);
-      localStorage.removeItem(STORAGE_KEY_RECORDS);
-      localStorage.removeItem(STORAGE_KEY_RULES);
-      localStorage.removeItem(STORAGE_KEY_CAUTELAS);
-      localStorage.removeItem('rocam_frota_records_v2');
-      localStorage.removeItem('rocam_frota_cautelas_v2');
-      localStorage.removeItem('rocam_frota_records_v1');
-      localStorage.removeItem('rocam_frota_cautelas_v1');
-    } catch (e) {
-      console.error('Failed to clear localStorage', e);
-    }
+    // Resetting operational data should be done through the shared database tools.
   };
 
   const exportDatabaseJSON = () => {
