@@ -253,10 +253,10 @@ export const CautelaList: React.FC<CautelaListProps> = ({
             <button
               onClick={() => onOpenDescautela(activeCautelas[0])}
               className="flex items-center space-x-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow-md shadow-amber-500/20 transition active:scale-95 cursor-pointer"
-              title="Descautelar viatura ao final do serviço"
+              title="Devolver viatura ao final do serviço"
             >
               <RotateCcw className="w-4 h-4" />
-              <span>Descautelar Viatura ({activeCautelas.length})</span>
+              <span>Devolver Viatura ({activeCautelas.length})</span>
             </button>
           )}
         </div>
@@ -459,10 +459,10 @@ export const CautelaList: React.FC<CautelaListProps> = ({
                       <button
                         onClick={() => onOpenDescautela(cautela)}
                         className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow transition cursor-pointer"
-                        title="Descautelar viatura ao final do serviço"
+                        title="Devolver viatura ao final do serviço"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
-                        <span>Descautelar (Fim de Serviço)</span>
+                        <span>Devolução (Fim de Serviço)</span>
                       </button>
                     ) : (
                       isAdmin && (
