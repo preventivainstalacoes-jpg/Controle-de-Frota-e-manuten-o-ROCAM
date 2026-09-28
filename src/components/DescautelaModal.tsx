@@ -90,28 +90,33 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
 
   const kmPercorrido = Math.max(0, kmRetorno - cautela.kmSaida);
 
+  // Atualiza somente o item clicado e sempre devolve um objeto ChecklistItem válido.
+  // Isso evita que dados antigos/incompletos do Supabase provoquem erro de renderização.
   const handleToggleCheckItem = (id: string) => {
     if (!id) return;
 
     setChecklist((prev) =>
-      prev.map((item) => {
-        if (!item || item.id !== id) return item;
+      prev.map((item, index) => {
+        if (!item || String(item.id) !== String(id)) return item;
 
         const nextConforme = item.conforme !== true;
 
         return {
-          ...item,
-          id: String(item.id),
+          id: String(item.id || `ret-${index + 1}`),
           item: typeof item.item === 'string' && item.item.trim()
-            ? item.item
+            ? item.item.trim()
             : 'Item do checklist',
-          categoria: item.categoria || 'ESTRUTURA',
+          categoria: (
+            item.categoria === 'MECANICA' ||
+            item.categoria === 'ELETRICA' ||
+            item.categoria === 'ESTRUTURA' ||
+            item.categoria === 'COMUNICACAO' ||
+            item.categoria === 'DOCUMENTOS'
+          ) ? item.categoria : 'ESTRUTURA',
           conforme: nextConforme,
           observacao: nextConforme
             ? ''
-            : (typeof item.observacao === 'string' && item.observacao.trim()
-                ? item.observacao
-                : 'Constatada avaria no retorno'),
+            : (typeof item.observacao === 'string' ? item.observacao : 'Constatada avaria no retorno'),
         };
       })
     );
