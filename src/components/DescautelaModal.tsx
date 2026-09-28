@@ -349,13 +349,14 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
                     <button
                       type="button"
                       onClick={() => handleToggleCheckItem(item.id)}
-                      className={`px-2 py-0.5 text-[10px] font-bold rounded cursor-pointer whitespace-nowrap transition ${
+                      aria-label={item.conforme ? 'Marcar como avaria' : 'Marcar como conforme'}
+                      className={`px-2.5 py-1 text-[10px] font-bold rounded cursor-pointer whitespace-nowrap transition ${
                         item.conforme
                           ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30'
                           : 'bg-rose-600 text-white shadow-sm hover:bg-rose-500'
                       }`}
                     >
-                      {item.conforme ? 'OK' : 'AVARIA'}
+                      {item.conforme ? 'CONFORME' : 'AVARIA'}
                     </button>
                   </div>
 
