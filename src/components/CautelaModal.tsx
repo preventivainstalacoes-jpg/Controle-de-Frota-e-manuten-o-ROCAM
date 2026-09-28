@@ -131,16 +131,22 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
   };
 
   const handleToggleCheckItem = (id: string) => {
+    if (!id) return;
+
     setChecklist((prev) =>
       prev.map((item) => {
         if (!item || item.id !== id) return item;
-        const nextConforme = item.conforme === true ? false : true;
+
+        const nextConforme = item.conforme !== true;
+
         return {
+          ...item,
           id: item.id,
           item: item.item || 'Item do checklist',
-          categoria: item.categoria,
           conforme: nextConforme,
-          observacao: nextConforme ? '' : (item.observacao || 'Constatada avaria/alteração visual'),
+          observacao: nextConforme
+            ? ''
+            : (item.observacao || 'Constatada avaria/alteração visual'),
         };
       })
     );
@@ -167,7 +173,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
     // Bloqueio rigoroso: não permitir que viatura cautelada seja cautelada novamente
     if (selectedVehicleActiveCautela) {
       setErrorMessage(
-        `A viatura ${selectedVehicle.prefixo} já possui cautela ativa em andamento com o policial ${selectedVehicleActiveCautela.condutorGraduacao} ${selectedVehicleActiveCautela.condutorNome} (${selectedVehicleActiveCautela.numeroTermo}). Realize a descautela de retorno antes de retirá-la novamente.`
+        `A viatura ${selectedVehicle.prefixo} já possui cautela ativa em andamento com o policial ${selectedVehicleActiveCautela.condutorGraduacao} ${selectedVehicleActiveCautela.condutorNome} (${selectedVehicleActiveCautela.numeroTermo}). Realize a devolução da viatura antes de retirá-la novamente.`
       );
       return;
     }
@@ -362,7 +368,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
                   A viatura <strong>{selectedVehicle?.prefixo}</strong> está atualmente em serviço (cautela <strong>{selectedVehicleActiveCautela.numeroTermo}</strong>) sob a responsabilidade de <strong>{selectedVehicleActiveCautela.condutorGraduacao} {selectedVehicleActiveCautela.condutorNome}</strong> (RE: {selectedVehicleActiveCautela.condutorRE}).
                 </div>
                 <div className="text-[11px] text-rose-300 font-medium pt-1">
-                  Não é permitido cautelar uma viatura que já se encontra em patrulhamento. Realize a descautela de retorno antes de expedir um novo termo de saída.
+                  Não é permitido cautelar uma viatura que já se encontra em patrulhamento. Realize a devolução da viatura antes de expedir um novo termo de saída.
                 </div>
               </div>
             </div>
