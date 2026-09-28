@@ -133,28 +133,21 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
   const handleToggleCheckItem = (id: string) => {
     if (!id) return;
 
-    setChecklist((prev) =>
-      prev.map((item) => {
+    setChecklist((prev) => {
+      if (!Array.isArray(prev)) return [];
+
+      return prev.map((item) => {
         if (!item || item.id !== id) return item;
 
-        const nextConforme = item.conforme !== true;
+        const conforme = item.conforme !== true;
 
         return {
           ...item,
-          id: item.id,
-          item: typeof item.item === 'string' && item.item.trim()
-            ? item.item
-            : 'Item do checklist',
-          categoria: item.categoria || 'ESTRUTURA',
-          conforme: nextConforme,
-          observacao: nextConforme
-            ? ''
-            : (typeof item.observacao === 'string' && item.observacao.trim()
-                ? item.observacao
-                : 'Constatada avaria/alteração visual'),
+          conforme,
+          observacao: conforme ? '' : (item.observacao || 'Constatada avaria/alteração visual'),
         };
-      })
-    );
+      });
+    });
   };
 
   const handleItemObsChange = (id: string, obs: string) => {
@@ -528,7 +521,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {checklist.map((item, idx) => item ? (
+              {checklist.filter((item): item is ChecklistItem => Boolean(item && item.id)).map((item, idx) => (
                 <div
                   key={`${item.id || 'chk'}-${idx}`}
                   className={`p-2.5 rounded-xl border transition-all ${
