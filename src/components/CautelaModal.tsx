@@ -134,15 +134,13 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
   const handleToggleCheckItem = (id: string) => {
     setChecklist((prev) =>
       prev.map((item) => {
-        if (item.id === id) {
-          const nextConforme = !item.conforme;
-          return {
-            ...item,
-            conforme: nextConforme,
-            observacao: nextConforme ? '' : (item.observacao || 'Constatada avaria/alteração visual'),
-          };
-        }
-        return item;
+        if (!item || item.id !== id) return item;
+        const nextConforme = !Boolean(item.conforme);
+        return {
+          ...item,
+          conforme: nextConforme,
+          observacao: nextConforme ? '' : (item.observacao || 'Constatada avaria/alteração visual'),
+        };
       })
     );
   };
@@ -532,9 +530,9 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {checklist.map((item, idx) => (
+              {checklist.map((item, idx) => item ? (
                 <div
-                  key={item.id}
+                  key={`${item.id || 'chk'}-${idx}`}
                   className={`p-2.5 rounded-xl border transition-all ${
                     item.conforme
                       ? 'bg-zinc-900/80 border-zinc-800 hover:border-zinc-700'
