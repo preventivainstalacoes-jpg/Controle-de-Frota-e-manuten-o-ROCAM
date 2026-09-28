@@ -61,7 +61,7 @@ interface FleetContextType {
   deleteMaintenanceRecord: (id: string) => void;
   
   // Cautela / Descautela Actions
-  addCautela: (cautelaData: Omit<CautelaRecord, 'id' | 'numeroTermo' | 'status'>) => void;
+  addCautela: (cautelaData: Omit<CautelaRecord, 'id' | 'numeroTermo' | 'status'>) => Promise<boolean>;
   finalizeDescautela: (
     id: string,
     descautelaData: {
@@ -312,40 +312,51 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // Cautela Actions
-  const addCautela = (cautelaData: Omit<CautelaRecord, 'id' | 'numeroTermo' | 'status'>) => {
-    // Validar se a viatura já se encontra em patrulhamento (cautela ativa)
+  const addCautela = async (cautelaData: Omit<CautelaRecord, 'id' | 'numeroTermo' | 'status'>): Promise<boolean> => {
+    // Bloqueio local rápido para UX; a regra definitiva está no índice único do Supabase.
     const activeCautelaExists = cautelas.some(
       (c) => c.viaturaId === cautelaData.viaturaId && c.status === 'EM_PATRULHAMENTO'
     );
     if (activeCautelaExists) {
       console.warn(`Tentativa bloqueada: Viatura ${cautelaData.prefixoViatura} já possui cautela ativa.`);
-      return;
+      return false;
     }
 
     const anoAtual = new Date().getFullYear();
     const proximoNumero = String(cautelas.length + 1).padStart(4, '0');
     const newRecord: CautelaRecord = {
       ...cautelaData,
-      id: `caut-${Date.now()}`,
+      id: `caut-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       numeroTermo: `CAUT-${anoAtual}-${proximoNumero}`,
       status: 'EM_PATRULHAMENTO',
     };
 
-    setCautelas((prev) => [newRecord, ...prev]);
-    supabase.from('cautelas').insert({
+    const { error } = await supabase.from('cautelas').insert({
       id:newRecord.id,numero_termo:newRecord.numeroTermo,vehicle_id:newRecord.viaturaId,data_hora_saida:newRecord.dataHoraSaida,
       km_saida:newRecord.kmSaida,combustivel_saida:newRecord.combustivelSaida,condutor_nome:newRecord.condutorNome,condutor_re:newRecord.condutorRE,
       condutor_graduacao:newRecord.condutorGraduacao,encarregado_vtr:newRecord.encarregadoVtr,observacoes_saida:newRecord.observacoesSaida,
       checklist_saida:newRecord.checklistSaida||[],fotos_saida:newRecord.fotosAvariasSaida||[],status:newRecord.status,
       prefixo_viatura:newRecord.prefixoViatura,modelo_viatura:newRecord.modeloViatura,placa_viatura:newRecord.placaViatura,
       tipo_viatura:newRecord.tipoViatura==='QUATRO_RODAS'?'viatura_4_rodas':'moto',pelotao:newRecord.pelotao
-    }).then(({error})=>{if(error)console.error('Erro ao salvar cautela:',error)});
+    });
 
-    // Update vehicle km if departure km is higher
+    if (error) {
+      if (error.code === '23505') {
+        console.warn(`Cautela concorrente bloqueada: Viatura ${cautelaData.prefixoViatura} já foi cautelada por outro operador.`);
+      } else {
+        console.error('Erro ao salvar cautela:', error);
+      }
+      return false;
+    }
+
+    setCautelas((prev) => [newRecord, ...prev]);
+
     const vehicle = vehicles.find((v) => v.id === cautelaData.viaturaId);
     if (vehicle && cautelaData.kmSaida > vehicle.kmAtual) {
       updateOdometer(vehicle.id, cautelaData.kmSaida, `Saída em Cautela ${newRecord.numeroTermo}`);
     }
+
+    return true;
   };
 
   const finalizeDescautela = (
