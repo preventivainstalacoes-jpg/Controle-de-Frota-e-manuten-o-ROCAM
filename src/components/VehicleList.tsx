@@ -344,7 +344,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                           onClick={() => onOpenDescautelaForVehicle(c)}
                           className="mt-3 w-full rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 py-2 text-[11px] font-bold transition"
                         >
-                          DESCAUTELAR / VER RETORNO
+                          DEVOLUÇÃO / VER RETORNO
                         </button>
                       )}
                     </div>
@@ -367,7 +367,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                 {cautelas.filter((c) => c.status === 'EM_PATRULHAMENTO').length} viatura(s) em patrulhamento operacional ativo
               </span>
               <p className="text-[11px] text-emerald-300/80">
-                Ao término do turno policial, registre a descautela para encerramento de serviço e conferência de avarias.
+                Ao término do turno policial, registre a devolução para encerramento de serviço e conferência de avarias.
               </p>
             </div>
           </div>
@@ -378,10 +378,10 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                 if (first) onOpenDescautelaForVehicle(first);
               }}
               className="flex items-center justify-center space-x-1.5 px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-bold shadow transition cursor-pointer whitespace-nowrap"
-              title="Descautelar viatura que finalizou o turno"
+              title="Devolver viatura que finalizou o turno"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>DESCAUTELAR VIATURA</span>
+              <span>DEVOLVER VIATURA</span>
             </button>
           )}
         </div>
@@ -592,7 +592,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                         title="Descautelar viatura ao final do serviço (conferência de retorno)"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
-                        <span>DESCAUTELAR VIATURA</span>
+                        <span>DEVOLVER VIATURA</span>
                       </button>
                     )}
 
