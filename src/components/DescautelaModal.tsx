@@ -125,16 +125,6 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
     );
   };
 
-  const handleMarkAllConforme = () => {
-    setChecklist((prev) =>
-      prev.map((item) =>
-        item
-          ? { ...item, conforme: true, observacao: '' }
-          : item
-      )
-    );
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (kmRetorno < cautela.kmSaida) {
