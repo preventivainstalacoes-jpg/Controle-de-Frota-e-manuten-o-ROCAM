@@ -142,11 +142,16 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
         return {
           ...item,
           id: item.id,
-          item: item.item || 'Item do checklist',
+          item: typeof item.item === 'string' && item.item.trim()
+            ? item.item
+            : 'Item do checklist',
+          categoria: item.categoria || 'ESTRUTURA',
           conforme: nextConforme,
           observacao: nextConforme
             ? ''
-            : (item.observacao || 'Constatada avaria/alteração visual'),
+            : (typeof item.observacao === 'string' && item.observacao.trim()
+                ? item.observacao
+                : 'Constatada avaria/alteração visual'),
         };
       })
     );
