@@ -158,7 +158,7 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold text-zinc-100 flex items-center gap-2">
-                <span>Descautela de Viatura • Retorno do Serviço</span>
+                <span>Devolução de Viatura • Retorno do Serviço</span>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono">
                   {cautela.numeroTermo}
                 </span>
@@ -289,7 +289,7 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
             </div>
           </div>
 
-          {/* Checklist de Descautela (Retorno) */}
+          {/* Checklist de Inspeção de Devolução */}
           <div className="space-y-3">
             <div className="flex items-center justify-between pb-1 border-b border-zinc-800">
               <div className="flex items-center space-x-2">
