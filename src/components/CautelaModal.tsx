@@ -16,7 +16,6 @@ import {
   Shield,
   Calendar,
   Clock,
-  Check,
   AlertTriangle
 } from 'lucide-react';
 
@@ -155,15 +154,6 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
     );
   };
 
-  const handleMarkAllConforme = () => {
-    setChecklist((prev) =>
-      prev.map((item) =>
-        item
-          ? { ...item, conforme: true, observacao: '' }
-          : item
-      )
-    );
-  };
 
   if (!isOpen) return null;
 
@@ -523,14 +513,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={handleMarkAllConforme}
-                className="flex items-center space-x-1.5 px-2.5 py-1 text-xs font-semibold text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-950/70 border border-emerald-800/60 rounded-lg transition cursor-pointer"
-              >
-                <Check className="w-3.5 h-3.5" />
-                <span>Marcar Todos Conformes (OK)</span>
-              </button>
+
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
