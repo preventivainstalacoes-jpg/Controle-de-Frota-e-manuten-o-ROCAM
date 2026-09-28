@@ -134,7 +134,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
     if (!id) return;
 
     setChecklist((prev) => {
-      if (!Array.isArray(prev)) return [];
+      if (!Array.isArray(prev)) return prev;
 
       return prev.map((item) => {
         if (!item || item.id !== id) return item;
@@ -512,7 +512,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
                 ) : (
                   <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                    100% Conforme
+                    Todos conformes
                   </span>
                 )}
               </div>
@@ -543,13 +543,14 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
                     <button
                       type="button"
                       onClick={() => handleToggleCheckItem(item.id)}
-                      className={`px-2 py-0.5 text-[10px] font-bold rounded cursor-pointer whitespace-nowrap transition ${
+                      aria-label={item.conforme ? 'Marcar como avaria' : 'Marcar como conforme'}
+                      className={`px-2.5 py-1 text-[10px] font-bold rounded cursor-pointer whitespace-nowrap transition ${
                         item.conforme
                           ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30'
                           : 'bg-rose-600 text-white shadow-sm hover:bg-rose-500'
                       }`}
                     >
-                      {item.conforme ? 'OK' : 'AVARIA'}
+                      {item.conforme ? 'CONFORME' : 'AVARIA'}
                     </button>
                   </div>
 
