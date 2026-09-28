@@ -202,8 +202,12 @@ function AppContent() {
     setIsCautelaModalOpen(true);
   };
 
-  const handleSaveCautela = (cautelaData: Parameters<typeof addCautela>[0]) => {
-    addCautela(cautelaData);
+  const handleSaveCautela = async (cautelaData: Parameters<typeof addCautela>[0]) => {
+    const saved = await addCautela(cautelaData);
+    if (!saved) {
+      window.alert('Esta viatura já está cautelada por outro operador. Faça a descautela antes de iniciar um novo serviço.');
+      return;
+    }
     logActivity({
       tipo: 'CAUTELA',
       titulo: `Cautela Iniciada: ${cautelaData.prefixoViatura}`,
