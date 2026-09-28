@@ -311,7 +311,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
               title="Descautelar viatura que finalizou o turno"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Descautelar (Fim de Serviço)</span>
+              <span>DESCAUTELAR VIATURA</span>
             </button>
           )}
         </div>
@@ -522,7 +522,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                         title="Descautelar viatura ao final do serviço (conferência de retorno)"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
-                        <span>Descautelar (Fim de Serviço)</span>
+                        <span>DESCAUTELAR VIATURA</span>
                       </button>
                     )}
 
