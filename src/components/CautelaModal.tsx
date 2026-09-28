@@ -135,9 +135,11 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
     setChecklist((prev) =>
       prev.map((item) => {
         if (!item || item.id !== id) return item;
-        const nextConforme = !Boolean(item.conforme);
+        const nextConforme = item.conforme === true ? false : true;
         return {
-          ...item,
+          id: item.id,
+          item: item.item || 'Item do checklist',
+          categoria: item.categoria,
           conforme: nextConforme,
           observacao: nextConforme ? '' : (item.observacao || 'Constatada avaria/alteração visual'),
         };
@@ -147,17 +149,19 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
 
   const handleItemObsChange = (id: string, obs: string) => {
     setChecklist((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, observacao: obs } : item))
+      prev.map((item) =>
+        item && item.id === id ? { ...item, observacao: obs } : item
+      )
     );
   };
 
   const handleMarkAllConforme = () => {
     setChecklist((prev) =>
-      prev.map((item) => ({
-        ...item,
-        conforme: true,
-        observacao: '',
-      }))
+      prev.map((item) =>
+        item
+          ? { ...item, conforme: true, observacao: '' }
+          : item
+      )
     );
   };
 
@@ -220,7 +224,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
     onClose();
   };
 
-  const nonConformeCount = checklist.filter((c) => !c.conforme).length;
+  const nonConformeCount = checklist.filter((c) => c && c.conforme !== true).length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
