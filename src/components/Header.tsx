@@ -63,7 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
     setBackupNotification,
   } = useFleet();
 
-  const { currentUser, isAdmin, isOperator, logout } = useAuth();
+  const { currentUser, isAdmin, isOperator, logout, users } = useAuth();
   const { unreadNoticesCount, isOnlineSync } = useTeam();
 
   const [showConfigMenu, setShowConfigMenu] = useState(false);
@@ -287,18 +287,21 @@ export const Header: React.FC<HeaderProps> = ({
                   <span>+ Vtr</span>
                 </button>
 
-                {/* Cadastrar Usuário (Admin) */}
+                {/* Gestão de Usuários (Admin) */}
                 <button
-                  id="btn-header-cadastrar-usuario"
+                  id="btn-header-gestao-usuarios"
                   onClick={() => {
-                    setUserModalInitialTab('create');
+                    setUserModalInitialTab('list');
                     setIsUserModalOpen(true);
                   }}
-                  className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-750 text-amber-300 border border-zinc-700 shadow-sm transition active:scale-95 cursor-pointer"
-                  title="Cadastrar Novo Usuário ou Gerenciar Acessos"
+                  className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-750 text-amber-300 border border-amber-500/30 hover:border-amber-400 shadow-sm transition active:scale-95 cursor-pointer"
+                  title="Gestão de Usuários: Acessar todos os usuários cadastrados e excluir"
                 >
                   <Users className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden sm:inline">+ Usuário</span>
+                  <span>Usuários</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                    {users.length}
+                  </span>
                 </button>
 
                 {/* Banco de Dados Central Button */}

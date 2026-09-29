@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Vehicle } from '../types';
 import { Gauge, ArrowRight, Check, X, AlertTriangle } from 'lucide-react';
 import { formatKm } from '../utils/formatters';
@@ -16,10 +16,17 @@ export const OdometerModal: React.FC<OdometerModalProps> = ({
   vehicle,
   onUpdate,
 }) => {
-  if (!isOpen || !vehicle) return null;
-
-  const [newKm, setNewKm] = useState<number>(vehicle.kmAtual);
+  const [newKm, setNewKm] = useState<number>(vehicle?.kmAtual ?? 0);
   const [observacao, setObservacao] = useState('');
+
+  useEffect(() => {
+    if (vehicle) {
+      setNewKm(vehicle.kmAtual);
+      setObservacao('');
+    }
+  }, [vehicle, isOpen]);
+
+  if (!isOpen || !vehicle) return null;
 
   const kmDiff = newKm - vehicle.kmAtual;
   const isValid = newKm >= vehicle.kmAtual;

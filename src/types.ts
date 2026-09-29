@@ -243,6 +243,7 @@ export type UserAccountStatus = 'ATIVO' | 'PENDENTE' | 'INATIVO' | 'REJEITADO';
 export interface UserProfile {
   id: string;
   username: string; // ex: 'admin', 'operador'
+  email?: string; // ex: 'admin.souza@policiamilitar.sp.gov.br'
   name: string; // ex: 'Cap PM Souza', 'Cb PM Oliveira'
   re: string; // ex: '000.001-0'
   graduacao: string; // ex: 'CAP PM', 'CB PM', '1º SGT PM', etc.

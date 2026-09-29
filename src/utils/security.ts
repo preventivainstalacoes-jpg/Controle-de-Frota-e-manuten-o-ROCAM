@@ -1,7 +1,58 @@
 import { UserProfile, AuthSession, UserRole } from '../types';
+import {
+  DEFAULT_SALT,
+  ADMIN_DEFAULT_HASH,
+  OPERATOR_DEFAULT_HASH,
+  FIRST_ADMIN,
+  MAX_ADMINS,
+  MAX_OPERATORS,
+  SEED_ADMINS,
+  SEED_OPERATORS,
+  INITIAL_USERS,
+} from '../data/seedUsers';
 
-const STORAGE_USERS_KEY = 'rocam_security_users_v2';
-const STORAGE_SESSION_KEY = 'rocam_security_session_v2';
+export {
+  DEFAULT_SALT,
+  ADMIN_DEFAULT_HASH,
+  OPERATOR_DEFAULT_HASH,
+  FIRST_ADMIN,
+  MAX_ADMINS,
+  MAX_OPERATORS,
+  SEED_ADMINS,
+  SEED_OPERATORS,
+  INITIAL_USERS,
+};
+
+const STORAGE_USERS_KEY = 'rocam_security_users_v7';
+const STORAGE_SESSION_KEY = 'rocam_security_session_v7';
+
+const LEGACY_STORAGE_KEYS = [
+  'rocam_security_users_v1',
+  'rocam_security_users_v2',
+  'rocam_security_users_v3',
+  'rocam_security_users_v4',
+  'rocam_security_users_v5',
+  'rocam_security_users_v6',
+  'rocam_security_session_v1',
+  'rocam_security_session_v2',
+  'rocam_security_session_v3',
+  'rocam_security_session_v4',
+  'rocam_security_session_v5',
+  'rocam_security_session_v6',
+];
+
+/**
+ * Purge legacy keys from localStorage
+ */
+function purgeLegacyKeys(): void {
+  try {
+    LEGACY_STORAGE_KEYS.forEach((key) => {
+      localStorage.removeItem(key);
+    });
+  } catch {
+    // Ignore environments where localStorage is restricted
+  }
+}
 
 /**
  * Generate a random salt string
@@ -51,163 +102,73 @@ export async function verifyPassword(password: string, hash: string, salt: strin
 }
 
 /**
- * Default seeded users with pre-computed salts
- */
-const DEFAULT_SALT = 'rocam_sec_salt_99';
-
-// Pre-computed hash of "admin123:rocam_sec_salt_99" and "operador123:rocam_sec_salt_99"
-// We will also re-hash at runtime during initialization if needed
-export const INITIAL_USERS: UserProfile[] = [
-  {
-    id: 'usr-admin-01',
-    username: 'admin',
-    name: 'Cap PM Souza',
-    graduacao: 'CAP PM',
-    re: '000.001-0',
-    role: 'ADMIN',
-    pelotao: 'Comando & Logística ROCAM',
-    passwordHash: '', // computed on init
-    salt: DEFAULT_SALT,
-    createdAt: '2026-01-01T08:00:00Z',
-    isActive: true,
-    status: 'ATIVO',
-  },
-  {
-    id: 'usr-admin-02',
-    username: 'admin2',
-    name: 'Maj PM Costa',
-    graduacao: 'MAJ PM',
-    re: '000.002-1',
-    role: 'ADMIN',
-    pelotao: 'Subcomando & Gestão Operacional',
-    passwordHash: '', // computed on init
-    salt: DEFAULT_SALT,
-    createdAt: '2026-01-02T08:00:00Z',
-    isActive: true,
-    status: 'ATIVO',
-  },
-  {
-    id: 'usr-admin-03',
-    username: 'admin3',
-    name: 'Cap PM Almeida',
-    graduacao: 'CAP PM',
-    re: '000.003-2',
-    role: 'ADMIN',
-    pelotao: '1ª Cia ROCAM - Coordenação',
-    passwordHash: '', // computed on init
-    salt: DEFAULT_SALT,
-    createdAt: '2026-01-03T08:00:00Z',
-    isActive: true,
-    status: 'ATIVO',
-  },
-  {
-    id: 'usr-admin-04',
-    username: 'admin4',
-    name: '1º Ten PM Ribeiro',
-    graduacao: '1º TEN PM',
-    re: '000.004-3',
-    role: 'ADMIN',
-    pelotao: 'Seção de Motomecanização & Frota',
-    passwordHash: '', // computed on init
-    salt: DEFAULT_SALT,
-    createdAt: '2026-01-04T08:00:00Z',
-    isActive: true,
-    status: 'ATIVO',
-  },
-  {
-    id: 'usr-operador-01',
-    username: 'operador',
-    name: 'Cb PM Oliveira',
-    graduacao: 'CB PM',
-    re: '145.892-0',
-    role: 'OPERADOR',
-    pelotao: '1º Pelotão ROCAM',
-    passwordHash: '', // computed on init
-    salt: DEFAULT_SALT,
-    createdAt: '2026-01-15T08:00:00Z',
-    isActive: true,
-    status: 'ATIVO',
-  },
-  {
-    id: 'usr-operador-02',
-    username: 'sd.silva',
-    name: 'Sd PM Silva',
-    graduacao: 'SD PM',
-    re: '158.421-3',
-    role: 'OPERADOR',
-    pelotao: '2º Pelotão ROCAM',
-    passwordHash: '', // computed on init
-    salt: DEFAULT_SALT,
-    createdAt: '2026-02-01T08:00:00Z',
-    isActive: true,
-    status: 'ATIVO',
-  },
-];
-
-/**
  * Load or initialize users from storage
  */
 export async function loadUsersFromStorage(): Promise<UserProfile[]> {
   try {
+    purgeLegacyKeys();
     const raw = localStorage.getItem(STORAGE_USERS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as UserProfile[];
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Check for any missing initial users (e.g. newly added admin accounts) and seed them
-        const existingIds = new Set(parsed.map((u) => u.id));
-        const existingUsernames = new Set(parsed.map((u) => u.username.toLowerCase()));
-        const missingInitialUsers = INITIAL_USERS.filter(
-          (init) => !existingIds.has(init.id) && !existingUsernames.has(init.username.toLowerCase())
-        );
-
-        let mergedList = [...parsed];
-        if (missingInitialUsers.length > 0) {
-          for (const missing of missingInitialUsers) {
-            const defaultPass = missing.role === 'ADMIN' ? 'admin123' : 'operador123';
-            const hash = await hashPassword(defaultPass, missing.salt);
-            mergedList.push({
-              ...missing,
-              passwordHash: hash,
-              status: 'ATIVO',
-              isActive: true,
-            });
-          }
+        // Ensure at least one active Admin exists
+        const hasAdmin = parsed.some((u) => u.role === 'ADMIN');
+        let list = [...parsed];
+        if (!hasAdmin) {
+          list.unshift(FIRST_ADMIN);
+          saveUsersToStorage(list);
         }
-
-        // Ensure status field exists and activate any previously pending accounts
-        const sanitizedList = mergedList.map((u) => {
-          const isPending = u.status === 'PENDENTE';
-          return {
-            ...u,
-            status: isPending ? 'ATIVO' : (u.status || (u.isActive ? 'ATIVO' : 'INATIVO')),
-            isActive: isPending ? true : u.isActive,
-          };
-        });
-
-        if (missingInitialUsers.length > 0) {
-          saveUsersToStorage(sanitizedList);
-        }
-
-        return sanitizedList;
+        return list;
       }
     }
   } catch (e) {
     console.error('Error loading users from localStorage', e);
   }
 
-  // First time initialization: populate default users with proper hashes
-  const seededUsers: UserProfile[] = [];
-  for (const user of INITIAL_USERS) {
-    const defaultPass = user.role === 'ADMIN' ? 'admin123' : 'operador123';
-    const hash = await hashPassword(defaultPass, user.salt);
-    seededUsers.push({
-      ...user,
+  // Initial setup: strictly the 1º Administrador Master
+  saveUsersToStorage([FIRST_ADMIN]);
+  return [FIRST_ADMIN];
+}
+
+/**
+ * Reset all user registrations and set/register the 1st Administrator
+ */
+export async function resetUsersToFirstAdmin(customAdmin?: {
+  name: string;
+  graduacao: string;
+  re: string;
+  pelotao: string;
+  username: string;
+  password: string;
+}): Promise<UserProfile[]> {
+  purgeLegacyKeys();
+  let adminToSave: UserProfile;
+
+  if (customAdmin && customAdmin.username.trim() && customAdmin.password.trim()) {
+    const salt = generateSalt();
+    const hash = await hashPassword(customAdmin.password.trim(), salt);
+    adminToSave = {
+      id: 'usr-admin-01',
+      username: customAdmin.username.trim().toLowerCase(),
+      name: `${customAdmin.graduacao} ${customAdmin.name.trim()}`,
+      graduacao: customAdmin.graduacao,
+      re: customAdmin.re.trim(),
+      role: 'ADMIN',
+      pelotao: customAdmin.pelotao.trim() || 'Comando & Logística ROCAM',
       passwordHash: hash,
-    });
+      salt,
+      createdAt: new Date().toISOString(),
+      isActive: true,
+      status: 'ATIVO',
+    };
+  } else {
+    adminToSave = { ...FIRST_ADMIN };
   }
 
-  saveUsersToStorage(seededUsers);
-  return seededUsers;
+  const usersList = [adminToSave];
+  saveUsersToStorage(usersList);
+  clearSavedSession();
+  return usersList;
 }
 
 /**
@@ -293,20 +254,45 @@ export async function authenticateCredentials(
     return { user: null, error: 'Informe o usuário/RE e a senha.' };
   }
 
-  // Find user by username or RE or admin alias
+  // Find user by username, email or RE or admin alias
   const user = users.find((u) => {
     const uName = u.username.toLowerCase();
+    const uEmail = (u.email || '').toLowerCase().trim();
     const uReDigits = u.re.toLowerCase().replace(/[^0-9]/g, '');
     const cleanDigits = cleanId.replace(/[^0-9]/g, '');
 
     if (uName === cleanId) return true;
-    if (cleanDigits && uReDigits === cleanDigits) return true;
+    if (uEmail && uEmail === cleanId) return true;
+    if (cleanDigits && cleanDigits.length >= 4 && uReDigits === cleanDigits) return true;
 
-    // Aliases for admin accounts
-    if (uName === 'admin' && (cleanId === 'admin1' || cleanId === 'admin01')) return true;
-    if (uName === 'admin2' && cleanId === 'admin02') return true;
-    if (uName === 'admin3' && cleanId === 'admin03') return true;
-    if (uName === 'admin4' && cleanId === 'admin04') return true;
+    // Aliases for 20 Admins (e.g. admin, admin1..admin20, admin01..admin20, adm1..adm20)
+    const adminMatch = cleanId.match(/^(?:admin|adm)(\d{1,2})$/);
+    if (adminMatch) {
+      const num = parseInt(adminMatch[1], 10);
+      if (num >= 1 && num <= 20) {
+        if (num === 1 && (uName === 'admin' || uName === 'admin1' || u.id === 'usr-admin-01')) return true;
+        if (u.id === `usr-admin-${String(num).padStart(2, '0')}`) return true;
+        if (uName === `admin${num}`) return true;
+      }
+    }
+    if (cleanId === 'admin' && (uName === 'admin' || u.id === 'usr-admin-01')) {
+      return true;
+    }
+
+    // Aliases for 300 Operators (e.g. operador, op1..op300, op001..op300, operador1..operador300)
+    const opMatch = cleanId.match(/^(?:operador|op)(\d{1,3})$/);
+    if (opMatch) {
+      const num = parseInt(opMatch[1], 10);
+      if (num >= 1 && num <= 300) {
+        if (num === 1 && (uName === 'operador' || u.id === 'usr-operador-001')) return true;
+        if (num === 2 && (uName === 'sd.silva' || u.id === 'usr-operador-002')) return true;
+        if (u.id === `usr-operador-${String(num).padStart(3, '0')}`) return true;
+        if (uName === `op${String(num).padStart(3, '0')}` || uName === `op${num}`) return true;
+      }
+    }
+    if (cleanId === 'operador' && (uName === 'operador' || u.id === 'usr-operador-001')) {
+      return true;
+    }
 
     return false;
   });

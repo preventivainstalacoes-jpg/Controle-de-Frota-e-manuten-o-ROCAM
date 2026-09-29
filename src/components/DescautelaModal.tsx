@@ -78,55 +78,60 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
       // Initialize checklist matching departure checklist or default
       setChecklist(
         cautela.checklistSaida && cautela.checklistSaida.length > 0
-          ? cautela.checklistSaida
-              .filter((item) => item && typeof item.id === 'string')
-              .map((item) => ({ ...item, id: `ret-${item.id}` }))
+          ? cautela.checklistSaida.map((item) => ({ ...item, id: `ret-${item.id}` }))
           : generateDefaultChecklist()
       );
     }
-  }, [isOpen, cautela]);
+  }, [isOpen, cautela?.id]);
 
   if (!isOpen || !cautela) return null;
 
   const kmPercorrido = Math.max(0, kmRetorno - cautela.kmSaida);
 
-  // Atualiza somente o item clicado e sempre devolve um objeto ChecklistItem válido.
-  // Isso evita que dados antigos/incompletos do Supabase provoquem erro de renderização.
-  const handleToggleCheckItem = (id: string) => {
-    if (!id) return;
-
+  const handleSetItemStatus = (id: string, conforme: boolean) => {
     setChecklist((prev) =>
-      prev.map((item, index) => {
-        if (!item || String(item.id) !== String(id)) return item;
+      prev.map((item) => {
+        if (item.id === id) {
+          return {
+            ...item,
+            conforme,
+            observacao: conforme ? '' : (item.observacao || 'Constatada avaria no retorno'),
+          };
+        }
+        return item;
+      })
+    );
+  };
 
-        const nextConforme = item.conforme !== true;
-
-        return {
-          id: String(item.id || `ret-${index + 1}`),
-          item: typeof item.item === 'string' && item.item.trim()
-            ? item.item.trim()
-            : 'Item do checklist',
-          categoria: (
-            item.categoria === 'MECANICA' ||
-            item.categoria === 'ELETRICA' ||
-            item.categoria === 'ESTRUTURA' ||
-            item.categoria === 'COMUNICACAO' ||
-            item.categoria === 'DOCUMENTOS'
-          ) ? item.categoria : 'ESTRUTURA',
-          conforme: nextConforme,
-          observacao: nextConforme
-            ? ''
-            : (typeof item.observacao === 'string' ? item.observacao : 'Constatada avaria no retorno'),
-        };
+  const handleToggleCheckItem = (id: string) => {
+    setChecklist((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          const nextConforme = !item.conforme;
+          return {
+            ...item,
+            conforme: nextConforme,
+            observacao: nextConforme ? '' : (item.observacao || 'Constatada avaria no retorno'),
+          };
+        }
+        return item;
       })
     );
   };
 
   const handleItemObsChange = (id: string, obs: string) => {
     setChecklist((prev) =>
-      prev.map((item) =>
-        item && item.id === id ? { ...item, observacao: obs } : item
-      )
+      prev.map((item) => (item.id === id ? { ...item, observacao: obs } : item))
+    );
+  };
+
+  const handleMarkAllConforme = () => {
+    setChecklist((prev) =>
+      prev.map((item) => ({
+        ...item,
+        conforme: true,
+        observacao: '',
+      }))
     );
   };
 
@@ -157,7 +162,7 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
     onClose();
   };
 
-  const nonConformeCount = checklist.filter((c) => c && c.conforme !== true).length;
+  const nonConformeCount = checklist.filter((c) => !c.conforme).length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
@@ -170,7 +175,7 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold text-zinc-100 flex items-center gap-2">
-                <span>Devolução de Viatura • Retorno do Serviço</span>
+                <span>Descautela de Viatura • Retorno do Serviço</span>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono">
                   {cautela.numeroTermo}
                 </span>
@@ -301,9 +306,9 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
             </div>
           </div>
 
-          {/* Checklist de Inspeção de Devolução */}
+          {/* Checklist de Descautela (Retorno) */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between pb-1 border-b border-zinc-800">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-zinc-800">
               <div className="flex items-center space-x-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-zinc-200">
                   Checklist de Inspeção de Devolução
@@ -312,32 +317,103 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
                   {checklist.length} itens
                 </span>
                 {nonConformeCount > 0 ? (
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1">
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1 font-medium">
                     <AlertTriangle className="w-3 h-3 text-rose-400" />
                     {nonConformeCount} Não Conforme{nonConformeCount > 1 ? 's' : ''}
                   </span>
                 ) : (
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 font-semibold">
                     <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                    Sem Alterações
+                    100% Conforme (Sem Alterações)
                   </span>
                 )}
               </div>
 
+              {/* Botões de Ação do Checklist: Tudo OK & Baixar Viatura */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleMarkAllConforme}
+                  title="Marcar todos os itens de retorno como Conformes (Tudo OK)"
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer shadow-sm ${
+                    nonConformeCount === 0 && !baixarViatura
+                      ? 'bg-emerald-950/60 text-emerald-300 border-emerald-700/70 hover:bg-emerald-900/60 shadow-emerald-950/30'
+                      : 'bg-emerald-600 text-white hover:bg-emerald-500 border-emerald-500 active:scale-95 shadow-md shadow-emerald-950/50'
+                  }`}
+                >
+                  <Check className="w-4 h-4 stroke-[2.5]" />
+                  <span>Tudo OK (Conforme)</span>
+                </button>
+
+                {/* Botão Baixar Viatura no Checklist */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextState = !baixarViatura;
+                    setBaixarViatura(nextState);
+                    if (nextState) {
+                      setHouveAvaria(true);
+                      if (!descricaoAvaria.trim()) {
+                        const nonConfItems = checklist.filter((i) => !i.conforme).map((i) => i.item).join(', ');
+                        setDescricaoAvaria(
+                          nonConfItems
+                            ? `Viatura baixada por avarias constatadas no checklist: ${nonConfItems}.`
+                            : 'Viatura baixada devido a avaria/inconformidade constatada durante inspeção do checklist.'
+                        );
+                      }
+                    }
+                  }}
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer shadow-sm ${
+                    baixarViatura
+                      ? 'bg-rose-600 text-white border-rose-500 shadow-md shadow-rose-950/60 ring-2 ring-rose-400 animate-pulse'
+                      : 'bg-rose-950/40 text-rose-300 border-rose-800/80 hover:bg-rose-900/60 hover:text-white'
+                  }`}
+                  title="Baixar esta viatura por defeito/avaria no checklist (vai para o quantitativo de baixadas)"
+                >
+                  <AlertTriangle className="w-4 h-4 text-rose-300 stroke-[2.5]" />
+                  <span>{baixarViatura ? '✓ VIATURA BAIXADA' : 'Baixar Viatura (Checklist)'}</span>
+                </button>
+              </div>
             </div>
 
+            {/* Aviso de Viatura Baixada no Checklist */}
+            {baixarViatura && (
+              <div className="p-3.5 rounded-xl bg-rose-950/70 border border-rose-600/80 text-rose-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-lg shadow-rose-950/40">
+                <div className="flex items-center space-x-2.5">
+                  <div className="p-1.5 rounded-lg bg-rose-600 text-white shrink-0 font-bold text-xs">
+                    BAIXADA
+                  </div>
+                  <div>
+                    <span className="font-bold text-white block">
+                      Viatura {cautela.prefixoViatura} marcada para BAIXAR
+                    </span>
+                    <span className="text-[11px] text-rose-300/90 leading-tight block">
+                      Ao concluir este checklist, a viatura terá o status atualizado para <strong>BAIXADA</strong> e entrará imediatamente no <strong>quantitativo de viaturas baixadas</strong> da frota.
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBaixarViatura(false)}
+                  className="text-xs text-rose-300 hover:text-white underline cursor-pointer shrink-0 self-end sm:self-auto font-semibold"
+                >
+                  Cancelar baixa
+                </button>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {checklist.map((item, idx) => item ? (
+              {checklist.map((item, idx) => (
                 <div
-                  key={`${item.id || 'chk'}-${idx}`}
+                  key={item.id}
                   className={`p-2.5 rounded-xl border transition-all ${
                     item.conforme
                       ? 'bg-zinc-900/80 border-zinc-800 hover:border-zinc-700'
-                      : 'bg-rose-950/30 border-rose-800/70'
+                      : 'bg-rose-950/30 border-rose-800/80 shadow-sm shadow-rose-950/40'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start space-x-2">
+                    <div className="flex items-start space-x-2 flex-1">
                       <span className="text-[10px] font-mono text-zinc-500 font-bold mt-0.5">
                         {String(idx + 1).padStart(2, '0')}.
                       </span>
@@ -346,22 +422,61 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
                       </span>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleToggleCheckItem(item.id)}
-                      aria-label={item.conforme ? 'Marcar como avaria' : 'Marcar como conforme'}
-                      className={`px-2.5 py-1 text-[10px] font-bold rounded cursor-pointer whitespace-nowrap transition ${
-                        item.conforme
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30'
-                          : 'bg-rose-600 text-white shadow-sm hover:bg-rose-500'
-                      }`}
-                    >
-                      {item.conforme ? 'CONFORME' : 'AVARIA'}
-                    </button>
+                    {/* Segmented controls: OK ou AVARIA */}
+                    <div className="flex items-center bg-zinc-950 p-0.5 rounded-lg border border-zinc-800/80 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleSetItemStatus(item.id, true)}
+                        className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center gap-1 ${
+                          item.conforme
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'text-zinc-400 hover:text-emerald-300 hover:bg-emerald-950/40'
+                        }`}
+                        title="Marcar este item como Conforme (OK)"
+                      >
+                        <Check className="w-3 h-3 stroke-[2.5]" />
+                        <span>OK</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetItemStatus(item.id, false)}
+                        className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center gap-1 ${
+                          !item.conforme
+                            ? 'bg-rose-600 text-white shadow-xs'
+                            : 'text-zinc-400 hover:text-rose-300 hover:bg-rose-950/40'
+                        }`}
+                        title="Marcar este item com Avaria ou Inconformidade"
+                      >
+                        <AlertTriangle className="w-3 h-3" />
+                        <span>AVARIA</span>
+                      </button>
+                    </div>
                   </div>
 
                   {!item.conforme && (
-                    <div className="mt-2 pt-2 border-t border-rose-900/50">
+                    <div className="mt-2 pt-2 border-t border-rose-900/50 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-rose-300 uppercase tracking-wider">
+                          Observação da Avaria
+                        </span>
+                        {!baixarViatura && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBaixarViatura(true);
+                              setHouveAvaria(true);
+                              if (!descricaoAvaria.trim()) {
+                                setDescricaoAvaria(`Defeito crítico constatado no item "${item.item}": ${item.observacao || 'Inconforme'}.`);
+                              }
+                            }}
+                            className="text-[10px] px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-bold transition flex items-center gap-1 cursor-pointer shadow-sm"
+                            title="Baixar a viatura imediatamente devido a esta avaria"
+                          >
+                            <AlertTriangle className="w-3 h-3" />
+                            <span>Baixar Viatura</span>
+                          </button>
+                        )}
+                      </div>
                       <input
                         type="text"
                         value={item.observacao || ''}

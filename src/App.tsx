@@ -220,6 +220,24 @@ function AppContent() {
     });
   };
 
+  const handleBaixarViaturaChecklist = (vehicleId: string, motivo: string) => {
+    updateVehicle(vehicleId, {
+      status: 'BAIXADA',
+      motivoBaixa: motivo || 'Avaria constatada durante checklist de inspeção prévia.',
+    });
+    const v = vehicles.find((veh) => veh.id === vehicleId);
+    logActivity({
+      tipo: 'AVARIA',
+      titulo: `Viatura Baixada no Checklist: ${v?.prefixo || 'Viatura'}`,
+      descricao: `Status alterado para BAIXADA devido a: ${motivo || 'Defeito detectado no checklist'}. Encaminhada ao quantitativo de baixadas.`,
+      usuarioNome: currentUser?.name || 'Policial',
+      usuarioRE: currentUser?.re || '000.001-0',
+      usuarioRole: currentUser?.role || 'OPERADOR',
+      badge: v?.prefixo || 'ROCAM',
+      linkTab: 'frota',
+    });
+  };
+
   const handleOpenDescautela = (cautela: CautelaRecord) => {
     setSelectedCautelaForDescautela(cautela);
     setIsDescautelaModalOpen(true);
@@ -499,6 +517,7 @@ function AppContent() {
         activeCautelas={cautelas}
         initialVehicleId={vehicleForCautela?.id}
         onSaveCautela={handleSaveCautela}
+        onBaixarViatura={handleBaixarViaturaChecklist}
       />
 
       <DescautelaModal

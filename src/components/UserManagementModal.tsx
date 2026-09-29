@@ -12,11 +12,13 @@ import {
   Power,
   CheckCircle2,
   AlertTriangle,
-  RotateCcw,
   Search,
   Lock,
   Eye,
-  EyeOff
+  EyeOff,
+  CheckSquare,
+  Square,
+  Mail
 } from 'lucide-react';
 
 interface UserManagementModalProps {
@@ -50,9 +52,9 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     currentUser,
     createUser,
     deleteUser,
+    deleteMultipleUsers,
     changePassword,
     toggleUserActive,
-    resetUsersToDefault,
   } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'list' | 'create'>(initialTab);
@@ -66,10 +68,16 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
+  // Multi-selection & batch delete state
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [isBatchDeleteModalOpen, setIsBatchDeleteModalOpen] = useState(false);
+  const [pageSize, setPageSize] = useState<number | 'ALL'>(25);
+
   // New user form state
   const [formName, setFormName] = useState('');
   const [formGraduacao, setFormGraduacao] = useState('CB PM');
   const [formRE, setFormRE] = useState('');
+  const [formEmail, setFormEmail] = useState('');
   const [formPelotao, setFormPelotao] = useState('1º Pelotão ROCAM');
   const [formUsername, setFormUsername] = useState('');
   const [formPassword, setFormPassword] = useState('');
@@ -87,14 +95,14 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const [deleteError, setDeleteError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Restore Default Users Modal state (requires Admin Password)
-  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
-  const [resetAdminPassword, setResetAdminPassword] = useState('');
-  const [showResetPassword, setShowResetPassword] = useState(false);
-  const [resetError, setResetError] = useState('');
-  const [isResetting, setIsResetting] = useState(false);
+  // Filters & Pagination state
+  const [roleFilter, setRoleFilter] = useState<'ALL' | 'ADMIN' | 'OPERADOR' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
 
   if (!isOpen) return null;
+
+  const otherUsers = users.filter((u) => u.id !== currentUser?.id);
+  const operatorUsers = users.filter((u) => u.role === 'OPERADOR' && u.id !== currentUser?.id);
 
   const showToast = (text: string, type: 'success' | 'error') => {
     setToast({ text, type });
@@ -104,7 +112,12 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim() || !formRE.trim() || !formUsername.trim() || !formPassword.trim()) {
-      showToast('Preencha todos os campos obrigatórios.', 'error');
+      showToast('Preencha todos os campos obrigatórios (*).', 'error');
+      return;
+    }
+
+    if (formPassword.trim().length < 4) {
+      showToast('A senha deve possuir no mínimo 4 caracteres.', 'error');
       return;
     }
 
@@ -113,17 +126,19 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
       name: `${formGraduacao} ${formName.trim()}`,
       graduacao: formGraduacao,
       re: formRE.trim(),
+      email: formEmail.trim().toLowerCase() || undefined,
       pelotao: formPelotao.trim(),
-      username: formUsername.trim(),
+      username: formUsername.trim().toLowerCase(),
       password: formPassword.trim(),
       role: formRole,
     });
     setIsSubmitting(false);
 
     if (res.success) {
-      showToast('Policial cadastrado e ativado com sucesso!', 'success');
+      showToast(`Policial ${formGraduacao} ${formName.trim()} cadastrado e ativado com sucesso!`, 'success');
       setFormName('');
       setFormRE('');
+      setFormEmail('');
       setFormUsername('');
       setFormPassword('');
       setFormRole('OPERADOR');
@@ -141,14 +156,9 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     setIsDeleting(false);
   };
 
-  const handleConfirmDelete = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleConfirmDelete = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!userToDelete) return;
-
-    if (!deleteAdminPassword.trim()) {
-      setDeleteError('Digite sua senha de administrador para autorizar a exclusão.');
-      return;
-    }
 
     setIsDeleting(true);
     setDeleteError('');
@@ -157,6 +167,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
 
     if (res.success) {
       showToast(`Usuário ${userToDelete.name} excluído do sistema com sucesso.`, 'success');
+      setSelectedUserIds((prev) => prev.filter((id) => id !== userToDelete.id));
       setUserToDelete(null);
       setDeleteAdminPassword('');
       setDeleteError('');
@@ -165,26 +176,78 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     }
   };
 
-  const handleConfirmReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!resetAdminPassword.trim()) {
-      setResetError('Digite sua senha de administrador para autorizar a restauração.');
-      return;
-    }
-
-    setIsResetting(true);
-    setResetError('');
-    const res = await resetUsersToDefault(resetAdminPassword);
-    setIsResetting(false);
+  const handleConfirmBatchDelete = async () => {
+    if (selectedUserIds.length === 0) return;
+    setIsDeleting(true);
+    setDeleteError('');
+    const res = await deleteMultipleUsers(selectedUserIds);
+    setIsDeleting(false);
 
     if (res.success) {
-      showToast('Usuários restaurados para o padrão com sucesso!', 'success');
-      setIsResetModalOpen(false);
-      setResetAdminPassword('');
-      setResetError('');
+      showToast(`${res.deletedCount} policiais excluídos com sucesso!`, 'success');
+      setSelectedUserIds([]);
+      setIsBatchDeleteModalOpen(false);
+      setDeleteError('');
     } else {
-      setResetError(res.error || 'Falha ao autorizar restauração.');
+      setDeleteError(res.error || 'Falha ao excluir usuários selecionados.');
     }
+  };
+
+  const handleToggleSelectUser = (userId: string) => {
+    if (userId === currentUser?.id) return;
+    setSelectedUserIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
+  };
+
+  const handleSelectAllVisible = (visibleIds: string[]) => {
+    const selectable = visibleIds.filter((id) => id !== currentUser?.id);
+    const allSelected = selectable.length > 0 && selectable.every((id) => selectedUserIds.includes(id));
+    if (allSelected) {
+      setSelectedUserIds((prev) => prev.filter((id) => !selectable.includes(id)));
+    } else {
+      setSelectedUserIds((prev) => Array.from(new Set([...prev, ...selectable])));
+    }
+  };
+
+  const handleSelectAllUsers = () => {
+    const allIds = otherUsers.map((u) => u.id);
+    const areAllSelected = allIds.length > 0 && allIds.every((id) => selectedUserIds.includes(id));
+    if (areAllSelected) {
+      setSelectedUserIds([]);
+    } else {
+      setSelectedUserIds(allIds);
+    }
+  };
+
+  const handleSelectAllOperators = () => {
+    const opIds = operatorUsers.map((u) => u.id);
+    const areAllOpsSelected = opIds.length > 0 && opIds.every((id) => selectedUserIds.includes(id));
+    if (areAllOpsSelected) {
+      setSelectedUserIds((prev) => prev.filter((id) => !opIds.includes(id)));
+    } else {
+      setSelectedUserIds((prev) => Array.from(new Set([...prev, ...opIds])));
+    }
+  };
+
+  const handleQuickDeleteAllOperators = () => {
+    const opIds = operatorUsers.map((u) => u.id);
+    if (opIds.length === 0) {
+      showToast('Nenhum operador encontrado para exclusão.', 'error');
+      return;
+    }
+    setSelectedUserIds(opIds);
+    setIsBatchDeleteModalOpen(true);
+  };
+
+  const handleQuickDeleteAllUsers = () => {
+    const allOtherIds = otherUsers.map((u) => u.id);
+    if (allOtherIds.length === 0) {
+      showToast('Não há outros usuários para exclusão.', 'error');
+      return;
+    }
+    setSelectedUserIds(allOtherIds);
+    setIsBatchDeleteModalOpen(true);
   };
 
   const handleToggleActive = async (user: UserProfile) => {
@@ -214,15 +277,37 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     }
   };
 
+  const adminCount = users.filter((u) => u.role === 'ADMIN').length;
+  const operatorCount = users.filter((u) => u.role === 'OPERADOR').length;
+  const activeCount = users.filter((u) => u.isActive && u.status === 'ATIVO').length;
+  const inactiveCount = users.filter((u) => !u.isActive || u.status === 'INATIVO').length;
+
   const filteredUsers = users.filter((u) => {
-    const term = searchTerm.toLowerCase();
+    if (roleFilter === 'ADMIN' && u.role !== 'ADMIN') return false;
+    if (roleFilter === 'OPERADOR' && u.role !== 'OPERADOR') return false;
+    if (roleFilter === 'ACTIVE' && (!u.isActive || u.status !== 'ATIVO')) return false;
+    if (roleFilter === 'INACTIVE' && (u.isActive && u.status === 'ATIVO')) return false;
+
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase().trim();
     return (
       u.name.toLowerCase().includes(term) ||
       u.username.toLowerCase().includes(term) ||
+      (u.email && u.email.toLowerCase().includes(term)) ||
       u.re.toLowerCase().includes(term) ||
-      u.pelotao.toLowerCase().includes(term)
+      u.pelotao.toLowerCase().includes(term) ||
+      (u.graduacao && u.graduacao.toLowerCase().includes(term)) ||
+      (term === 'admin' && u.role === 'ADMIN') ||
+      (term === 'operador' && u.role === 'OPERADOR')
     );
   });
+
+  const effectivePageSize = pageSize === 'ALL' ? Math.max(1, filteredUsers.length) : pageSize;
+  const totalPages = pageSize === 'ALL' ? 1 : Math.max(1, Math.ceil(filteredUsers.length / effectivePageSize));
+  const validCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedUsers = pageSize === 'ALL'
+    ? filteredUsers
+    : filteredUsers.slice((validCurrentPage - 1) * effectivePageSize, validCurrentPage * effectivePageSize);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
@@ -307,9 +392,9 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
           {/* TAB: POLICIAIS CADASTRADOS */}
           {activeTab === 'list' && (
             <div className="space-y-4">
-              {/* Search Bar & Reset */}
+              {/* Search Bar */}
               <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-                <div className="relative w-full sm:w-72">
+                <div className="relative w-full">
                   <Search className="w-4 h-4 absolute left-3 top-2.5 text-zinc-500" />
                   <input
                     type="text"
@@ -319,21 +404,109 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                     className="w-full pl-9 pr-3 py-1.5 text-xs bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-200 focus:outline-none focus:border-amber-500"
                   />
                 </div>
-                {/* Restaurar Padrão (Requer Senha do Admin) */}
+              </div>
+
+              {/* Filter Pills & Contingent Stats */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
                 <button
                   type="button"
                   onClick={() => {
-                    setIsResetModalOpen(true);
-                    setResetAdminPassword('');
-                    setResetError('');
-                    setShowResetPassword(false);
+                    setRoleFilter('ALL');
+                    setCurrentPage(1);
                   }}
-                  className="text-xs text-zinc-400 hover:text-amber-400 flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border border-zinc-800 hover:border-zinc-700 transition cursor-pointer self-end sm:self-auto"
-                  title="Restaurar contas originais pré-configuradas mediante senha de administrador"
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center space-x-1.5 ${
+                    roleFilter === 'ALL'
+                      ? 'bg-zinc-100 text-zinc-950 font-bold'
+                      : 'bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700'
+                  }`}
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Restaurar Padrão</span>
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Todos ({users.length})</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRoleFilter('ADMIN');
+                    setCurrentPage(1);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center space-x-1.5 ${
+                    roleFilter === 'ADMIN'
+                      ? 'bg-amber-500 text-zinc-950 font-bold'
+                      : 'bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25'
+                  }`}
+                >
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>👑 Admins ({adminCount})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRoleFilter('OPERADOR');
+                    setCurrentPage(1);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center space-x-1.5 ${
+                    roleFilter === 'OPERADOR'
+                      ? 'bg-emerald-500 text-zinc-950 font-bold'
+                      : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25'
+                  }`}
+                >
+                  <ClipboardCheck className="w-3.5 h-3.5" />
+                  <span>🛡️ Operadores ({operatorCount})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRoleFilter('ACTIVE');
+                    setCurrentPage(1);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                    roleFilter === 'ACTIVE'
+                      ? 'bg-zinc-100 text-zinc-950 font-bold'
+                      : 'bg-zinc-800/80 text-zinc-400 hover:bg-zinc-700'
+                  }`}
+                >
+                  Ativos ({activeCount})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRoleFilter('INACTIVE');
+                    setCurrentPage(1);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                    roleFilter === 'INACTIVE'
+                      ? 'bg-rose-500 text-white font-bold'
+                      : 'bg-zinc-800/80 text-zinc-400 hover:bg-zinc-700'
+                  }`}
+                >
+                  Inativos ({inactiveCount})
+                </button>
+
+                {/* Page Size Selector */}
+                <div className="flex items-center space-x-1 text-xs text-zinc-400 sm:ml-auto">
+                  <span className="text-[11px] text-zinc-500 font-medium">Exibir:</span>
+                  {([25, 50, 100, 'ALL'] as const).map((sz) => (
+                    <button
+                      key={String(sz)}
+                      type="button"
+                      onClick={() => {
+                        setPageSize(sz);
+                        setCurrentPage(1);
+                      }}
+                      className={`px-2 py-0.5 rounded text-[11px] font-mono transition cursor-pointer ${
+                        pageSize === sz
+                          ? 'bg-amber-500 text-zinc-950 font-bold'
+                          : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+                      }`}
+                    >
+                      {sz === 'ALL' ? 'Todos' : sz}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Roles explanation card */}
@@ -341,31 +514,131 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                 <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25">
                   <div className="flex items-center space-x-2 text-amber-400 font-bold mb-1">
                     <Shield className="w-4 h-4" />
-                    <span>Perfil Admin (Acesso Total)</span>
+                    <span>20 Administradores (Acesso Total)</span>
                   </div>
                   <p className="text-zinc-300 text-[11px] leading-relaxed">
-                    Autorização para realizar todas as ações: frota, O.S., manutenções, banco de dados, relatórios e gestão de usuários.
+                    Autorização total para todas as ações: frota, O.S., manutenções, banco de dados, relatórios e gestão de usuários.
                   </p>
                 </div>
                 <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25">
                   <div className="flex items-center space-x-2 text-emerald-400 font-bold mb-1">
                     <ClipboardCheck className="w-4 h-4" />
-                    <span>Perfil Operador (Acesso Específico)</span>
+                    <span>300 Operadores (Acesso Limitado)</span>
                   </div>
                   <p className="text-zinc-300 text-[11px] leading-relaxed">
-                    Acesso limitado a: cautela de viaturas, registro das suas cautelas e registro detalhado de avarias com fotos.
+                    Acesso restrito operacional: cautela e descautela de viaturas, acompanhamento de suas cautelas e registro de avarias.
                   </p>
+                </div>
+              </div>
+
+              {/* Batch Selection Action Bar & Global Exclusion Tools */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] text-zinc-400 font-semibold mr-1">Seleção:</span>
+
+                  {/* Selecionar Todos os Outros Usuários */}
+                  <button
+                    type="button"
+                    onClick={handleSelectAllUsers}
+                    className={`px-2.5 py-1 rounded-lg text-xs transition cursor-pointer flex items-center space-x-1 border ${
+                      otherUsers.length > 0 && otherUsers.every((u) => selectedUserIds.includes(u.id))
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-bold'
+                        : 'bg-zinc-850 hover:bg-zinc-800 text-zinc-300 border-zinc-750'
+                    }`}
+                    title="Selecionar todos os outros policiais cadastrados no sistema"
+                  >
+                    <CheckSquare className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Todos os Usuários ({otherUsers.length})</span>
+                  </button>
+
+                  {/* Selecionar Apenas Operadores */}
+                  <button
+                    type="button"
+                    onClick={handleSelectAllOperators}
+                    className={`px-2.5 py-1 rounded-lg text-xs transition cursor-pointer flex items-center space-x-1 border ${
+                      operatorUsers.length > 0 && operatorUsers.every((u) => selectedUserIds.includes(u.id))
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
+                        : 'bg-zinc-850 hover:bg-zinc-800 text-zinc-300 border-zinc-750'
+                    }`}
+                    title="Selecionar todos os operadores cadastrados"
+                  >
+                    <span>🛡️ Operadores ({operatorUsers.length})</span>
+                  </button>
+
+                  {/* Selecionar Página Atual */}
+                  <button
+                    type="button"
+                    onClick={() => handleSelectAllVisible(paginatedUsers.map((u) => u.id))}
+                    className="px-2.5 py-1 rounded-lg bg-zinc-850 hover:bg-zinc-800 text-zinc-300 text-xs transition cursor-pointer border border-zinc-750 flex items-center space-x-1"
+                    title="Selecionar policiais visíveis nesta página"
+                  >
+                    <span>Página Atual</span>
+                  </button>
+
+                  {selectedUserIds.length > 0 && (
+                    <div className="flex items-center space-x-2 ml-1">
+                      <span className="text-amber-400 font-bold font-mono text-[11px] bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">
+                        {selectedUserIds.length} selecionado{selectedUserIds.length > 1 ? 's' : ''}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedUserIds([])}
+                        className="text-[11px] text-zinc-400 hover:text-zinc-200 underline cursor-pointer"
+                      >
+                        Limpar
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Botões de Ação de Exclusão */}
+                <div className="flex items-center gap-1.5 self-end sm:self-auto flex-wrap">
+                  {selectedUserIds.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsBatchDeleteModalOpen(true)}
+                      className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md shadow-rose-600/30 transition flex items-center space-x-1.5 cursor-pointer animate-pulse"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Excluir Selecionados ({selectedUserIds.length})</span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      {operatorUsers.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleQuickDeleteAllOperators}
+                          className="px-2.5 py-1 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 text-xs transition cursor-pointer flex items-center space-x-1"
+                          title="Excluir todos os operadores de uma vez"
+                        >
+                          <Trash2 className="w-3 h-3 text-rose-400" />
+                          <span>Excluir Operadores ({operatorUsers.length})</span>
+                        </button>
+                      )}
+                      {otherUsers.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleQuickDeleteAllUsers}
+                          className="px-2.5 py-1 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 text-xs transition cursor-pointer flex items-center space-x-1"
+                          title="Excluir todos os outros usuários e manter apenas você (Admin atual)"
+                        >
+                          <Trash2 className="w-3 h-3 text-rose-400" />
+                          <span>Excluir Todos ({otherUsers.length})</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Users Table / List */}
               <div className="divide-y divide-zinc-800 border border-zinc-800 rounded-xl overflow-hidden bg-zinc-950/60">
-                {filteredUsers.length === 0 ? (
+                {paginatedUsers.length === 0 ? (
                   <div className="p-6 text-center text-xs text-zinc-500">
-                    Nenhum policial ou usuário localizado.
+                    Nenhum policial ou usuário localizado no filtro atual.
                   </div>
                 ) : (
-                  filteredUsers.map((u) => {
+                  paginatedUsers.map((u) => {
                     const isSelf = currentUser?.id === u.id;
                     return (
                       <div
@@ -373,8 +646,19 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                         className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-zinc-900/50 transition"
                       >
                         <div className="flex items-center space-x-3">
+                          {!isSelf ? (
+                            <input
+                              type="checkbox"
+                              checked={selectedUserIds.includes(u.id)}
+                              onChange={() => handleToggleSelectUser(u.id)}
+                              className="w-4 h-4 rounded border-zinc-700 bg-zinc-900 text-amber-500 focus:ring-amber-500 cursor-pointer"
+                              title="Selecionar policial para exclusão"
+                            />
+                          ) : (
+                            <div className="w-4 h-4" />
+                          )}
                           <div
-                            className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs ${
+                            className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
                               u.role === 'ADMIN'
                                 ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                                 : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
@@ -407,6 +691,15 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                             </div>
                             <div className="text-xs text-zinc-400 flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                               <span className="font-mono text-zinc-300">@{u.username}</span>
+                              {u.email && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-amber-400/90 font-mono text-[11px] flex items-center gap-1">
+                                    <Mail className="w-3 h-3 text-amber-500/80" />
+                                    {u.email}
+                                  </span>
+                                </>
+                              )}
                               <span>•</span>
                               <span>RE: {u.re}</span>
                               <span>•</span>
@@ -475,6 +768,53 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                   })
                 )}
               </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-2 text-xs text-zinc-400">
+                  <div className="text-[11px] font-mono">
+                    Exibindo {(validCurrentPage - 1) * effectivePageSize + 1} a{' '}
+                    {Math.min(validCurrentPage * effectivePageSize, filteredUsers.length)} de {filteredUsers.length} policiais
+                  </div>
+                  <div className="flex items-center space-x-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(1)}
+                      disabled={validCurrentPage === 1}
+                      className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer text-xs"
+                    >
+                      &laquo; Primeira
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={validCurrentPage === 1}
+                      className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer text-xs"
+                    >
+                      &lsaquo; Anterior
+                    </button>
+                    <span className="px-2 font-mono text-zinc-200 font-bold text-xs">
+                      {validCurrentPage} / {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={validCurrentPage === totalPages}
+                      className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer text-xs"
+                    >
+                      Próxima &rsaquo;
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={validCurrentPage === totalPages}
+                      className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer text-xs"
+                    >
+                      Última &raquo;
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -550,6 +890,23 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                     onChange={(e) => setFormPelotao(e.target.value)}
                     placeholder="Ex: 1º Pelotão ROCAM"
                     className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              {/* E-mail do Policial */}
+              <div>
+                <label className="text-xs font-semibold text-zinc-300 block mb-1">
+                  E-mail do Militar (Institucional ou Pessoal)
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 absolute left-3 top-2.5 text-zinc-500" />
+                  <input
+                    type="email"
+                    value={formEmail}
+                    onChange={(e) => setFormEmail(e.target.value)}
+                    placeholder="Ex: policial.nome@policiamilitar.sp.gov.br"
+                    className="w-full pl-9 pr-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-amber-500 font-mono"
                   />
                 </div>
               </div>
@@ -668,12 +1025,12 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
           )}
         </div>
 
-        {/* Modal de Exclusão de Usuário (Exige Senha do Admin) */}
+        {/* Modal de Exclusão de Usuário Individual */}
         {userToDelete && (
           <div className="fixed inset-0 z-60 bg-black/80 flex items-center justify-center p-4">
             <form
               onSubmit={handleConfirmDelete}
-              className="bg-zinc-900 border border-zinc-750 rounded-2xl p-5 max-w-md w-full space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-100"
+              className="bg-zinc-900 border border-rose-800/80 rounded-2xl p-5 max-w-md w-full space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-100"
             >
               <div className="flex items-center space-x-3 text-rose-400">
                 <div className="p-2.5 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-400">
@@ -681,7 +1038,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white">Excluir Usuário do Sistema?</h3>
-                  <p className="text-xs text-zinc-400">Autorização obrigatória por senha</p>
+                  <p className="text-xs text-zinc-400">Acesso administrativo ROCAM</p>
                 </div>
               </div>
 
@@ -692,48 +1049,24 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                 </div>
               )}
 
-              <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1 text-xs font-mono">
-                <div>• <strong>Policial:</strong> {userToDelete.name}</div>
-                <div>• <strong>RE:</strong> {userToDelete.re}</div>
-                <div>• <strong>Login:</strong> @{userToDelete.username}</div>
-                <div>• <strong>Perfil:</strong> {userToDelete.role}</div>
+              <div className="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1.5 text-xs font-mono">
+                <div className="text-sm font-bold text-white font-sans">{userToDelete.name}</div>
+                <div className="text-zinc-400">RE: <span className="text-zinc-200 font-bold">{userToDelete.re}</span> • Login: <span className="text-zinc-200">@{userToDelete.username}</span></div>
+                <div className="text-zinc-400">Perfil: <span className={userToDelete.role === 'ADMIN' ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>{userToDelete.role === 'ADMIN' ? '👑 ADMINISTRADOR' : '🛡️ OPERADOR'}</span></div>
+                <div className="text-zinc-400">Pelotão: <span className="text-zinc-200">{userToDelete.pelotao}</span></div>
               </div>
 
               <p className="text-xs text-zinc-300 leading-relaxed">
-                As credenciais deste militar serão excluídas. Registros históricos de cautelas e vistorias permanecerão preservados.
+                Este policial terá seu acesso e login revogados permanentemente. Cautelas e vistorias históricas vinculadas permanecerão salvas para auditoria.
               </p>
-
-              {/* Password Input Required */}
-              <div className="space-y-1.5 pt-1">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>Digite sua Senha de Administrador *</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowDeletePassword(!showDeletePassword)}
-                    className="text-[11px] text-zinc-400 hover:text-amber-400 cursor-pointer flex items-center gap-1"
-                  >
-                    {showDeletePassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                    <span>{showDeletePassword ? 'Ocultar' : 'Exibir'}</span>
-                  </button>
-                </div>
-                <input
-                  type={showDeletePassword ? 'text' : 'password'}
-                  value={deleteAdminPassword}
-                  onChange={(e) => setDeleteAdminPassword(e.target.value)}
-                  placeholder="Sua senha de administrador..."
-                  className="w-full px-3 py-2 bg-zinc-950 border border-amber-500/50 rounded-xl text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono"
-                  autoFocus
-                  required
-                />
-              </div>
 
               <div className="flex justify-end space-x-2 pt-2 border-t border-zinc-800">
                 <button
                   type="button"
-                  onClick={() => setUserToDelete(null)}
+                  onClick={() => {
+                    setUserToDelete(null);
+                    setDeleteError('');
+                  }}
                   className="px-3.5 py-2 text-xs text-zinc-400 hover:text-zinc-200 rounded-xl cursor-pointer"
                 >
                   Cancelar
@@ -741,93 +1074,76 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                 <button
                   type="submit"
                   disabled={isDeleting}
-                  className="px-4 py-2 text-xs font-bold rounded-xl bg-rose-600 hover:bg-rose-500 text-white shadow-md cursor-pointer disabled:opacity-50 transition"
+                  className="px-4 py-2 text-xs font-bold rounded-xl bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/20 cursor-pointer disabled:opacity-50 transition flex items-center space-x-1.5"
                 >
-                  {isDeleting ? 'Verificando...' : 'Confirmar Exclusão com Senha'}
+                  <Trash2 className="w-4 h-4" />
+                  <span>{isDeleting ? 'Excluindo...' : 'Confirmar Exclusão'}</span>
                 </button>
               </div>
             </form>
           </div>
         )}
 
-        {/* Modal de Restauração Padrão (Exige Senha do Admin) */}
-        {isResetModalOpen && (
+        {/* Modal de Exclusão em Massa */}
+        {isBatchDeleteModalOpen && (
           <div className="fixed inset-0 z-60 bg-black/80 flex items-center justify-center p-4">
-            <form
-              onSubmit={handleConfirmReset}
-              className="bg-zinc-900 border border-zinc-750 rounded-2xl p-5 max-w-md w-full space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-100"
-            >
-              <div className="flex items-center space-x-3 text-amber-400">
-                <div className="p-2.5 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-400">
-                  <RotateCcw className="w-5 h-5" />
+            <div className="bg-zinc-900 border border-rose-800/80 rounded-2xl p-5 max-w-md w-full space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-100">
+              <div className="flex items-center space-x-3 text-rose-400">
+                <div className="p-2.5 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-400">
+                  <Trash2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white">Restaurar Usuários para o Padrão?</h3>
-                  <p className="text-xs text-zinc-400">Autorização obrigatória por senha</p>
+                  <h3 className="text-base font-bold text-white">Excluir {selectedUserIds.length} Usuários Selecionados?</h3>
+                  <p className="text-xs text-zinc-400">Ação administrativa irreversível de exclusão em lote</p>
                 </div>
               </div>
 
-              {resetError && (
+              {deleteError && (
                 <div className="p-3 rounded-xl bg-rose-950/70 border border-rose-700 text-rose-200 text-xs flex items-center space-x-2">
                   <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                  <span>{resetError}</span>
+                  <span>{deleteError}</span>
                 </div>
               )}
 
-              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 space-y-1.5">
-                <span className="font-bold text-amber-400 flex items-center gap-1.5">
-                  <AlertTriangle className="w-4 h-4" />
-                  Atenção: Ação Crítica
-                </span>
-                <p className="text-[11px] text-zinc-300 leading-relaxed">
-                  Esta ação redefinirá a base de usuários para as contas padrão de fábrica (<strong>04 Administradores ROCAM</strong> e operadores). Usuários adicionais criados serão removidos.
-                </p>
+              <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1 text-xs max-h-44 overflow-y-auto">
+                {users
+                  .filter((u) => selectedUserIds.includes(u.id))
+                  .map((u) => (
+                    <div key={u.id} className="flex justify-between items-center text-zinc-300 font-mono text-[11px] py-0.5 border-b border-zinc-900 last:border-0">
+                      <span className="truncate pr-2">{u.name} (RE {u.re})</span>
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold shrink-0 ${u.role === 'ADMIN' ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
+                        {u.role}
+                      </span>
+                    </div>
+                  ))}
               </div>
 
-              {/* Password Input Required */}
-              <div className="space-y-1.5 pt-1">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>Digite sua Senha de Administrador *</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowResetPassword(!showResetPassword)}
-                    className="text-[11px] text-zinc-400 hover:text-amber-400 cursor-pointer flex items-center gap-1"
-                  >
-                    {showResetPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                    <span>{showResetPassword ? 'Ocultar' : 'Exibir'}</span>
-                  </button>
-                </div>
-                <input
-                  type={showResetPassword ? 'text' : 'password'}
-                  value={resetAdminPassword}
-                  onChange={(e) => setResetAdminPassword(e.target.value)}
-                  placeholder="Sua senha de administrador..."
-                  className="w-full px-3 py-2 bg-zinc-950 border border-amber-500/50 rounded-xl text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono"
-                  autoFocus
-                  required
-                />
-              </div>
+              <p className="text-xs text-zinc-300 leading-relaxed">
+                Todos os {selectedUserIds.length} policiais selecionados serão removidos do sistema. Registros históricos permanecerão arquivados.
+              </p>
 
               <div className="flex justify-end space-x-2 pt-2 border-t border-zinc-800">
                 <button
                   type="button"
-                  onClick={() => setIsResetModalOpen(false)}
+                  onClick={() => {
+                    setIsBatchDeleteModalOpen(false);
+                    setDeleteError('');
+                  }}
                   className="px-3.5 py-2 text-xs text-zinc-400 hover:text-zinc-200 rounded-xl cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
-                  type="submit"
-                  disabled={isResetting}
-                  className="px-4 py-2 text-xs font-bold rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow-md cursor-pointer disabled:opacity-50 transition"
+                  type="button"
+                  onClick={handleConfirmBatchDelete}
+                  disabled={isDeleting}
+                  className="px-4 py-2 text-xs font-bold rounded-xl bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/20 cursor-pointer disabled:opacity-50 transition flex items-center space-x-1.5"
                 >
-                  {isResetting ? 'Verificando...' : 'Confirmar Restauração com Senha'}
+                  <Trash2 className="w-4 h-4" />
+                  <span>{isDeleting ? 'Excluindo...' : `Excluir ${selectedUserIds.length} Usuários`}</span>
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         )}
 

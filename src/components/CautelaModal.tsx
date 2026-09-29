@@ -16,6 +16,7 @@ import {
   Shield,
   Calendar,
   Clock,
+  Check,
   AlertTriangle
 } from 'lucide-react';
 
@@ -26,6 +27,7 @@ interface CautelaModalProps {
   activeCautelas: CautelaRecord[];
   initialVehicleId?: string;
   onSaveCautela: (cautelaData: Omit<CautelaRecord, 'id' | 'numeroTermo' | 'status'>) => void;
+  onBaixarViatura?: (vehicleId: string, motivo: string) => void;
 }
 
 export const CautelaModal: React.FC<CautelaModalProps> = ({
@@ -35,6 +37,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
   activeCautelas,
   initialVehicleId,
   onSaveCautela,
+  onBaixarViatura,
 }) => {
   const { currentUser } = useAuth();
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
@@ -49,6 +52,8 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [fotosAvariasSaida, setFotosAvariasSaida] = useState<DamagePhoto[]>([]);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [isBaixarModalOpen, setIsBaixarModalOpen] = useState<boolean>(false);
+  const [motivoBaixaChecklist, setMotivoBaixaChecklist] = useState<string>('');
 
   // Selected vehicle object
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
@@ -115,11 +120,11 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
         setSelectedVehicleId(vehicles[0].id);
         setKmSaida(vehicles[0].kmAtual);
       }
-    }
 
-    setChecklist(generateDefaultChecklist());
-    setFotosAvariasSaida([]);
-  }, [isOpen, initialVehicleId, vehicles, activeCautelas]);
+      setChecklist(generateDefaultChecklist());
+      setFotosAvariasSaida([]);
+    }
+  }, [isOpen, initialVehicleId]);
 
   // When vehicle changes, update KM
   const handleVehicleChange = (newId: string) => {
@@ -130,34 +135,52 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
     }
   };
 
+  const handleSetItemStatus = (id: string, conforme: boolean) => {
+    setChecklist((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          return {
+            ...item,
+            conforme,
+            observacao: conforme ? '' : (item.observacao || 'Constatada avaria/alteração visual'),
+          };
+        }
+        return item;
+      })
+    );
+  };
+
   const handleToggleCheckItem = (id: string) => {
-    if (!id) return;
-
-    setChecklist((prev) => {
-      if (!Array.isArray(prev)) return prev;
-
-      return prev.map((item) => {
-        if (!item || item.id !== id) return item;
-
-        const conforme = item.conforme !== true;
-
-        return {
-          ...item,
-          conforme,
-          observacao: conforme ? '' : (item.observacao || 'Constatada avaria/alteração visual'),
-        };
-      });
-    });
+    setChecklist((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          const nextConforme = !item.conforme;
+          return {
+            ...item,
+            conforme: nextConforme,
+            observacao: nextConforme ? '' : (item.observacao || 'Constatada avaria/alteração visual'),
+          };
+        }
+        return item;
+      })
+    );
   };
 
   const handleItemObsChange = (id: string, obs: string) => {
     setChecklist((prev) =>
-      prev.map((item) =>
-        item && item.id === id ? { ...item, observacao: obs } : item
-      )
+      prev.map((item) => (item.id === id ? { ...item, observacao: obs } : item))
     );
   };
 
+  const handleMarkAllConforme = () => {
+    setChecklist((prev) =>
+      prev.map((item) => ({
+        ...item,
+        conforme: true,
+        observacao: '',
+      }))
+    );
+  };
 
   if (!isOpen) return null;
 
@@ -171,7 +194,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
     // Bloqueio rigoroso: não permitir que viatura cautelada seja cautelada novamente
     if (selectedVehicleActiveCautela) {
       setErrorMessage(
-        `A viatura ${selectedVehicle.prefixo} já possui cautela ativa em andamento com o policial ${selectedVehicleActiveCautela.condutorGraduacao} ${selectedVehicleActiveCautela.condutorNome} (${selectedVehicleActiveCautela.numeroTermo}). Realize a devolução da viatura antes de retirá-la novamente.`
+        `A viatura ${selectedVehicle.prefixo} já possui cautela ativa em andamento com o policial ${selectedVehicleActiveCautela.condutorGraduacao} ${selectedVehicleActiveCautela.condutorNome} (${selectedVehicleActiveCautela.numeroTermo}). Realize a descautela de retorno antes de retirá-la novamente.`
       );
       return;
     }
@@ -218,7 +241,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
     onClose();
   };
 
-  const nonConformeCount = checklist.filter((c) => c && c.conforme !== true).length;
+  const nonConformeCount = checklist.filter((c) => !c.conforme).length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
@@ -366,7 +389,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
                   A viatura <strong>{selectedVehicle?.prefixo}</strong> está atualmente em serviço (cautela <strong>{selectedVehicleActiveCautela.numeroTermo}</strong>) sob a responsabilidade de <strong>{selectedVehicleActiveCautela.condutorGraduacao} {selectedVehicleActiveCautela.condutorNome}</strong> (RE: {selectedVehicleActiveCautela.condutorRE}).
                 </div>
                 <div className="text-[11px] text-rose-300 font-medium pt-1">
-                  Não é permitido cautelar uma viatura que já se encontra em patrulhamento. Realize a devolução da viatura antes de expedir um novo termo de saída.
+                  Não é permitido cautelar uma viatura que já se encontra em patrulhamento. Realize a descautela de retorno antes de expedir um novo termo de saída.
                 </div>
               </div>
             </div>
@@ -496,7 +519,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
 
           {/* Checklist de Cautela (Saída) */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between pb-1 border-b border-zinc-800">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-zinc-800">
               <div className="flex items-center space-x-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-zinc-200">
                   Checklist de Inspeção Prévia (Saída)
@@ -505,33 +528,69 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
                   {checklist.length} itens
                 </span>
                 {nonConformeCount > 0 ? (
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1">
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1 font-medium">
                     <AlertTriangle className="w-3 h-3 text-rose-400" />
                     {nonConformeCount} Não Conforme{nonConformeCount > 1 ? 's' : ''}
                   </span>
                 ) : (
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 font-semibold">
                     <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                    Todos conformes
+                    100% Conforme
                   </span>
                 )}
               </div>
 
+              {/* Botões de Ação do Checklist: Tudo OK & Baixar Viatura */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleMarkAllConforme}
+                  title="Marcar todos os itens como Conformes (Tudo OK)"
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer shadow-sm ${
+                    nonConformeCount === 0
+                      ? 'bg-emerald-950/60 text-emerald-300 border-emerald-700/70 hover:bg-emerald-900/60 shadow-emerald-950/30'
+                      : 'bg-emerald-600 text-white hover:bg-emerald-500 border-emerald-500 active:scale-95 shadow-md shadow-emerald-950/50'
+                  }`}
+                >
+                  <Check className="w-4 h-4 stroke-[2.5]" />
+                  <span>Tudo OK (Conforme)</span>
+                </button>
 
+                {/* Botão Baixar Viatura no Checklist */}
+                {selectedVehicle && onBaixarViatura && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nonConfItems = checklist.filter((i) => !i.conforme).map((i) => i.item).join(', ');
+                      setMotivoBaixaChecklist(
+                        nonConfItems
+                          ? `Avaria detectada no checklist prévio: ${nonConfItems}.`
+                          : 'Avaria/defeito mecânico constatado durante checklist prévio de inspeção.'
+                      );
+                      setIsBaixarModalOpen(true);
+                    }}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-rose-800/80 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 hover:text-white transition-all cursor-pointer shadow-sm"
+                    title="Baixar esta viatura por defeito/avaria grave no checklist (vai para o quantitativo de baixadas)"
+                  >
+                    <AlertTriangle className="w-4 h-4 text-rose-300 stroke-[2.5]" />
+                    <span>Baixar Viatura (Checklist)</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {checklist.filter((item): item is ChecklistItem => Boolean(item && item.id)).map((item, idx) => (
+              {checklist.map((item, idx) => (
                 <div
-                  key={`${item.id || 'chk'}-${idx}`}
+                  key={item.id}
                   className={`p-2.5 rounded-xl border transition-all ${
                     item.conforme
                       ? 'bg-zinc-900/80 border-zinc-800 hover:border-zinc-700'
-                      : 'bg-rose-950/30 border-rose-800/70'
+                      : 'bg-rose-950/30 border-rose-800/80 shadow-sm shadow-rose-950/40'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start space-x-2">
+                    <div className="flex items-start space-x-2 flex-1">
                       <span className="text-[10px] font-mono text-zinc-500 font-bold mt-0.5">
                         {String(idx + 1).padStart(2, '0')}.
                       </span>
@@ -540,18 +599,35 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
                       </span>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleToggleCheckItem(item.id)}
-                      aria-label={item.conforme ? 'Marcar como avaria' : 'Marcar como conforme'}
-                      className={`px-2.5 py-1 text-[10px] font-bold rounded cursor-pointer whitespace-nowrap transition ${
-                        item.conforme
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30'
-                          : 'bg-rose-600 text-white shadow-sm hover:bg-rose-500'
-                      }`}
-                    >
-                      {item.conforme ? 'CONFORME' : 'AVARIA'}
-                    </button>
+                    {/* Segmented controls: OK ou AVARIA */}
+                    <div className="flex items-center bg-zinc-950 p-0.5 rounded-lg border border-zinc-800/80 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleSetItemStatus(item.id, true)}
+                        className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center gap-1 ${
+                          item.conforme
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'text-zinc-400 hover:text-emerald-300 hover:bg-emerald-950/40'
+                        }`}
+                        title="Marcar este item como Conforme (OK)"
+                      >
+                        <Check className="w-3 h-3 stroke-[2.5]" />
+                        <span>OK</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetItemStatus(item.id, false)}
+                        className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center gap-1 ${
+                          !item.conforme
+                            ? 'bg-rose-600 text-white shadow-xs'
+                            : 'text-zinc-400 hover:text-rose-300 hover:bg-rose-950/40'
+                        }`}
+                        title="Marcar este item com Avaria ou Inconformidade"
+                      >
+                        <AlertTriangle className="w-3 h-3" />
+                        <span>AVARIA</span>
+                      </button>
+                    </div>
                   </div>
 
                   {!item.conforme && (
@@ -620,6 +696,75 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
             </button>
           </div>
         </form>
+
+        {/* Modal de Confirmação para Baixar Viatura pelo Checklist */}
+        {isBaixarModalOpen && selectedVehicle && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+            <div className="bg-zinc-900 border border-rose-800 rounded-2xl p-5 max-w-md w-full space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-100">
+              <div className="flex items-center space-x-3 text-rose-400">
+                <div className="p-2.5 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-400">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Baixar Viatura no Checklist?</h3>
+                  <p className="text-xs text-zinc-400">
+                    {selectedVehicle.prefixo} • {selectedVehicle.modelo} ({selectedVehicle.placa})
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-800/80 text-xs text-rose-200 space-y-1.5 leading-relaxed">
+                <span className="font-bold text-rose-300 block">
+                  A viatura será marcada como BAIXADA
+                </span>
+                <p className="text-[11px] text-zinc-300">
+                  Ela sairá das viaturas operacionais disponíveis e passará a constar no <strong>quantitativo de viaturas baixadas</strong> da frota até que seja submetida à manutenção corretiva.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 mb-1">
+                  Motivo da Baixa / Avaria Constatada no Checklist *
+                </label>
+                <textarea
+                  rows={2}
+                  value={motivoBaixaChecklist}
+                  onChange={(e) => setMotivoBaixaChecklist(e.target.value)}
+                  placeholder="Ex: Pneu furado / Freio danificado / Vazamento de fluido..."
+                  className="w-full px-3 py-2 bg-zinc-950 border border-rose-800 rounded-lg text-xs text-rose-100 placeholder:text-rose-400/50 focus:outline-none focus:border-rose-500"
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2 border-t border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setIsBaixarModalOpen(false)}
+                  className="px-3.5 py-2 text-xs text-zinc-400 hover:text-zinc-200 rounded-xl cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onBaixarViatura) {
+                      onBaixarViatura(
+                        selectedVehicle.id,
+                        motivoBaixaChecklist || 'Avaria constatada durante checklist prévio de inspeção.'
+                      );
+                    }
+                    setIsBaixarModalOpen(false);
+                    onClose();
+                  }}
+                  className="px-4 py-2 text-xs font-bold rounded-xl bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/30 cursor-pointer transition flex items-center space-x-1.5"
+                >
+                  <AlertTriangle className="w-4 h-4" />
+                  <span>Confirmar e Baixar Viatura</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
