@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../types';
 import { SEED_ADMINS, SEED_OPERATORS } from '../data/seedUsers';
@@ -68,6 +68,7 @@ export const LoginScreen: React.FC = () => {
   const [firstAdminPassword, setFirstAdminPassword] = useState('');
   const [firstAdminConfirmPassword, setFirstAdminConfirmPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
+  const firstAdminNameRef = useRef<HTMLInputElement>(null);
 
   // Status & Feedback
   const [errorMsg, setErrorMsg] = useState('');
@@ -339,6 +340,16 @@ export const LoginScreen: React.FC = () => {
 
               {!hasAdmin && (
                 <div className="mt-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/40 space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => firstAdminNameRef.current?.focus()}
+                    disabled={isSubmitting || isLoading}
+                    className="w-full py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-sm shadow-lg shadow-amber-500/20 active:scale-[0.99] transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    <Shield className="w-4 h-4" />
+                    <span>Acesso rápido — Primeiro Administrador</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
                   <div className="flex items-start gap-2.5">
                     <Shield className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
                     <div>
@@ -374,7 +385,7 @@ export const LoginScreen: React.FC = () => {
                       setIsSubmitting(false);
                     }
                   }} className="space-y-2.5">
-                    <input type="text" value={firstAdminName} onChange={(ev) => setFirstAdminName(ev.target.value)} placeholder="Nome do administrador" className="w-full px-3 py-2.5 bg-zinc-950 border border-zinc-750 rounded-xl text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500" required />
+                    <input type="text" value={firstAdminName} onChange={(ev) => setFirstAdminName(ev.target.value)} placeholder="Nome do administrador" ref={firstAdminNameRef} className="w-full px-3 py-2.5 bg-zinc-950 border border-zinc-750 rounded-xl text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500" required />
                     <input type="email" value={firstAdminEmail} onChange={(ev) => setFirstAdminEmail(ev.target.value)} placeholder="E-mail do administrador" className="w-full px-3 py-2.5 bg-zinc-950 border border-zinc-750 rounded-xl text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500" required />
                     <input type="password" value={firstAdminPassword} onChange={(ev) => setFirstAdminPassword(ev.target.value)} placeholder="Senha (mínimo 6 caracteres)" minLength={6} className="w-full px-3 py-2.5 bg-zinc-950 border border-zinc-750 rounded-xl text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500" required />
                     <input type="password" value={firstAdminConfirmPassword} onChange={(ev) => setFirstAdminConfirmPassword(ev.target.value)} placeholder="Confirmar senha" minLength={6} className="w-full px-3 py-2.5 bg-zinc-950 border border-zinc-750 rounded-xl text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500" required />
