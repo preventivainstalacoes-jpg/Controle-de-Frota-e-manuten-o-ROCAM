@@ -44,7 +44,7 @@ const MILITARY_RANKS = [
 ];
 
 export const LoginScreen: React.FC = () => {
-  const { login, quickLoginAs, registerUserRequest, isLoading, users } = useAuth();
+  const { login, registerFirstAdmin, registerUserRequest, isLoading, users, hasAdmin } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
 
@@ -63,6 +63,10 @@ export const LoginScreen: React.FC = () => {
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [regRole, setRegRole] = useState<UserRole>('OPERADOR');
+  const [firstAdminName, setFirstAdminName] = useState('');
+  const [firstAdminEmail, setFirstAdminEmail] = useState('');
+  const [firstAdminPassword, setFirstAdminPassword] = useState('');
+  const [firstAdminConfirmPassword, setFirstAdminConfirmPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
 
   // Status & Feedback
@@ -79,22 +83,6 @@ export const LoginScreen: React.FC = () => {
 
   const adminUsers = users.filter((u) => u.role === 'ADMIN' && u.isActive && u.status === 'ATIVO');
   const operatorUsers = users.filter((u) => u.role === 'OPERADOR' && u.isActive && u.status === 'ATIVO');
-
-  const handleQuickOpSelect = (e: React.FormEvent) => {
-    e.preventDefault();
-    const num = parseInt(opNumberInput.trim(), 10);
-    if (isNaN(num) || num < 1 || num > 300) {
-      setErrorMsg('Informe um número de operador válido entre 1 e 300.');
-      return;
-    }
-    const targetId = `usr-operador-${String(num).padStart(3, '0')}`;
-    const targetUser = users.find((u) => u.id === targetId || u.username === `op${String(num).padStart(3, '0')}`);
-    if (targetUser) {
-      handleQuickLogin('OPERADOR', targetUser.id);
-    } else {
-      handleQuickLogin('OPERADOR');
-    }
-  };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,17 +164,6 @@ export const LoginScreen: React.FC = () => {
       setRegConfirmPassword('');
     } catch {
       setErrorMsg('Erro inesperado ao realizar cadastro.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleQuickLogin = async (role: 'ADMIN' | 'OPERADOR', specificUserId?: string) => {
-    setErrorMsg('');
-    setSuccessMsg('');
-    setIsSubmitting(true);
-    try {
-      await quickLoginAs(role, specificUserId);
     } finally {
       setIsSubmitting(false);
     }
@@ -360,215 +337,53 @@ export const LoginScreen: React.FC = () => {
                 </button>
               </div>
 
-              {/* Divisor */}
-              <div className="relative my-3">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-zinc-800" />
-                </div>
-                <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-wider">
-                  <span className="bg-zinc-900 px-3 text-amber-400 flex items-center gap-1.5">
-                    <Shield className="w-3 h-3" />
-                    <span>Acesso Rápido — 1º Administrador Master</span>
-                  </span>
-                </div>
-              </div>
-
-              {/* Card do 1º Administrador Master */}
-              {(() => {
-                const firstAdminUser = adminUsers[0] || SEED_ADMINS[0];
-                return (
-                  <button
-                    type="button"
-                    onClick={() => handleQuickLogin('ADMIN', firstAdminUser.id)}
-                    disabled={isSubmitting || isLoading}
-                    className="w-full text-left p-3 rounded-xl bg-zinc-950/80 hover:bg-zinc-900 border border-amber-500/40 hover:border-amber-400 transition group cursor-pointer flex flex-col justify-between"
-                  >
-                    <div className="flex items-start justify-between gap-1.5">
-                      <div className="flex items-center space-x-2.5">
-                        <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 group-hover:bg-amber-500 group-hover:text-zinc-950 transition shrink-0">
-                          <Shield className="w-4 h-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs sm:text-sm font-bold text-zinc-100 truncate">
-                              {firstAdminUser.name}
-                            </span>
-                            <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                              1º ADMIN MASTER
-                            </span>
-                          </div>
-                          <div className="text-[11px] text-zinc-400 font-mono mt-0.5">
-                            RE {firstAdminUser.re} • @{firstAdminUser.username} • Senha: admin123
-                          </div>
-                        </div>
-                      </div>
-                      <span className="text-xs text-amber-400 group-hover:translate-x-0.5 transition font-semibold shrink-0">
-                        Entrar &rarr;
-                      </span>
-                    </div>
-                    <div className="mt-2.5 pt-2 border-t border-zinc-800/60 flex items-center justify-between text-[10px]">
-                      <span className="text-amber-400 font-bold flex items-center gap-1">
-                        <span>👑 Acesso Total</span>
-                        <span className="text-zinc-500">•</span>
-                        <span className="text-zinc-400 font-normal">Frota, O.S., Relatórios, Banco de Dados e Usuários</span>
-                      </span>
-                      <span className="text-zinc-400 font-mono">1 de 20</span>
-                    </div>
-                  </button>
-                );
-              })()}
-
-              {/* Operador Card ou Status de Operadores */}
-              {operatorUsers.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('OPERADOR', operatorUsers[0].id)}
-                  disabled={isSubmitting || isLoading}
-                  className="w-full text-left p-2.5 rounded-xl bg-zinc-950/70 hover:bg-zinc-900 border border-emerald-500/40 hover:border-emerald-400 transition group cursor-pointer flex flex-col justify-between"
-                >
-                  <div className="flex items-start justify-between gap-1.5">
-                    <div className="flex items-center space-x-2">
-                      <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-zinc-950 transition shrink-0">
-                        <ClipboardCheck className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold text-zinc-100 truncate">
-                          {operatorUsers[0].name}
-                        </div>
-                        <div className="text-[10px] text-zinc-400 font-mono">
-                          RE {operatorUsers[0].re} • @{operatorUsers[0].username} • Senha: operador123
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
-                      OP 01
-                    </span>
-                  </div>
-                  <div className="mt-2 pt-1.5 border-t border-zinc-800/60 flex items-center justify-between text-[10px]">
-                    <span className="text-emerald-400 font-bold">Acesso Limitado (Cautelas & Avarias)</span>
-                    <span className="text-emerald-400 font-semibold group-hover:translate-x-0.5 transition flex items-center gap-0.5">
-                      Entrar &rarr;
-                    </span>
-                  </div>
-                </button>
-              ) : (
-                <div className="p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-850 text-xs flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <ClipboardCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+              {!hasAdmin && (
+                <div className="mt-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/40 space-y-3">
+                  <div className="flex items-start gap-2.5">
+                    <Shield className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
                     <div>
-                      <span className="text-zinc-300 font-semibold block text-[11px]">
-                        0 de 300 Operadores Cadastrados
-                      </span>
-                      <span className="text-zinc-500 text-[10px] block">
-                        Novos operadores podem ser cadastrados na aba "+ Cadastrar Novo Usuário"
-                      </span>
+                      <h3 className="text-sm font-bold text-amber-300">Primeiro acesso — Administrador</h3>
+                      <p className="text-[11px] text-zinc-300 mt-1">Nenhum Administrador foi cadastrado. Faça aqui o cadastro do primeiro administrador do ROCAM FROTA.</p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab('register');
-                      setRegRole('OPERADOR');
-                    }}
-                    className="text-[11px] text-emerald-400 hover:text-emerald-300 font-bold underline underline-offset-2 shrink-0 cursor-pointer"
-                  >
-                    + Cadastrar
-                  </button>
-                </div>
-              )}
-
-              {/* Se houver outros administradores cadastrados (até 20) */}
-              {adminUsers.length > 1 && (
-                <div className="p-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-amber-400 flex items-center gap-1.5">
-                      <Shield className="w-3.5 h-3.5" />
-                      <span>Demais Administradores ({adminUsers.length} de 20)</span>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowAllAdmins(!showAllAdmins)}
-                      className="text-[11px] text-zinc-400 hover:text-amber-400 transition cursor-pointer flex items-center gap-0.5"
-                    >
-                      <span>{showAllAdmins ? 'Recolher' : 'Ver todos'}</span>
-                      {showAllAdmins ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  <form onSubmit={async (ev) => {
+                    ev.preventDefault();
+                    setErrorMsg('');
+                    setSuccessMsg('');
+                    if (firstAdminPassword !== firstAdminConfirmPassword) {
+                      setErrorMsg('A confirmação da senha não confere.');
+                      return;
+                    }
+                    setIsSubmitting(true);
+                    try {
+                      const res = await registerFirstAdmin({ name: firstAdminName, email: firstAdminEmail, password: firstAdminPassword });
+                      if (!res.success) {
+                        setErrorMsg(res.error || 'Não foi possível cadastrar o primeiro administrador.');
+                      } else {
+                        setSuccessMsg(res.needsEmailConfirmation
+                          ? 'Administrador cadastrado. Confirme o e-mail recebido e depois entre no sistema.'
+                          : 'Administrador cadastrado com sucesso. Você já pode entrar no sistema.');
+                        setFirstAdminName('');
+                        setFirstAdminEmail('');
+                        setFirstAdminPassword('');
+                        setFirstAdminConfirmPassword('');
+                      }
+                    } catch {
+                      setErrorMsg('Erro inesperado ao cadastrar o primeiro administrador.');
+                    } finally {
+                      setIsSubmitting(false);
+                    }
+                  }} className="space-y-2.5">
+                    <input type="text" value={firstAdminName} onChange={(ev) => setFirstAdminName(ev.target.value)} placeholder="Nome do administrador" className="w-full px-3 py-2.5 bg-zinc-950 border border-zinc-750 rounded-xl text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500" required />
+                    <input type="email" value={firstAdminEmail} onChange={(ev) => setFirstAdminEmail(ev.target.value)} placeholder="E-mail do administrador" className="w-full px-3 py-2.5 bg-zinc-950 border border-zinc-750 rounded-xl text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500" required />
+                    <input type="password" value={firstAdminPassword} onChange={(ev) => setFirstAdminPassword(ev.target.value)} placeholder="Senha (mínimo 6 caracteres)" minLength={6} className="w-full px-3 py-2.5 bg-zinc-950 border border-zinc-750 rounded-xl text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500" required />
+                    <input type="password" value={firstAdminConfirmPassword} onChange={(ev) => setFirstAdminConfirmPassword(ev.target.value)} placeholder="Confirmar senha" minLength={6} className="w-full px-3 py-2.5 bg-zinc-950 border border-zinc-750 rounded-xl text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500" required />
+                    <button type="submit" disabled={isSubmitting || isLoading} className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs transition disabled:opacity-50">
+                      {isSubmitting ? 'Cadastrando...' : 'Cadastrar primeiro Administrador'}
                     </button>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                    {adminUsers
-                      .slice(1, showAllAdmins ? adminUsers.length : 5)
-                      .map((adm, idx) => {
-                        const num = idx + 2;
-                        const numStr = String(num).padStart(2, '0');
-                        return (
-                          <button
-                            key={adm.id}
-                            type="button"
-                            onClick={() => handleQuickLogin('ADMIN', adm.id)}
-                            disabled={isSubmitting || isLoading}
-                            className="px-2 py-1.5 rounded-lg bg-zinc-900 hover:bg-amber-500 hover:text-zinc-950 border border-amber-500/20 hover:border-amber-400 text-left transition group cursor-pointer flex items-center justify-between"
-                            title={`Entrar como ${adm.name} (@${adm.username})`}
-                          >
-                            <div className="min-w-0 pr-1">
-                              <span className="text-[10px] font-mono font-bold block text-amber-400 group-hover:text-zinc-950">
-                                ADM {numStr}
-                              </span>
-                              <span className="text-[9px] text-zinc-400 group-hover:text-zinc-900 truncate block">
-                                {adm.name.replace(/PM\s+/, '')}
-                              </span>
-                            </div>
-                            <ArrowRight className="w-2.5 h-2.5 opacity-40 group-hover:opacity-100 shrink-0" />
-                          </button>
-                        );
-                      })}
-                  </div>
+                  </form>
                 </div>
               )}
-
-              {/* Seletor Rápido: Se houver mais de 1 Operador */}
-              {operatorUsers.length > 1 && (
-                <div className="p-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-emerald-400 flex items-center gap-1.5">
-                      <ClipboardCheck className="w-3.5 h-3.5" />
-                      <span>Operadores Cadastrados ({operatorUsers.length} de 300)</span>
-                    </span>
-                  </div>
-
-                  {/* Input direto por número */}
-                  <div className="flex items-center gap-1.5">
-                    <div className="relative flex-1">
-                      <input
-                        type="number"
-                        min={1}
-                        max={300}
-                        value={opNumberInput}
-                        onChange={(e) => setOpNumberInput(e.target.value)}
-                        placeholder="Nº do Operador (1 a 300)..."
-                        className="w-full px-2.5 py-1.5 text-xs bg-zinc-900 border border-zinc-750 rounded-lg text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-emerald-500 font-mono"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleQuickOpSelect}
-                      disabled={isSubmitting || isLoading || !opNumberInput.trim()}
-                      className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-zinc-950 border border-emerald-500/40 text-xs font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                    >
-                      Acessar
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div className="text-center pt-1">
-                <span className="text-[10px] text-zinc-400">
-                  Senha padrão do 1º Administrador: <code className="text-amber-400 font-mono">admin123</code> | Operadores: <code className="text-emerald-400 font-mono">operador123</code>
-                </span>
-              </div>
-            </form>
-          )}
-
           {/* TAB 2: CADASTRAR NOVO USUÁRIO */}
           {activeTab === 'register' && (
             <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
@@ -820,194 +635,6 @@ export const LoginScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* MODAL: SELETOR DE CONTINGENTE (20 ADMINS & 300 OPERADORES) */}
-      {isContingentModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-zinc-900 border border-zinc-750 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] animate-in fade-in zoom-in-95 duration-150">
-            {/* Header */}
-            <div className="p-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-950/80">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                  <Users className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-                    <span>Contingente ROCAM Habilitado</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
-                      320 Militares
-                    </span>
-                  </h3>
-                  <p className="text-xs text-zinc-400">
-                    20 Administradores (Acesso Total) • 300 Operadores (Acesso Limitado)
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsContingentModalOpen(false)}
-                className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Tabs & Search */}
-            <div className="p-3 border-b border-zinc-800 bg-zinc-950/40 space-y-2.5">
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setContingentTab('ADMIN')}
-                  className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer ${
-                    contingentTab === 'ADMIN'
-                      ? 'bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/20'
-                      : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
-                  }`}
-                >
-                  <Shield className="w-3.5 h-3.5" />
-                  <span>20 Administradores (Total)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setContingentTab('OPERADOR')}
-                  className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer ${
-                    contingentTab === 'OPERADOR'
-                      ? 'bg-emerald-500 text-zinc-950 shadow-md shadow-emerald-500/20'
-                      : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
-                  }`}
-                >
-                  <ClipboardCheck className="w-3.5 h-3.5" />
-                  <span>300 Operadores (Limitado)</span>
-                </button>
-              </div>
-
-              {/* Search input */}
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-2.5 text-zinc-500" />
-                <input
-                  type="text"
-                  value={contingentSearch}
-                  onChange={(e) => setContingentSearch(e.target.value)}
-                  placeholder={
-                    contingentTab === 'ADMIN'
-                      ? 'Buscar nos 20 Administradores (nome, RE, @login)...'
-                      : 'Buscar nos 300 Operadores (nome, RE, @op)...'
-                  }
-                  className="w-full pl-9 pr-3 py-1.5 text-xs bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-amber-500"
-                />
-              </div>
-            </div>
-
-            {/* Users List */}
-            <div className="flex-1 overflow-y-auto p-3 divide-y divide-zinc-800/80">
-              {(() => {
-                const baseList =
-                  contingentTab === 'ADMIN'
-                    ? adminUsers.length > 0
-                      ? adminUsers
-                      : SEED_ADMINS
-                    : operatorUsers.length > 0
-                    ? operatorUsers
-                    : SEED_OPERATORS;
-
-                const list = baseList.filter((u) => {
-                  if (!contingentSearch.trim()) return true;
-                  const term = contingentSearch.toLowerCase().trim();
-                  return (
-                    u.name.toLowerCase().includes(term) ||
-                    u.username.toLowerCase().includes(term) ||
-                    u.re.toLowerCase().includes(term) ||
-                    u.pelotao.toLowerCase().includes(term)
-                  );
-                });
-
-                if (list.length === 0) {
-                  return (
-                    <div className="p-8 text-center text-xs text-zinc-500">
-                      Nenhum militar localizado na busca.
-                    </div>
-                  );
-                }
-
-                return list.map((user, idx) => (
-                  <div
-                    key={user.id}
-                    className="py-2.5 px-2 flex items-center justify-between hover:bg-zinc-950/60 rounded-xl transition"
-                  >
-                    <div className="flex items-center space-x-2.5 min-w-0 pr-2">
-                      <div
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
-                          user.role === 'ADMIN'
-                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                            : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                        }`}
-                      >
-                        {user.role === 'ADMIN' ? (
-                          <Shield className="w-3.5 h-3.5" />
-                        ) : (
-                          <ClipboardCheck className="w-3.5 h-3.5" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center space-x-1.5">
-                          <span className="text-xs font-bold text-zinc-100 truncate">
-                            {user.name}
-                          </span>
-                          <span
-                            className={`text-[9px] px-1 py-0.2 rounded font-mono font-bold shrink-0 ${
-                              user.role === 'ADMIN'
-                                ? 'bg-amber-500/20 text-amber-300'
-                                : 'bg-emerald-500/20 text-emerald-300'
-                            }`}
-                          >
-                            {user.role === 'ADMIN' ? `ADM ${(idx + 1).toString().padStart(2, '0')}` : `@${user.username}`}
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-zinc-400 flex flex-wrap items-center gap-x-1.5 font-mono">
-                          <span>RE: {user.re}</span>
-                          <span>•</span>
-                          <span className="text-zinc-500">{user.pelotao}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        setIsContingentModalOpen(false);
-                        await handleQuickLogin(user.role, user.id);
-                      }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer shrink-0 flex items-center space-x-1 ${
-                        user.role === 'ADMIN'
-                          ? 'bg-amber-500 hover:bg-amber-400 text-zinc-950'
-                          : 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950'
-                      }`}
-                    >
-                      <span>Entrar</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </button>
-                  </div>
-                ));
-              })()}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-3 border-t border-zinc-800 bg-zinc-950/80 flex items-center justify-between text-[11px] text-zinc-400">
-              <span>
-                Senha padrão:{' '}
-                <code className="text-amber-400 font-mono">admin123</code> (Admin) |{' '}
-                <code className="text-emerald-400 font-mono">operador123</code> (Operador)
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsContingentModalOpen(false)}
-                className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-xs transition cursor-pointer"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
