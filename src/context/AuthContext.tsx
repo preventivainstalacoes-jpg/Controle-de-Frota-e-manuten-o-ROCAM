@@ -81,111 +81,123 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Load users and check existing session on mount
+  // Authentication is backed by Supabase Auth so the same account works on every device.
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
 
-    async function initAuth() {
+    const loadProfile = async (authUserId: string): Promise<UserProfile | null> => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id,email,full_name,role,active,created_at')
+        .eq('id', authUserId)
+        .maybeSingle();
+      if (error) {
+        console.error('Erro ao carregar perfil Supabase:', error);
+        return null;
+      }
+      if (!data) return null;
+      const role = String(data.role).toUpperCase() === 'ADMIN' ? 'ADMIN' : 'OPERADOR';
+      return {
+        id: data.id,
+        username: data.email?.split('@')[0] || data.id.slice(0, 8),
+        email: data.email || undefined,
+        name: data.full_name || 'Usuário ROCAM',
+        re: '',
+        graduacao: '',
+        role,
+        pelotao: 'ROCAM',
+        passwordHash: '',
+        salt: '',
+        createdAt: data.created_at || new Date().toISOString(),
+        isActive: Boolean(data.active),
+        status: data.active ? 'ATIVO' : 'INATIVO',
+        lastLogin: new Date().toISOString(),
+      };
+    };
+
+    const init = async () => {
       try {
-        const loadedUsers = await loadUsersFromStorage();
-        if (isMounted) {
-          setUsers(loadedUsers);
-
-          const savedSession = getSavedSession();
-          if (savedSession) {
-            const foundUser = loadedUsers.find((u) => u.id === savedSession.userId);
-            if (foundUser && foundUser.isActive && foundUser.status === 'ATIVO') {
-              setCurrentUser(foundUser);
-            } else {
-              clearSavedSession();
-            }
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && mounted) {
+          const profile = await loadProfile(session.user.id);
+          if (profile?.isActive) {
+            setCurrentUser(profile);
+            setUsers((prev) => [profile, ...prev.filter((u) => u.id !== profile.id)]);
+          } else {
+            await supabase.auth.signOut();
           }
         }
-      } catch (err) {
-        console.error('Failed to init auth context', err);
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (mounted) setIsLoading(false);
       }
-    }
+    };
 
-    initAuth();
+    init();
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return;
+      if (!session?.user) {
+        setCurrentUser(null);
+        return;
+      }
+      const profile = await loadProfile(session.user.id);
+      if (profile?.isActive) {
+        setCurrentUser(profile);
+        setUsers((prev) => [profile, ...prev.filter((u) => u.id !== profile.id)]);
+      } else {
+        await supabase.auth.signOut();
+        setCurrentUser(null);
+      }
+    });
+
     return () => {
-      isMounted = false;
+      mounted = false;
+      listener.subscription.unsubscribe();
     };
   }, []);
 
   const login = async (identifier: string, pass: string): Promise<{ success: boolean; error?: string }> => {
-    // Check against current state, and fall back to fresh storage if not found (avoids closure staleness)
-    const currentList = users.length > 0 ? users : await loadUsersFromStorage();
-    let authResult = await authenticateCredentials(identifier, pass, currentList);
-    let effectiveUsers = currentList;
+    const clean = identifier.trim().toLowerCase();
+    if (!clean || !pass) return { success: false, error: 'Informe usuário/e-mail e senha.' };
 
-    if (!authResult.user) {
-      const freshUsers = await loadUsersFromStorage();
-      if (freshUsers.length > 0) {
-        const freshAuth = await authenticateCredentials(identifier, pass, freshUsers);
-        if (freshAuth.user) {
-          authResult = freshAuth;
-          effectiveUsers = freshUsers;
-        }
-      }
+    // Prefer e-mail. For legacy username/RE, resolve it through profiles when those columns exist.
+    let email = clean;
+    if (!clean.includes('@')) {
+      const { data } = await supabase.from('profiles').select('email').or('email.eq.' + clean).maybeSingle();
+      if (data?.email) email = data.email;
     }
 
-    if (!authResult.user) {
-      return { success: false, error: authResult.error || 'Credenciais inválidas' };
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    if (error || !data.user) return { success: false, error: error?.message || 'Credenciais inválidas.' };
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles').select('id,email,full_name,role,active,created_at').eq('id', data.user.id).single();
+    if (profileError || !profile) {
+      await supabase.auth.signOut();
+      return { success: false, error: 'Usuário autenticado, mas sem perfil no sistema.' };
+    }
+    if (!profile.active) {
+      await supabase.auth.signOut();
+      return { success: false, error: 'Seu acesso está inativo. Procure um administrador.' };
     }
 
-    const updatedUser = {
-      ...authResult.user,
-      lastLogin: new Date().toISOString(),
+    const user: UserProfile = {
+      id: profile.id, username: profile.email?.split('@')[0] || profile.id.slice(0,8), email: profile.email || undefined,
+      name: profile.full_name || 'Usuário ROCAM', re: '', graduacao: '',
+      role: String(profile.role).toUpperCase() === 'ADMIN' ? 'ADMIN' : 'OPERADOR', pelotao: 'ROCAM',
+      passwordHash: '', salt: '', createdAt: profile.created_at || new Date().toISOString(),
+      isActive: true, status: 'ATIVO', lastLogin: new Date().toISOString()
     };
-
-    const nextUsers = effectiveUsers.map((u: UserProfile) => (u.id === updatedUser.id ? updatedUser : u));
-    setUsers(nextUsers);
-    saveUsersToStorage(nextUsers);
-
-    const session = createSessionForUser(updatedUser);
-    saveSavedSession(session);
-    setCurrentUser(updatedUser);
-
+    setCurrentUser(user);
+    setUsers((prev) => [user, ...prev.filter((u) => u.id !== user.id)]);
     return { success: true };
   };
 
-  const quickLoginAs = async (role: 'ADMIN' | 'OPERADOR', specificUserId?: string): Promise<boolean> => {
-    const listToSearch = users.length > 0 ? users : await loadUsersFromStorage();
-    let candidate = specificUserId
-      ? listToSearch.find((u: UserProfile) => u.id === specificUserId && u.isActive && u.status === 'ATIVO')
-      : listToSearch.find((u: UserProfile) => u.role === role && u.isActive && u.status === 'ATIVO');
-
-    if (!candidate) {
-      const freshList = await loadUsersFromStorage();
-      candidate = specificUserId
-        ? freshList.find((u: UserProfile) => u.id === specificUserId && u.isActive && u.status === 'ATIVO')
-        : freshList.find((u: UserProfile) => u.role === role && u.isActive && u.status === 'ATIVO');
-    }
-
-    if (candidate) {
-      const updatedUser = {
-        ...candidate,
-        lastLogin: new Date().toISOString(),
-      };
-      const listToUpdate = users.length > 0 ? users : await loadUsersFromStorage();
-      const nextUsers = listToUpdate.map((u: UserProfile) => (u.id === updatedUser.id ? updatedUser : u));
-      setUsers(nextUsers);
-      saveUsersToStorage(nextUsers);
-
-      const session = createSessionForUser(updatedUser);
-      saveSavedSession(session);
-      setCurrentUser(updatedUser);
-      return true;
-    }
+  const quickLoginAs = async (_role: 'ADMIN' | 'OPERADOR', _specificUserId?: string): Promise<boolean> => {
     return false;
   };
 
   const logout = () => {
-    clearSavedSession();
+    void supabase.auth.signOut();
     setCurrentUser(null);
   };
 
