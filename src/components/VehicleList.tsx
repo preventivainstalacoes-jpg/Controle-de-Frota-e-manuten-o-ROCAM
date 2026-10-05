@@ -89,33 +89,25 @@ export const VehicleList: React.FC<VehicleListProps> = ({
   };
 
   const handleOpenStatusModal = (vehicle: Vehicle) => {
-    if (vehicle.status === 'OPERACIONAL') {
-      setStatusModal({
-        vehicle,
-        targetStatus: 'BAIXADA',
-        reason: '',
-      });
-    } else {
-      setStatusModal({
-        vehicle,
-        targetStatus: 'OPERACIONAL',
-        reason: '',
-      });
-    }
+    setStatusModal({
+      vehicle,
+      targetStatus: vehicle.status === 'OPERACIONAL' ? 'BAIXADA' : 'OPERACIONAL',
+      reason: vehicle.motivoBaixa || '',
+    });
   };
 
   const handleConfirmStatusChange = (e: React.FormEvent) => {
     e.preventDefault();
     if (!statusModal) return;
 
-    if (statusModal.targetStatus === 'BAIXADA') {
+    if (statusModal.targetStatus === 'BAIXADA' || statusModal.targetStatus === 'EM_MANUTENCAO') {
       updateVehicle(statusModal.vehicle.id, {
-        status: 'BAIXADA',
-        motivoBaixa: statusModal.reason.trim() || 'Viatura baixada por determinação operacional.',
+        status: statusModal.targetStatus,
+        motivoBaixa: statusModal.reason.trim() || (statusModal.targetStatus === 'BAIXADA' ? 'Constatada falha operacional / avaria.' : 'Encaminhada para oficina / manutenção.'),
       });
     } else {
       updateVehicle(statusModal.vehicle.id, {
-        status: 'OPERACIONAL',
+        status: statusModal.targetStatus,
         motivoBaixa: undefined,
       });
     }
@@ -893,10 +885,31 @@ export const VehicleList: React.FC<VehicleListProps> = ({
             </div>
 
             <form onSubmit={handleConfirmStatusChange} className="space-y-4">
-              {statusModal.targetStatus === 'BAIXADA' ? (
+              <div>
+                <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+                  Novo Status da Viatura *
+                </label>
+                <select
+                  value={statusModal.targetStatus}
+                  onChange={(e) =>
+                    setStatusModal({
+                      ...statusModal,
+                      targetStatus: e.target.value as VehicleStatus,
+                    })
+                  }
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-xs text-zinc-100 focus:outline-none focus:border-amber-500 font-semibold"
+                >
+                  <option value="OPERACIONAL">OPERACIONAL (Pronta para o serviço)</option>
+                  <option value="BAIXADA">BAIXADA (Com falha / avaria mecânica / fora de serviço)</option>
+                  <option value="EM_MANUTENCAO">EM MANUTENÇÃO (Em reparo / oficina)</option>
+                  <option value="RESERVA">RESERVA TÁTICA (Disponível no quartel)</option>
+                </select>
+              </div>
+
+              {(statusModal.targetStatus === 'BAIXADA' || statusModal.targetStatus === 'EM_MANUTENCAO') ? (
                 <div>
                   <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                    Motivo da Baixa Operacional *
+                    Motivo da Baixa / Falha Operacional
                   </label>
                   <textarea
                     rows={3}
@@ -904,18 +917,19 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                     onChange={(e) =>
                       setStatusModal({ ...statusModal, reason: e.target.value })
                     }
-                    placeholder="Ex: Embreagem patinando, pneu dianteiro gasto, sinistro de trânsito..."
+                    placeholder="Ex: Falha mecânica no motor, embreagem patinando, pneu furado, avaria..."
                     className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-rose-500"
-                    required
                   />
                   <p className="text-[11px] text-zinc-500 mt-1">
-                    A viatura constará como BAIXADA e não poderá ser cautelada até sua liberação.
+                    A viatura não poderá ser cautelada até que seu status seja alterado para Operacional ou Reserva.
                   </p>
                 </div>
               ) : (
-                <p className="text-xs text-zinc-300">
-                  Deseja restabelecer o status da viatura <span className="font-bold text-amber-400">{statusModal.vehicle.prefixo}</span> para <span className="font-bold text-emerald-400">OPERACIONAL</span>? Ela ficará disponível para cautela e patrulhamento.
-                </p>
+                <div className="p-3 bg-emerald-950/30 border border-emerald-800/50 rounded-xl">
+                  <p className="text-xs text-emerald-200">
+                    A viatura <strong className="text-white">{statusModal.vehicle.prefixo}</strong> ficará disponível para cautela e patrulhamento tático.
+                  </p>
+                </div>
               )}
 
               <div className="flex items-center justify-end space-x-2 pt-2 border-t border-zinc-800">
@@ -928,15 +942,9 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className={`px-4 py-1.5 text-xs font-bold rounded-lg shadow transition cursor-pointer ${
-                    statusModal.targetStatus === 'BAIXADA'
-                      ? 'bg-rose-600 hover:bg-rose-500 text-white'
-                      : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                  }`}
+                  className="px-4 py-1.5 text-xs font-bold rounded-lg shadow bg-amber-500 hover:bg-amber-400 text-zinc-950 transition cursor-pointer"
                 >
-                  {statusModal.targetStatus === 'BAIXADA'
-                    ? 'Confirmar Baixa'
-                    : 'Confirmar Liberação'}
+                  Salvar Alteração de Status
                 </button>
               </div>
             </form>

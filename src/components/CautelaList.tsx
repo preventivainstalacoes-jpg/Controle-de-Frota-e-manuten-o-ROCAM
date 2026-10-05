@@ -426,7 +426,7 @@ export const CautelaList: React.FC<CautelaListProps> = ({
                       ) : (
                         <span className="text-emerald-400 font-medium flex items-center gap-1">
                           <CheckCircle2 className="w-3 h-3" />
-                          100% Conforme na saída
+                          Sem avarias na saída
                         </span>
                       )}
                     </div>

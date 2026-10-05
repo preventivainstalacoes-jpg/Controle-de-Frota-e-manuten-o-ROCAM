@@ -18,13 +18,14 @@ import {
   EyeOff,
   CheckSquare,
   Square,
-  Mail
+  Mail,
+  Clock
 } from 'lucide-react';
 
 interface UserManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialTab?: 'list' | 'create';
+  initialTab?: 'list' | 'pending' | 'create';
 }
 
 const MILITARY_RANKS = [
@@ -53,11 +54,14 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     createUser,
     deleteUser,
     deleteMultipleUsers,
-    changePassword,
     toggleUserActive,
+    approveUser,
+    rejectUser,
+    pendingUsers,
+    pendingApprovalsCount,
   } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'list' | 'create'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'list' | 'pending' | 'create'>(initialTab);
 
   useEffect(() => {
     if (isOpen && initialTab) {
@@ -84,9 +88,10 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const [formRole, setFormRole] = useState<UserRole>('OPERADOR');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Password reset dialog state
-  const [userForPassChange, setUserForPassChange] = useState<UserProfile | null>(null);
-  const [newPassword, setNewPassword] = useState('');
+  // Pending user approval & rejection state
+  const [userToReject, setUserToReject] = useState<UserProfile | null>(null);
+  const [rejectMotivo, setRejectMotivo] = useState('');
+  const [approvalRoleMap, setApprovalRoleMap] = useState<Record<string, UserRole>>({});
 
   // Delete User Confirmation Modal state (requires Admin Password)
   const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
@@ -96,7 +101,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Filters & Pagination state
-  const [roleFilter, setRoleFilter] = useState<'ALL' | 'ADMIN' | 'OPERADOR' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [roleFilter, setRoleFilter] = useState<'ALL' | 'ADMIN' | 'OPERADOR' | 'PENDING' | 'ACTIVE' | 'INACTIVE'>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
 
   if (!isOpen) return null;
@@ -259,32 +264,43 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     }
   };
 
-  const handleChangePassSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userForPassChange) return;
-    if (newPassword.trim().length < 4) {
-      showToast('A senha deve possuir pelo menos 4 caracteres.', 'error');
-      return;
-    }
-
-    const res = await changePassword(userForPassChange.id, newPassword);
+  const handleApprove = async (userId: string, overrideRole?: UserRole) => {
+    const roleToGrant = overrideRole || approvalRoleMap[userId] || 'OPERADOR';
+    setIsSubmitting(true);
+    const res = await approveUser(userId, roleToGrant);
+    setIsSubmitting(false);
     if (res.success) {
-      showToast(`Senha de ${userForPassChange.username} alterada com sucesso!`, 'success');
-      setUserForPassChange(null);
-      setNewPassword('');
+      showToast(`Cadastro confirmado e concluído com sucesso! Perfil: ${roleToGrant === 'ADMIN' ? 'Administrador' : 'Operador'}.`, 'success');
     } else {
-      showToast(res.error || 'Falha ao alterar senha.', 'error');
+      showToast(res.error || 'Erro ao aprovar policial.', 'error');
+    }
+  };
+
+  const handleConfirmReject = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!userToReject) return;
+    setIsSubmitting(true);
+    const res = await rejectUser(userToReject.id, rejectMotivo.trim() || undefined);
+    setIsSubmitting(false);
+    if (res.success) {
+      showToast(`Solicitação de cadastro de ${userToReject.name} recusada.`, 'success');
+      setUserToReject(null);
+      setRejectMotivo('');
+    } else {
+      showToast(res.error || 'Erro ao rejeitar cadastro.', 'error');
     }
   };
 
   const adminCount = users.filter((u) => u.role === 'ADMIN').length;
   const operatorCount = users.filter((u) => u.role === 'OPERADOR').length;
+  const pendingCount = users.filter((u) => u.status === 'PENDENTE').length;
   const activeCount = users.filter((u) => u.isActive && u.status === 'ATIVO').length;
   const inactiveCount = users.filter((u) => !u.isActive || u.status === 'INATIVO').length;
 
   const filteredUsers = users.filter((u) => {
     if (roleFilter === 'ADMIN' && u.role !== 'ADMIN') return false;
     if (roleFilter === 'OPERADOR' && u.role !== 'OPERADOR') return false;
+    if (roleFilter === 'PENDING' && u.status !== 'PENDENTE') return false;
     if (roleFilter === 'ACTIVE' && (!u.isActive || u.status !== 'ATIVO')) return false;
     if (roleFilter === 'INACTIVE' && (u.isActive && u.status === 'ATIVO')) return false;
 
@@ -373,7 +389,25 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
             <span>Policiais Cadastrados ({users.length})</span>
           </button>
 
-          {/* Tab 2: Novo Usuário */}
+          {/* Tab 2: Solicitações Pendentes de Aprovação */}
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`px-4 py-2.5 text-xs font-bold border-b-2 transition flex items-center space-x-2 cursor-pointer whitespace-nowrap ${
+              activeTab === 'pending'
+                ? 'border-amber-400 text-amber-400'
+                : 'border-transparent text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            <span>Pendentes de Aprovação</span>
+            {pendingApprovalsCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-zinc-950 animate-pulse">
+                {pendingApprovalsCount}
+              </span>
+            )}
+          </button>
+
+          {/* Tab 3: Novo Usuário */}
           <button
             onClick={() => setActiveTab('create')}
             className={`px-4 py-2.5 text-xs font-bold border-b-2 transition flex items-center space-x-2 cursor-pointer whitespace-nowrap ${
@@ -454,6 +488,22 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                 >
                   <ClipboardCheck className="w-3.5 h-3.5" />
                   <span>🛡️ Operadores ({operatorCount})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRoleFilter('PENDING');
+                    setCurrentPage(1);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center space-x-1.5 ${
+                    roleFilter === 'PENDING'
+                      ? 'bg-amber-400 text-zinc-950 font-bold'
+                      : 'bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25'
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Pendentes ({pendingCount})</span>
                 </button>
 
                 <button
@@ -678,7 +728,18 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                                   Você
                                 </span>
                               )}
-                              {!u.isActive && (
+                              {u.status === 'PENDENTE' && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/25 text-amber-300 border border-amber-500/40 font-bold animate-pulse flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  Pendente
+                                </span>
+                              )}
+                              {u.status === 'ATIVO' && !isSelf && (
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold">
+                                  Ativo
+                                </span>
+                              )}
+                              {!u.isActive && u.status !== 'PENDENTE' && u.status !== 'REJEITADO' && (
                                 <span className="text-[10px] px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-semibold">
                                   Inativo
                                 </span>
@@ -708,30 +769,30 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                           </div>
                         </div>
 
-                        {/* Badges & Actions */}
-                        <div className="flex items-center space-x-2 self-end sm:self-auto">
-                          <span
-                            className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
-                              u.role === 'ADMIN'
-                                ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
-                                : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                            }`}
-                          >
-                            {u.role === 'ADMIN' ? '👑 ADMIN' : '🛡️ OPERADOR'}
-                          </span>
+                          {/* Badges & Actions */}
+                          <div className="flex items-center space-x-2 self-end sm:self-auto">
+                            {u.status === 'PENDENTE' && (
+                              <button
+                                type="button"
+                                onClick={() => handleApprove(u.id, u.role)}
+                                disabled={isSubmitting}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-sm"
+                                title="Aprovar e liberar acesso agora"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Aprovar</span>
+                              </button>
+                            )}
 
-                          {/* Change Password Button */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setUserForPassChange(u);
-                              setNewPassword('');
-                            }}
-                            className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-amber-400 transition cursor-pointer"
-                            title="Alterar senha deste militar"
-                          >
-                            <KeyRound className="w-3.5 h-3.5" />
-                          </button>
+                            <span
+                              className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                                u.role === 'ADMIN'
+                                  ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                                  : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                              }`}
+                            >
+                              {u.role === 'ADMIN' ? '👑 ADMIN' : '🛡️ OPERADOR'}
+                            </span>
 
                           {/* Toggle Active Status */}
                           <button
@@ -813,6 +874,130 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                       Última &raquo;
                     </button>
                   </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: SOLICITAÇÕES PENDENTES DE APROVAÇÃO */}
+          {activeTab === 'pending' && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
+                <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div className="text-xs">
+                  <div className="font-bold text-amber-300 uppercase tracking-wide">
+                    Homologação de Novos Cadastros ROCAM
+                  </div>
+                  <div className="text-zinc-300 mt-0.5">
+                    O cadastro de um novo usuário é concluído após confirmação de um Administrador.
+                    Revise os dados funcionais, selecione o perfil de acesso e clique em "Confirmar Cadastro" para ativar o policial no sistema.
+                  </div>
+                </div>
+              </div>
+
+              {pendingUsers.length === 0 ? (
+                <div className="p-12 text-center rounded-2xl border border-zinc-800 bg-zinc-950/40 space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-emerald-500/15 text-emerald-400 mx-auto flex items-center justify-center">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <div className="text-sm font-bold text-white">Nenhuma Solicitação Pendente</div>
+                  <p className="text-xs text-zinc-400 max-w-md mx-auto">
+                    Todos os cadastros recebidos já foram avaliados e homologados. Novos policiais que se cadastrarem na tela de login aparecerão automaticamente aqui para sua aprovação.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {pendingUsers.map((u) => {
+                    const selectedRole = approvalRoleMap[u.id] || u.role || 'OPERADOR';
+                    return (
+                      <div
+                        key={u.id}
+                        className="p-4 rounded-xl border border-amber-500/30 bg-zinc-950/80 hover:border-amber-400/60 transition flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg shadow-black/40"
+                      >
+                        <div className="flex items-start space-x-3.5">
+                          <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold text-sm shrink-0">
+                            <Clock className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm font-bold text-white">{u.name}</span>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold uppercase">
+                                Pendente
+                              </span>
+                            </div>
+                            <div className="text-xs text-zinc-300 flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1 font-mono">
+                              <span className="text-zinc-400">Usuário: <strong className="text-zinc-200">@{u.username}</strong></span>
+                              <span>•</span>
+                              <span className="text-zinc-400">RE: <strong className="text-zinc-200">{u.re}</strong></span>
+                              <span>•</span>
+                              <span className="text-zinc-400">Pelotão: <strong className="text-zinc-200">{u.pelotao}</strong></span>
+                              {u.email && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-amber-400 flex items-center gap-1">
+                                    <Mail className="w-3 h-3" />
+                                    {u.email}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            {u.solicitadoEm && (
+                              <div className="text-[11px] text-zinc-500 mt-1 flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-zinc-500" />
+                                <span>Solicitado em: {new Date(u.solicitadoEm).toLocaleString('pt-BR')}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Ações de Aprovação / Rejeição */}
+                        <div className="flex items-center space-x-2.5 self-end md:self-center shrink-0">
+                          {/* Seletor de Perfil */}
+                          <div className="flex items-center space-x-1.5 bg-zinc-900 border border-zinc-750 px-2 py-1.5 rounded-lg text-xs">
+                            <span className="text-zinc-400 text-[11px]">Perfil:</span>
+                            <select
+                              value={selectedRole}
+                              onChange={(e) =>
+                                setApprovalRoleMap((prev) => ({
+                                  ...prev,
+                                  [u.id]: e.target.value as UserRole,
+                                }))
+                              }
+                              className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer text-xs"
+                            >
+                              <option value="OPERADOR" className="bg-zinc-900 text-white">Operador (Padrão)</option>
+                              <option value="ADMIN" className="bg-zinc-900 text-amber-400">Administrador</option>
+                            </select>
+                          </div>
+
+                          {/* Botão Aprovar */}
+                          <button
+                            type="button"
+                            onClick={() => handleApprove(u.id, selectedRole)}
+                            disabled={isSubmitting}
+                            className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow-md shadow-emerald-900/30 cursor-pointer disabled:opacity-50"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>Confirmar Cadastro</span>
+                          </button>
+
+                          {/* Botão Rejeitar */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUserToReject(u);
+                              setRejectMotivo('');
+                            }}
+                            disabled={isSubmitting}
+                            className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-rose-950/60 border border-zinc-700 hover:border-rose-700 text-zinc-300 hover:text-rose-300 text-xs font-semibold transition flex items-center space-x-1 cursor-pointer disabled:opacity-50"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Rejeitar</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1147,53 +1332,54 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
           </div>
         )}
 
-        {/* Change Password Sub-Modal */}
-        {userForPassChange && (
-          <div className="fixed inset-0 z-60 bg-black/70 flex items-center justify-center p-4">
-            <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-5 max-w-sm w-full space-y-4 shadow-2xl">
-              <div className="flex items-center justify-between border-b border-zinc-800 pb-2.5">
-                <div className="flex items-center space-x-2 text-amber-400 font-bold text-sm">
-                  <KeyRound className="w-4 h-4" />
-                  <span>Redefinir Senha</span>
+        {/* Modal de Rejeição de Solicitação de Acesso */}
+        {userToReject && (
+          <div className="fixed inset-0 z-60 bg-black/80 flex items-center justify-center p-4">
+            <div className="bg-zinc-900 border border-rose-800 rounded-2xl p-5 max-w-md w-full space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-100">
+              <div className="flex items-center space-x-3 text-rose-400">
+                <div className="p-2 rounded-xl bg-rose-950 border border-rose-800">
+                  <AlertTriangle className="w-5 h-5 text-rose-400" />
                 </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Rejeitar Solicitação de Cadastro</h3>
+                  <p className="text-xs text-zinc-400">Comando & Logística ROCAM</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-zinc-300">
+                Deseja recusar a solicitação de acesso de <strong className="text-white">{userToReject.name}</strong> (RE: {userToReject.re})?
+              </p>
+
+              <div>
+                <label className="text-xs font-semibold text-zinc-400 block mb-1">
+                  Motivo da Recusa (opcional):
+                </label>
+                <input
+                  type="text"
+                  value={rejectMotivo}
+                  onChange={(e) => setRejectMotivo(e.target.value)}
+                  placeholder="Ex: Policial não localizado no efetivo..."
+                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-100 focus:outline-none focus:border-rose-500"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2 border-t border-zinc-800">
                 <button
-                  onClick={() => setUserForPassChange(null)}
-                  className="text-zinc-400 hover:text-zinc-200 cursor-pointer"
+                  type="button"
+                  onClick={() => setUserToReject(null)}
+                  className="px-3.5 py-1.5 rounded-lg bg-zinc-800 text-zinc-300 hover:bg-zinc-700 text-xs font-semibold cursor-pointer"
                 >
-                  <X className="w-4 h-4" />
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmReject}
+                  disabled={isSubmitting}
+                  className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Processando...' : 'Confirmar Recusa'}
                 </button>
               </div>
-              <p className="text-xs text-zinc-300">
-                Digite a nova senha para o policial{' '}
-                <strong className="text-white">{userForPassChange.name}</strong> (@
-                {userForPassChange.username}):
-              </p>
-              <form onSubmit={handleChangePassSubmit} className="space-y-3">
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Nova senha (mínimo 4 caracteres)..."
-                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-750 rounded-lg text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
-                  autoFocus
-                  required
-                />
-                <div className="flex justify-end space-x-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setUserForPassChange(null)}
-                    className="px-3 py-1.5 text-xs text-zinc-400 hover:bg-zinc-800 rounded-lg cursor-pointer"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-1.5 text-xs font-bold rounded-lg bg-amber-500 text-zinc-950 hover:bg-amber-400 cursor-pointer"
-                  >
-                    Atualizar Senha
-                  </button>
-                </div>
-              </form>
             </div>
           </div>
         )}

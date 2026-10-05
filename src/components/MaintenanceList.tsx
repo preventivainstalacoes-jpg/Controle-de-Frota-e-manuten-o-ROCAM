@@ -75,9 +75,16 @@ export const MaintenanceList: React.FC<MaintenanceListProps> = ({
     (r) => r.status === 'EM_EXECUCAO' || r.status === 'AGUARDANDO_PECAS'
   ).length;
 
+  const [osToDelete, setOsToDelete] = useState<{ id: string; numeroOS: string } | null>(null);
+
   const handleDelete = (id: string, numeroOS: string) => {
-    if (window.confirm(`Confirma a exclusão da ordem de serviço ${numeroOS}?`)) {
-      deleteMaintenanceRecord(id);
+    setOsToDelete({ id, numeroOS });
+  };
+
+  const confirmDelete = () => {
+    if (osToDelete) {
+      deleteMaintenanceRecord(osToDelete.id);
+      setOsToDelete(null);
     }
   };
 
@@ -580,6 +587,39 @@ export const MaintenanceList: React.FC<MaintenanceListProps> = ({
                 className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-bold transition"
               >
                 Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Exclusão de O.S. Modal */}
+      {osToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center space-x-3 text-rose-400">
+              <div className="p-2 bg-rose-500/10 border border-rose-500/30 rounded-xl">
+                <Trash2 className="w-5 h-5 text-rose-400" />
+              </div>
+              <h3 className="font-bold text-sm text-zinc-100">Excluir Ordem de Serviço</h3>
+            </div>
+            <p className="text-xs text-zinc-400">
+              Confirma a exclusão definitiva da ordem de serviço <strong className="text-zinc-200">{osToDelete.numeroOS}</strong>? Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex items-center justify-end space-x-2 pt-2 border-t border-zinc-800">
+              <button
+                type="button"
+                onClick={() => setOsToDelete(null)}
+                className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs transition cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition cursor-pointer shadow-md shadow-rose-600/30"
+              >
+                Confirmar Exclusão
               </button>
             </div>
           </div>

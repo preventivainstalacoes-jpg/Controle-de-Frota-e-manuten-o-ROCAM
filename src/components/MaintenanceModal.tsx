@@ -60,6 +60,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   const [policialSolicitante, setPolicialSolicitante] = useState('');
   const [matriculaRE, setMatriculaRE] = useState('');
   const [urgencia, setUrgencia] = useState<'BAIXA' | 'MEDIA' | 'ALTA' | 'EMERGENCIAL'>('MEDIA');
+  const [formError, setFormError] = useState('');
 
   // Input states for adding new part
   const [partNome, setPartNome] = useState('');
@@ -151,12 +152,13 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError('');
     if (!viaturaId || !selectedVehicle) {
-      alert('Selecione uma viatura para a Ordem de Serviço.');
+      setFormError('Selecione uma viatura para a Ordem de Serviço.');
       return;
     }
     if (!descricaoProblema.trim()) {
-      alert('Informe a descrição do problema ou serviço a ser executado.');
+      setFormError('Informe a descrição do problema ou serviço a ser executado.');
       return;
     }
 
@@ -215,6 +217,13 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[82vh] overflow-y-auto">
+          {formError && (
+            <div className="p-3.5 rounded-xl bg-rose-950/80 border border-rose-700 text-rose-200 text-xs flex items-center space-x-2">
+              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>{formError}</span>
+            </div>
+          )}
+
           {/* Tipo de Manutenção (Preventiva vs Corretiva) */}
           <div className="grid grid-cols-2 gap-3">
             <button

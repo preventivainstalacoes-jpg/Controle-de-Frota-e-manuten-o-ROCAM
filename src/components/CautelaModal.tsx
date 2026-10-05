@@ -87,9 +87,13 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
         : false;
 
       if (currentUser) {
-        setCondutorGraduacao(currentUser.graduacao || 'CB PM');
-        setCondutorNome(currentUser.name.replace(currentUser.graduacao, '').trim());
-        setCondutorRE(currentUser.re);
+        const grad = currentUser.graduacao || 'CB PM';
+        setCondutorGraduacao(grad);
+        const cleanName = currentUser.name.startsWith(grad)
+          ? currentUser.name.slice(grad.length).trim()
+          : currentUser.name.trim();
+        setCondutorNome(cleanName);
+        setCondutorRE(currentUser.re || '');
       }
 
       if (initialVehicleId && !isInitialVehicleOut) {
@@ -527,15 +531,10 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 font-mono">
                   {checklist.length} itens
                 </span>
-                {nonConformeCount > 0 ? (
+                {nonConformeCount > 0 && (
                   <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1 font-medium">
                     <AlertTriangle className="w-3 h-3 text-rose-400" />
                     {nonConformeCount} Não Conforme{nonConformeCount > 1 ? 's' : ''}
-                  </span>
-                ) : (
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 font-semibold">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                    100% Conforme
                   </span>
                 )}
               </div>

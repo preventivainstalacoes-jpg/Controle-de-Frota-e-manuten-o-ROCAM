@@ -263,7 +263,14 @@ export async function authenticateCredentials(
 
     if (uName === cleanId) return true;
     if (uEmail && uEmail === cleanId) return true;
-    if (cleanDigits && cleanDigits.length >= 4 && uReDigits === cleanDigits) return true;
+    if (
+      cleanDigits &&
+      cleanDigits.length >= 4 &&
+      (uReDigits === cleanDigits ||
+        uReDigits.replace(/^0+/, '') === cleanDigits.replace(/^0+/, ''))
+    ) {
+      return true;
+    }
 
     // Aliases for 20 Admins (e.g. admin, admin1..admin20, admin01..admin20, adm1..adm20)
     const adminMatch = cleanId.match(/^(?:admin|adm)(\d{1,2})$/);
@@ -299,6 +306,20 @@ export async function authenticateCredentials(
 
   if (!user) {
     return { user: null, error: 'Credenciais inválidas. Usuário ou RE não localizado.' };
+  }
+
+  if (user.status === 'PENDENTE') {
+    return {
+      user: null,
+      error: 'O cadastro de um novo usuário é concluído após confirmação de um Administrador. Sua solicitação foi recebida e está aguardando homologação pelo comando da ROCAM.',
+    };
+  }
+
+  if (user.status === 'REJEITADO') {
+    return {
+      user: null,
+      error: `Cadastro não aprovado pelo Administrador${user.motivoRejeicao ? `: ${user.motivoRejeicao}` : '.'}`,
+    };
   }
 
   if (!user.isActive || user.status === 'INATIVO') {

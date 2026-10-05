@@ -964,16 +964,15 @@ export const TeamHub: React.FC = () => {
                   <span>Copiar Texto</span>
                 </button>
 
-                <button
-                  onClick={() => {
-                    const encoded = encodeURIComponent(shareTextPreview);
-                    window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
-                  }}
+                <a
+                  href={`https://api.whatsapp.com/send?text=${encodeURIComponent(shareTextPreview)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer shadow-lg shadow-emerald-600/20"
                 >
                   <Share2 className="w-4 h-4" />
                   <span>Abrir no WhatsApp</span>
-                </button>
+                </a>
               </div>
             </div>
           </div>

@@ -3,7 +3,6 @@ import { useFleet } from '../context/FleetContext';
 import { useAuth } from '../context/AuthContext';
 import { useTeam } from '../context/TeamContext';
 import { UserManagementModal } from './UserManagementModal';
-import { ChangePasswordModal } from './ChangePasswordModal';
 import { UserProfileModal } from './UserProfileModal';
 import {
   Shield,
@@ -63,14 +62,13 @@ export const Header: React.FC<HeaderProps> = ({
     setBackupNotification,
   } = useFleet();
 
-  const { currentUser, isAdmin, isOperator, logout, users } = useAuth();
+  const { currentUser, isAdmin, isOperator, logout, users, pendingApprovalsCount } = useAuth();
   const { unreadNoticesCount, isOnlineSync } = useTeam();
 
   const [showConfigMenu, setShowConfigMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
-  const [userModalInitialTab, setUserModalInitialTab] = useState<'list' | 'create'>('create');
-  const [isChangePassOpen, setIsChangePassOpen] = useState(false);
+  const [userModalInitialTab, setUserModalInitialTab] = useState<'list' | 'pending' | 'create'>('list');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -174,9 +172,12 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="text-zinc-400 text-xs font-mono hidden sm:inline">
                   {isOperator ? 'Módulo Operador • Cautelas & Avarias' : 'Comando & Logística ROCAM'}
                 </span>
+                <span className="hidden md:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-zinc-900 text-amber-400 border border-zinc-800">
+                  rocammecanizacao.com.br
+                </span>
               </div>
               <h1 className="text-lg sm:text-xl font-extrabold text-zinc-100 tracking-tight flex items-center gap-2">
-                ROCAM <span className="text-amber-400 font-semibold text-base sm:text-lg">— Controle de Frota</span>
+                ROCAM <span className="text-amber-400 font-semibold text-base sm:text-lg">Mecanização</span>
               </h1>
             </div>
           </div>
@@ -291,17 +292,31 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   id="btn-header-gestao-usuarios"
                   onClick={() => {
-                    setUserModalInitialTab('list');
+                    setUserModalInitialTab(pendingApprovalsCount > 0 ? 'pending' : 'list');
                     setIsUserModalOpen(true);
                   }}
-                  className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-750 text-amber-300 border border-amber-500/30 hover:border-amber-400 shadow-sm transition active:scale-95 cursor-pointer"
-                  title="Gestão de Usuários: Acessar todos os usuários cadastrados e excluir"
+                  className={`flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg border shadow-sm transition active:scale-95 cursor-pointer ${
+                    pendingApprovalsCount > 0
+                      ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/60 ring-1 ring-amber-500/30'
+                      : 'bg-zinc-800 hover:bg-zinc-750 text-amber-300 border-amber-500/30 hover:border-amber-400'
+                  }`}
+                  title={
+                    pendingApprovalsCount > 0
+                      ? `Existem ${pendingApprovalsCount} solicitações de cadastro pendentes de aprovação!`
+                      : 'Gestão de Usuários: Acessar todos os usuários cadastrados'
+                  }
                 >
                   <Users className="w-3.5 h-3.5 text-amber-400" />
                   <span>Usuários</span>
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                    {users.length}
-                  </span>
+                  {pendingApprovalsCount > 0 ? (
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500 text-zinc-950 animate-pulse">
+                      {pendingApprovalsCount} pend.
+                    </span>
+                  ) : (
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                      {users.length}
+                    </span>
+                  )}
                 </button>
 
                 {/* Banco de Dados Central Button */}
@@ -474,6 +489,23 @@ export const Header: React.FC<HeaderProps> = ({
                     {/* User Management (Admin only) */}
                     {isAdmin && (
                       <>
+                        {pendingApprovalsCount > 0 && (
+                          <button
+                            onClick={() => {
+                              setUserModalInitialTab('pending');
+                              setIsUserModalOpen(true);
+                            }}
+                            className="w-full text-left flex items-center justify-between px-3 py-2 text-xs text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 rounded-lg transition font-medium cursor-pointer"
+                          >
+                            <div className="flex items-center space-x-2.5">
+                              <Clock className="w-4 h-4 text-amber-400" />
+                              <span>Pendentes de Aprovação</span>
+                            </div>
+                            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-zinc-950">
+                              {pendingApprovalsCount}
+                            </span>
+                          </button>
+                        )}
                         <button
                           onClick={() => {
                             setUserModalInitialTab('create');
@@ -496,15 +528,6 @@ export const Header: React.FC<HeaderProps> = ({
                         </button>
                       </>
                     )}
-
-                    {/* Change Password */}
-                    <button
-                      onClick={() => setIsChangePassOpen(true)}
-                      className="w-full text-left flex items-center space-x-2.5 px-3 py-2 text-xs text-zinc-200 hover:bg-zinc-800 rounded-lg transition cursor-pointer"
-                    >
-                      <KeyRound className="w-4 h-4 text-zinc-400" />
-                      <span>Alterar Minha Senha</span>
-                    </button>
 
                     <div className="my-1 border-t border-zinc-800" />
 
@@ -612,11 +635,7 @@ export const Header: React.FC<HeaderProps> = ({
       <UserProfileModal
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
-        onOpenChangePassword={() => setIsChangePassOpen(true)}
       />
-
-      {/* Change Password Modal */}
-      <ChangePasswordModal isOpen={isChangePassOpen} onClose={() => setIsChangePassOpen(false)} />
     </header>
   );
 };

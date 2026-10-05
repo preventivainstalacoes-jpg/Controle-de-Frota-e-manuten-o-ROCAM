@@ -39,11 +39,15 @@ export const DailyReport: React.FC<DailyReportProps> = ({
   );
   const [showPrintModal, setShowPrintModal] = useState(false);
 
-  // Navigate date
+  // Navigate date safely without timezone offset drift
   const changeDateBy = (days: number) => {
-    const current = new Date(selectedDate);
-    current.setDate(current.getDate() + days);
-    setSelectedDate(current.toISOString().split('T')[0]);
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    date.setDate(date.getDate() + days);
+    const ny = date.getFullYear();
+    const nm = String(date.getMonth() + 1).padStart(2, '0');
+    const nd = String(date.getDate()).padStart(2, '0');
+    setSelectedDate(`${ny}-${nm}-${nd}`);
   };
 
   // Vehicles out of service

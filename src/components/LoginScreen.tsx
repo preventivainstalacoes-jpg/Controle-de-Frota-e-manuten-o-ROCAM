@@ -161,15 +161,19 @@ export const LoginScreen: React.FC = () => {
         return;
       }
 
-      setSuccessMsg('Usuário cadastrado com sucesso! Entrando no sistema...');
-
-      // Auto-login immediately
-      const loginRes = await login(regUsername.trim(), regPassword.trim());
-      if (!loginRes.success) {
-        setActiveTab('login');
-        setIdentifier(regUsername.trim());
-        setSuccessMsg('Cadastro realizado com sucesso! Digite sua senha para entrar.');
-      }
+      // Registration is pending admin approval
+      setSuccessMsg(
+        'Solicitação de cadastro enviada com sucesso! O cadastro de um novo usuário é concluído após confirmação de um Administrador. Assim que o comando homologar seu acesso, você poderá entrar no sistema.'
+      );
+      setActiveTab('login');
+      setIdentifier(regUsername.trim());
+      setPassword('');
+      setRegName('');
+      setRegRE('');
+      setRegEmail('');
+      setRegUsername('');
+      setRegPassword('');
+      setRegConfirmPassword('');
     } catch {
       setErrorMsg('Erro inesperado ao realizar cadastro.');
     } finally {
@@ -209,12 +213,14 @@ export const LoginScreen: React.FC = () => {
               <span>Polícia Militar</span>
               <span>•</span>
               <span>ROCAM</span>
+              <span>•</span>
+              <span className="font-mono text-zinc-300">rocammecanizacao.com.br</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              Controle de Frota & Logística
+              ROCAM Mecanização
             </h1>
             <p className="text-xs sm:text-sm text-zinc-400 font-medium mt-1">
-              Sistema Tático de Gestão, Cautelas e Manutenção
+              Controle Tático de Frota, Cautelas e Manutenção
             </p>
           </div>
         </div>
@@ -253,7 +259,7 @@ export const LoginScreen: React.FC = () => {
               }`}
             >
               <UserPlus className="w-3.5 h-3.5" />
-              <span>Novo Usuário</span>
+              <span>Solicitar Cadastro</span>
             </button>
           </div>
 
@@ -299,17 +305,21 @@ export const LoginScreen: React.FC = () => {
 
               {/* Senha */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-zinc-300 flex items-center justify-between">
-                  <span>Senha de Acesso</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="text-[11px] text-zinc-400 hover:text-amber-400 transition cursor-pointer flex items-center gap-1"
-                  >
-                    {showPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                    <span>{showPassword ? 'Ocultar' : 'Exibir'}</span>
-                  </button>
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-zinc-300">
+                    Senha de Acesso
+                  </label>
+                  <div className="flex items-center space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-[11px] text-zinc-400 hover:text-amber-400 transition cursor-pointer flex items-center gap-1"
+                    >
+                      {showPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      <span>{showPassword ? 'Ocultar' : 'Exibir'}</span>
+                    </button>
+                  </div>
+                </div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
                     <KeyRound className="w-4 h-4" />
@@ -562,6 +572,17 @@ export const LoginScreen: React.FC = () => {
           {/* TAB 2: CADASTRAR NOVO USUÁRIO */}
           {activeTab === 'register' && (
             <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
+              {/* Alerta Institucional: Confirmação de Admin Necessária */}
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-start space-x-2.5">
+                <Shield className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <span className="font-bold text-white block">Confirmação de Admin Obrigatória</span>
+                  <p className="text-zinc-300 text-[11px] leading-relaxed">
+                    O cadastro de um novo usuário é concluído após confirmação de um Administrador da ROCAM. Seus dados serão enviados para análise do comando para homologação e liberação do acesso.
+                  </p>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 {/* Posto / Graduação */}
                 <div>
@@ -765,10 +786,10 @@ export const LoginScreen: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-zinc-950 font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 active:scale-[0.99] transition flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 mt-2"
+                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-bold text-xs sm:text-sm shadow-lg shadow-amber-500/20 active:scale-[0.99] transition flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 mt-2"
               >
                 <UserPlus className="w-4 h-4" />
-                <span>{isSubmitting ? 'Cadastrando...' : 'Cadastrar e Acessar Sistema'}</span>
+                <span>{isSubmitting ? 'Enviando solicitação...' : 'Enviar Solicitação de Cadastro'}</span>
               </button>
 
               <div className="text-center pt-1">

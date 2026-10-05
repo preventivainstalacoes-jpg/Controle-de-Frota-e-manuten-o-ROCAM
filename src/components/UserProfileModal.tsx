@@ -20,13 +20,11 @@ import { formatDate } from '../utils/formatters';
 interface UserProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onOpenChangePassword?: () => void;
 }
 
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   isOpen,
   onClose,
-  onOpenChangePassword,
 }) => {
   const { currentUser, isAdmin, isOperator, logout, deleteOwnAccount } = useAuth();
 
@@ -162,29 +160,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
           {/* Actions List */}
           <div className="space-y-2">
-            {/* Alterar Senha */}
-            {onOpenChangePassword && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenChangePassword();
-                }}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-zinc-950/60 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 transition cursor-pointer text-left"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-lg bg-zinc-800 text-amber-400">
-                    <KeyRound className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-zinc-100">Alterar Senha de Acesso</div>
-                    <div className="text-[11px] text-zinc-400">Atualize sua senha secreta periódica</div>
-                  </div>
-                </div>
-                <span className="text-xs text-zinc-400">&rarr;</span>
-              </button>
-            )}
-
             {/* Sair do Sistema */}
             <button
               type="button"

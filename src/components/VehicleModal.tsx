@@ -87,7 +87,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       pelotao: pelotao.trim(),
       batalhao: batalhao.trim(),
       condutorPadrao: condutorPadrao.trim() || undefined,
-      motivoBaixa: status === 'BAIXADA' || status === 'EM_MANUTENCAO' ? motivoBaixa.trim() : undefined,
+      motivoBaixa: status === 'BAIXADA' || status === 'EM_MANUTENCAO' ? (motivoBaixa.trim() || 'Constatada falha operacional / em manutenção') : undefined,
       observacoes: observacoes.trim() || undefined,
     });
     onClose();
@@ -279,8 +279,8 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
               >
                 <option value="OPERACIONAL">OPERACIONAL (Pronta para patrulhamento)</option>
-                <option value="BAIXADA">BAIXADA (Fora de serviço / avaria)</option>
-                <option value="EM_MANUTENCAO">EM MANUTENÇÃO (Na mecânica/oficina)</option>
+                <option value="BAIXADA">BAIXADA (Com falha mecânica / avaria / fora de serviço)</option>
+                <option value="EM_MANUTENCAO">EM MANUTENÇÃO (Na mecânica / oficina)</option>
                 <option value="RESERVA">RESERVA TÁTICA (Disponível)</option>
               </select>
             </div>
@@ -291,14 +291,13 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
             <div className="p-3 bg-rose-950/40 border border-rose-800/60 rounded-xl space-y-1">
               <label className="flex items-center space-x-1.5 text-xs font-bold text-rose-300 uppercase">
                 <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
-                <span>Motivo da Baixa / Manutenção *</span>
+                <span>Motivo da Baixa / Falha / Manutenção</span>
               </label>
               <input
                 type="text"
-                required
                 value={motivoBaixa}
                 onChange={(e) => setMotivoBaixa(e.target.value)}
-                placeholder="Ex: Vazamento de bengala, pane elétrica chicote, colisão leve..."
+                placeholder="Ex: Vazamento de bengala, pane elétrica, falha no motor, sinistro..."
                 className="w-full px-3 py-2 bg-zinc-900 border border-rose-700/60 rounded-lg text-sm text-rose-100 placeholder-rose-400/50 focus:outline-none focus:border-rose-500"
               />
             </div>

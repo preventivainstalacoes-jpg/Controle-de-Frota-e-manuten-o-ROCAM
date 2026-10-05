@@ -33,12 +33,14 @@ export const DamagePhotoManager: React.FC<DamagePhotoManagerProps> = ({
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<DamagePhoto | null>(null);
+  const [photoError, setPhotoError] = useState('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0 || !onChange) return;
     setIsProcessing(true);
+    setPhotoError('');
 
     try {
       const newPhotos: DamagePhoto[] = [];
@@ -61,7 +63,7 @@ export const DamagePhotoManager: React.FC<DamagePhotoManagerProps> = ({
       }
     } catch (err) {
       console.error('Erro ao processar imagem:', err);
-      alert('Houve uma falha ao processar uma das fotos. Tente novamente com outra imagem.');
+      setPhotoError('Houve uma falha ao processar uma das fotos. Tente novamente com outra imagem.');
     } finally {
       setIsProcessing(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -156,6 +158,19 @@ export const DamagePhotoManager: React.FC<DamagePhotoManagerProps> = ({
       </div>
 
       {/* Processing Loader */}
+      {photoError && (
+        <div className="p-3 bg-rose-950/80 border border-rose-700 rounded-xl flex items-center justify-between text-xs text-rose-200">
+          <span>{photoError}</span>
+          <button
+            type="button"
+            onClick={() => setPhotoError('')}
+            className="text-zinc-400 hover:text-white ml-2 text-sm"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {isProcessing && (
         <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-center space-x-2 text-xs text-amber-300 animate-pulse">
           <Clock className="w-4 h-4 animate-spin" />

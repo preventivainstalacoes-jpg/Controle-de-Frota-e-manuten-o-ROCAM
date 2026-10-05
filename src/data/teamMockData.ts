@@ -208,7 +208,7 @@ export const INITIAL_TEAM_ACTIVITIES: TeamActivityLog[] = [
     id: 'act-03',
     tipo: 'CAUTELA',
     titulo: 'Viatura Cautelada para Patrulhamento',
-    descricao: 'Cb PM Oliveira retirou a motocicleta M-01201 com tanque cheio e checklist 100% conforme.',
+    descricao: 'Cb PM Oliveira retirou a motocicleta M-01201 com tanque cheio e checklist conforme sem alterações.',
     usuarioNome: 'Cb PM Oliveira',
     usuarioRE: '145.892-0',
     usuarioRole: 'OPERADOR',

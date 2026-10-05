@@ -57,6 +57,11 @@ interface AuthContextType {
   deleteMultipleUsers: (userIds: string[]) => Promise<{ success: boolean; deletedCount: number; error?: string }>;
   deleteOwnAccount: (password: string) => Promise<{ success: boolean; error?: string }>;
   changePassword: (userId: string, newPass: string) => Promise<{ success: boolean; error?: string }>;
+  resetPasswordByRecovery: (
+    identifier: string,
+    emailOrRe: string,
+    newPass: string
+  ) => Promise<{ success: boolean; error?: string }>;
   toggleUserActive: (userId: string) => Promise<{ success: boolean; error?: string }>;
   resetUsersToDefault: (adminPassword?: string) => Promise<{ success: boolean; error?: string }>;
   resetToFirstAdmin: (customAdminData?: {
@@ -245,8 +250,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       passwordHash: hash,
       salt,
       createdAt: new Date().toISOString(),
-      isActive: true, // Authorized immediately!
-      status: 'ATIVO',
+      isActive: false, // PENDENTE de aprovação por um Administrador
+      status: 'PENDENTE',
+      solicitadoEm: new Date().toISOString(),
     };
 
     const nextUsers = [newUser, ...users];
@@ -332,22 +338,51 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     userId: string,
     targetRole?: UserRole
   ): Promise<{ success: boolean; error?: string }> => {
-    const index = users.findIndex((u) => u.id === userId);
+    const currentList = users.length > 0 ? users : await loadUsersFromStorage();
+    let index = currentList.findIndex((u) => u.id === userId);
+    let listToUse = currentList;
+
+    if (index === -1) {
+      const freshList = await loadUsersFromStorage();
+      index = freshList.findIndex((u) => u.id === userId);
+      listToUse = freshList;
+    }
+
     if (index === -1) {
       return { success: false, error: 'Usuário não localizado.' };
     }
 
-    const user = users[index];
+    const user = listToUse[index];
+    const finalRole = targetRole || user.role;
+
+    if (finalRole === 'ADMIN') {
+      const activeAdmins = listToUse.filter((u) => u.role === 'ADMIN' && u.isActive && u.status === 'ATIVO').length;
+      if (activeAdmins >= MAX_ADMINS) {
+        return {
+          success: false,
+          error: `Capacidade máxima atingida: O sistema permite no máximo ${MAX_ADMINS} Administradores com acesso total.`,
+        };
+      }
+    } else if (finalRole === 'OPERADOR') {
+      const activeOps = listToUse.filter((u) => u.role === 'OPERADOR' && u.isActive && u.status === 'ATIVO').length;
+      if (activeOps >= MAX_OPERATORS) {
+        return {
+          success: false,
+          error: `Capacidade máxima atingida: O sistema permite no máximo ${MAX_OPERATORS} Operadores.`,
+        };
+      }
+    }
+
     const updated: UserProfile = {
       ...user,
       isActive: true,
       status: 'ATIVO',
-      role: targetRole || user.role,
+      role: finalRole,
       aprovadoPor: currentUser?.name || 'Administrador',
       aprovadoEm: new Date().toISOString(),
     };
 
-    const nextUsers = [...users];
+    const nextUsers = [...listToUse];
     nextUsers[index] = updated;
 
     setUsers(nextUsers);
@@ -362,12 +397,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     userId: string,
     motivo?: string
   ): Promise<{ success: boolean; error?: string }> => {
-    const index = users.findIndex((u) => u.id === userId);
+    const currentList = users.length > 0 ? users : await loadUsersFromStorage();
+    let index = currentList.findIndex((u) => u.id === userId);
+    let listToUse = currentList;
+
+    if (index === -1) {
+      const freshList = await loadUsersFromStorage();
+      index = freshList.findIndex((u) => u.id === userId);
+      listToUse = freshList;
+    }
+
     if (index === -1) {
       return { success: false, error: 'Usuário não localizado.' };
     }
 
-    const user = users[index];
+    const user = listToUse[index];
     const updated: UserProfile = {
       ...user,
       isActive: false,
@@ -375,7 +419,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       motivoRejeicao: motivo || 'Cadastro não homologado pelo Administrador da Seção de Logística.',
     };
 
-    const nextUsers = [...users];
+    const nextUsers = [...listToUse];
     nextUsers[index] = updated;
 
     setUsers(nextUsers);
@@ -387,17 +431,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     userId: string,
     data: Partial<UserProfile>
   ): Promise<{ success: boolean; error?: string }> => {
-    const index = users.findIndex((u) => u.id === userId);
+    const currentList = users.length > 0 ? users : await loadUsersFromStorage();
+    let index = currentList.findIndex((u) => u.id === userId);
+    let listToUpdate = currentList;
+
+    if (index === -1) {
+      const freshList = await loadUsersFromStorage();
+      index = freshList.findIndex((u) => u.id === userId);
+      listToUpdate = freshList;
+    }
+
     if (index === -1) {
       return { success: false, error: 'Usuário não localizado.' };
     }
 
-    const updated = { ...users[index], ...data };
-    const nextUsers = [...users];
+    const updated = { ...listToUpdate[index], ...data };
+    const nextUsers = [...listToUpdate];
     nextUsers[index] = updated;
 
     setUsers(nextUsers);
-    saveUsersToStorage(nextUsers);
+    await saveUsersToStorage(nextUsers);
 
     if (currentUser?.id === userId) {
       setCurrentUser(updated);
@@ -516,12 +569,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return { success: false, error: 'A nova senha deve ter no mínimo 4 caracteres.' };
     }
 
-    const index = users.findIndex((u) => u.id === userId);
+    const currentList = users.length > 0 ? users : await loadUsersFromStorage();
+    let index = currentList.findIndex((u) => u.id === userId);
+    let listToUpdate = currentList;
+
+    if (index === -1) {
+      const freshList = await loadUsersFromStorage();
+      index = freshList.findIndex((u) => u.id === userId);
+      listToUpdate = freshList;
+    }
+
     if (index === -1) {
       return { success: false, error: 'Usuário não encontrado.' };
     }
 
-    const user = users[index];
+    const user = listToUpdate[index];
     const newSalt = generateSalt();
     const newHash = await hashPassword(newPass.trim(), newSalt);
 
@@ -531,7 +593,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       salt: newSalt,
     };
 
-    const nextUsers = [...users];
+    const nextUsers = [...listToUpdate];
     nextUsers[index] = updatedUser;
     setUsers(nextUsers);
     saveUsersToStorage(nextUsers);
@@ -543,20 +605,92 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return { success: true };
   };
 
+  /**
+   * Reset password via security verification (RE or Email matching user record)
+   */
+  const resetPasswordByRecovery = async (
+    identifier: string,
+    emailOrRe: string,
+    newPass: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!identifier.trim()) {
+      return { success: false, error: 'Informe seu Usuário ou RE funcional.' };
+    }
+    if (!emailOrRe.trim()) {
+      return { success: false, error: 'Informe o E-mail cadastrado ou confirme seu RE funcional.' };
+    }
+    if (!newPass || newPass.trim().length < 4) {
+      return { success: false, error: 'A nova senha deve possuir pelo menos 4 caracteres.' };
+    }
+
+    const cleanId = identifier.trim().toLowerCase();
+    const cleanIdDigits = cleanId.replace(/[^0-9]/g, '');
+    const cleanConfirm = emailOrRe.trim().toLowerCase();
+    const cleanConfirmDigits = cleanConfirm.replace(/[^0-9]/g, '');
+
+    const currentList = users.length > 0 ? users : await loadUsersFromStorage();
+
+    const checkCandidate = (u: UserProfile) => {
+      const uName = u.username.toLowerCase();
+      const uRe = u.re.replace(/[^0-9]/g, '');
+      const uEmail = (u.email || '').toLowerCase();
+
+      const idMatches =
+        uName === cleanId ||
+        (cleanIdDigits.length >= 4 && uRe.includes(cleanIdDigits)) ||
+        u.id === cleanId;
+
+      if (!idMatches) return false;
+
+      // Email match or RE confirmation
+      const emailMatches = Boolean(uEmail && uEmail === cleanConfirm);
+      const reMatches = Boolean(cleanConfirmDigits.length >= 4 && uRe.includes(cleanConfirmDigits));
+      const userMatches = Boolean(uName === cleanConfirm);
+
+      return emailMatches || reMatches || userMatches;
+    };
+
+    let candidate = currentList.find(checkCandidate);
+
+    if (!candidate) {
+      const freshList = await loadUsersFromStorage();
+      candidate = freshList.find(checkCandidate);
+    }
+
+    if (!candidate) {
+      return {
+        success: false,
+        error:
+          'Dados de validação não conferem com o militar cadastrado. Verifique o RE/E-mail ou solicite a redefinição ao Oficial da Seção de Logística / P-4.',
+      };
+    }
+
+    return changePassword(candidate.id, newPass);
+  };
+
   const toggleUserActive = async (userId: string): Promise<{ success: boolean; error?: string }> => {
     if (currentUser?.id === userId) {
       return { success: false, error: 'Você não pode desativar seu próprio acesso ativo.' };
     }
 
-    const index = users.findIndex((u) => u.id === userId);
+    const currentList = users.length > 0 ? users : await loadUsersFromStorage();
+    let index = currentList.findIndex((u) => u.id === userId);
+    let listToUpdate = currentList;
+
+    if (index === -1) {
+      const freshList = await loadUsersFromStorage();
+      index = freshList.findIndex((u) => u.id === userId);
+      listToUpdate = freshList;
+    }
+
     if (index === -1) {
       return { success: false, error: 'Usuário não localizado.' };
     }
 
-    const user = users[index];
+    const user = listToUpdate[index];
     // If deactivating an admin, ensure another active admin exists
     if (user.role === 'ADMIN' && user.isActive) {
-      const otherActiveAdmins = users.filter((u) => u.role === 'ADMIN' && u.id !== userId && u.isActive && u.status === 'ATIVO');
+      const otherActiveAdmins = listToUpdate.filter((u) => u.role === 'ADMIN' && u.id !== userId && u.isActive && u.status === 'ATIVO');
       if (otherActiveAdmins.length === 0) {
         return { success: false, error: 'Não é permitido desativar o único administrador ativo.' };
       }
@@ -565,11 +699,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const nextActive = !user.isActive;
     const nextStatus = nextActive ? 'ATIVO' : 'INATIVO';
     const updated: UserProfile = { ...user, isActive: nextActive, status: nextStatus };
-    const nextUsers = [...users];
+    const nextUsers = [...listToUpdate];
     nextUsers[index] = updated;
 
     setUsers(nextUsers);
-    saveUsersToStorage(nextUsers);
+    await saveUsersToStorage(nextUsers);
     return { success: true };
   };
 
@@ -665,6 +799,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         deleteMultipleUsers,
         deleteOwnAccount,
         changePassword,
+        resetPasswordByRecovery,
         toggleUserActive,
         resetUsersToDefault,
         resetToFirstAdmin,

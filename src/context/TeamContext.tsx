@@ -707,8 +707,14 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const encoded = encodeURIComponent(text);
       const url = `https://api.whatsapp.com/send?text=${encoded}`;
-      if (typeof window !== 'undefined') {
-        window.open(url, '_blank');
+      if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
     },
     [generateShiftSummaryText]

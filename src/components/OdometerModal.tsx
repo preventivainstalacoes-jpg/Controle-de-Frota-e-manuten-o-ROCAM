@@ -18,11 +18,13 @@ export const OdometerModal: React.FC<OdometerModalProps> = ({
 }) => {
   const [newKm, setNewKm] = useState<number>(vehicle?.kmAtual ?? 0);
   const [observacao, setObservacao] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
     if (vehicle) {
       setNewKm(vehicle.kmAtual);
       setObservacao('');
+      setErrorMsg('');
     }
   }, [vehicle, isOpen]);
 
@@ -34,7 +36,7 @@ export const OdometerModal: React.FC<OdometerModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid) {
-      alert('O novo odômetro não pode ser menor do que a quilometragem atual registrada.');
+      setErrorMsg('O novo odômetro não pode ser menor do que a quilometragem atual registrada.');
       return;
     }
     onUpdate(vehicle.id, newKm, observacao.trim() || undefined);
@@ -67,6 +69,13 @@ export const OdometerModal: React.FC<OdometerModalProps> = ({
 
         {/* Content */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {errorMsg && (
+            <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-700 text-rose-200 text-xs flex items-center space-x-2">
+              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
           <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800">
             <div className="flex items-center justify-between text-xs text-zinc-400 mb-2">
               <span>KM Anterior Registrado</span>

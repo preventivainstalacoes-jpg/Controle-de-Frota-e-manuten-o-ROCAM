@@ -70,6 +70,16 @@ function AppContent() {
   // Database Management Modal state
   const [isDatabaseModalOpen, setIsDatabaseModalOpen] = useState(false);
 
+  // In-app Toast state (replaces window.alert for iframe compatibility)
+  const [appToast, setAppToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'warning') => {
+    setAppToast({ message, type });
+    setTimeout(() => {
+      setAppToast((curr) => (curr?.message === message ? null : curr));
+    }, 4500);
+  };
+
   // Handlers - Vehicles
   const handleOpenNewVehicle = () => {
     if (!isAdmin) return;
@@ -205,7 +215,7 @@ function AppContent() {
   const handleSaveCautela = async (cautelaData: Parameters<typeof addCautela>[0]) => {
     const saved = await addCautela(cautelaData);
     if (!saved) {
-      window.alert('Esta viatura já está cautelada por outro operador. Faça a descautela antes de iniciar um novo serviço.');
+      showToast('Esta viatura já está cautelada por outro operador. Faça a descautela antes de iniciar um novo serviço.', 'warning');
       return;
     }
     logActivity({
@@ -355,10 +365,7 @@ function AppContent() {
               </div>
             </div>
             <button
-              onClick={() => {
-                const el = document.getElementById('tab-nav-alertas');
-                el?.click();
-              }}
+              onClick={() => setActiveTab('alertas')}
               className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition whitespace-nowrap cursor-pointer"
             >
               Visualizar Alertas Críticos
@@ -553,6 +560,34 @@ function AppContent() {
           handleOpenDescautela(c);
         }}
       />
+
+      {/* In-app Notification Toast */}
+      {appToast && (
+        <div className="fixed bottom-6 right-6 z-70 max-w-md w-full px-4 animate-in slide-in-from-bottom-5 duration-200">
+          <div
+            className={`p-4 rounded-2xl border shadow-2xl flex items-center justify-between gap-3 text-sm backdrop-blur-md ${
+              appToast.type === 'error'
+                ? 'bg-rose-950/90 border-rose-700 text-rose-200'
+                : appToast.type === 'warning'
+                ? 'bg-amber-950/90 border-amber-700 text-amber-200'
+                : 'bg-emerald-950/90 border-emerald-700 text-emerald-200'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              {appToast.type === 'error' && <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />}
+              {appToast.type === 'warning' && <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />}
+              {appToast.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />}
+              <span className="font-medium text-xs leading-relaxed">{appToast.message}</span>
+            </div>
+            <button
+              onClick={() => setAppToast(null)}
+              className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition cursor-pointer shrink-0"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
