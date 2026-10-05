@@ -31,6 +31,16 @@ interface AuthContextType {
   login: (identifier: string, pass: string) => Promise<{ success: boolean; error?: string }>;
   quickLoginAs: (role: 'ADMIN' | 'OPERADOR', specificUserId?: string) => Promise<boolean>;
   logout: () => void;
+  registerFirstAdmin: (data: {
+    email: string;
+    name: string;
+    password: string;
+  }) => Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }>;
+  registerFirstAdmin: (data: {
+    email: string;
+    name: string;
+    password: string;
+  }) => Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }>;
   registerUserRequest: (data: {
     username: string;
     email?: string;
@@ -214,6 +224,68 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = () => {
     void supabase.auth.signOut();
     setCurrentUser(null);
+  };
+
+  /**
+   * First-admin bootstrap. The database trigger assigns ADMIN only when no
+   * administrator exists. Supabase Auth remains responsible for passwords.
+   */
+  const registerFirstAdmin = async (data: {
+    email: string;
+    name: string;
+    password: string;
+  }): Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }> => {
+    const email = data.email.trim().toLowerCase();
+    const name = data.name.trim();
+    if (!email || !email.includes('@')) return { success: false, error: 'Informe um e-mail válido.' };
+    if (!name) return { success: false, error: 'Informe o nome do administrador.' };
+    if (data.password.length < 6) return { success: false, error: 'A senha deve ter no mínimo 6 caracteres.' };
+
+    const { data: hasAdmin, error: checkError } = await supabase.rpc('has_admin');
+    if (checkError) return { success: false, error: 'Não foi possível verificar se já existe administrador.' };
+    if (hasAdmin) return { success: false, error: 'Já existe um administrador cadastrado. O primeiro cadastro já foi realizado.' };
+
+    const { data: authData, error } = await supabase.auth.signUp({
+      email,
+      password: data.password,
+      options: { data: { full_name: name } },
+    });
+
+    if (error || !authData.user) {
+      return { success: false, error: error?.message || 'Não foi possível criar o administrador.' };
+    }
+
+    const needsEmailConfirmation = !authData.session;
+    if (authData.session) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id,email,full_name,role,active,created_at')
+        .eq('id', authData.user.id)
+        .maybeSingle();
+
+      if (profile) {
+        const user: UserProfile = {
+          id: profile.id,
+          username: profile.email?.split('@')[0] || profile.id.slice(0, 8),
+          email: profile.email || undefined,
+          name: profile.full_name || name,
+          re: '',
+          graduacao: '',
+          role: 'ADMIN',
+          pelotao: 'ROCAM',
+          passwordHash: '',
+          salt: '',
+          createdAt: profile.created_at || new Date().toISOString(),
+          isActive: Boolean(profile.active),
+          status: profile.active ? 'ATIVO' : 'INATIVO',
+          lastLogin: new Date().toISOString(),
+        };
+        setCurrentUser(user);
+        setUsers((prev) => [user, ...prev.filter((u) => u.id !== user.id)]);
+      }
+    }
+
+    return { success: true, needsEmailConfirmation };
   };
 
   /**
@@ -817,6 +889,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         login,
         quickLoginAs,
         logout,
+        registerFirstAdmin,
         registerUserRequest,
         createUser,
         approveUser,
