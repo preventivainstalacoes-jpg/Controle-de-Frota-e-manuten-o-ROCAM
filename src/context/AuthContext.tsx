@@ -116,8 +116,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
     };
 
+    const loadAllProfiles = async (): Promise<UserProfile[]> => {
+      const { data, error } = await supabase.from('profiles').select('id,email,full_name,role,active,created_at');
+      if (error) { console.error('Erro ao carregar usuários:', error); return []; }
+      return (data || []).map((p:any) => ({
+        id:p.id, username:p.email?.split('@')[0] || p.id.slice(0,8), email:p.email || undefined,
+        name:p.full_name || 'Usuário ROCAM', re:'', graduacao:'', role:String(p.role).toUpperCase()==='ADMIN'?'ADMIN':'OPERADOR',
+        pelotao:'ROCAM',passwordHash:'',salt:'',createdAt:p.created_at || new Date().toISOString(),
+        isActive:Boolean(p.active),status:p.active?'ATIVO':'INATIVO',lastLogin:new Date().toISOString()
+      }));
+    };
+
     const init = async () => {
       try {
+        const allProfiles = await loadAllProfiles();
+        if (mounted) setUsers(allProfiles);
+
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user && mounted) {
           const profile = await loadProfile(session.user.id);
