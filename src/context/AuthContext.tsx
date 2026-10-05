@@ -25,6 +25,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isOperator: boolean;
   users: UserProfile[];
+  hasAdmin: boolean;
   pendingUsers: UserProfile[];
   pendingApprovalsCount: number;
   isLoading: boolean;
@@ -89,6 +90,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [hasAdmin, setHasAdmin] = useState<boolean>(true);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -141,6 +143,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         const allProfiles = await loadAllProfiles();
         if (mounted) setUsers(allProfiles);
+        const { data: adminExists } = await supabase.rpc('has_admin');
+        if (mounted) setHasAdmin(Boolean(adminExists));
 
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user && mounted) {
@@ -285,6 +289,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     }
 
+    setHasAdmin(true);
     return { success: true, needsEmailConfirmation };
   };
 
@@ -883,6 +888,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isAdmin,
         isOperator,
         users,
+        hasAdmin,
         pendingUsers,
         pendingApprovalsCount,
         isLoading,
