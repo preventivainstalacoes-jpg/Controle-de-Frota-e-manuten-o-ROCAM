@@ -71,6 +71,36 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
 
 
+  const loadTeamData = useCallback(async () => {
+    const [n, m, a] = await Promise.all([
+      supabase.from('team_notices').select('*').order('criado_em', { ascending: false }).limit(200),
+      supabase.from('team_messages').select('*').order('criado_em', { ascending: true }).limit(500),
+      supabase.from('team_activity_logs').select('*').order('data_hora', { ascending: false }).limit(200),
+    ]);
+    if (n.error || m.error || a.error) {
+      console.error('Erro ao carregar dados da equipe no Supabase:', n.error || m.error || a.error);
+      setIsOnlineSync(false);
+      return;
+    }
+    setNotices((n.data || []).map((x:any) => ({
+      id:x.id,titulo:x.titulo,conteudo:x.conteudo,categoria:x.categoria,prioridade:x.prioridade,fixado:!!x.fixado,
+      viaturaRelacionadaId:x.viatura_relacionada_id,viaturaRelacionadaPrefixo:x.viatura_relacionada_prefixo,
+      autorId:x.autor_id || '',autorNome:x.autor_nome,autorRE:x.autor_re || '',autorGraduacao:x.autor_graduacao || '',
+      criadoEm:x.criado_em,atualizadoEm:x.atualizado_em,confirmacoes:Array.isArray(x.confirmacoes)?x.confirmacoes:[]
+    })));
+    setMessages((m.data || []).map((x:any) => ({
+      id:x.id,remetenteId:x.remetente_id || '',remetenteNome:x.remetente_nome,remetenteRE:x.remetente_re || '',
+      remetenteGraduacao:x.remetente_graduacao || '',remetenteRole:x.remetente_role || 'OPERADOR',texto:x.texto,
+      viaturaId:x.viatura_id,viaturaPrefixo:x.viatura_prefixo,criadoEm:x.criado_em,tipo:x.tipo || 'TEXTO'
+    })));
+    setActivityLogs((a.data || []).map((x:any) => ({
+      id:x.id,tipo:x.tipo,titulo:x.titulo,descricao:x.descricao,usuarioNome:x.usuario_nome,usuarioRE:x.usuario_re || '',
+      usuarioRole:x.usuario_role || 'OPERADOR',dataHora:x.data_hora,badge:x.badge,linkTab:x.link_tab
+    })));
+    setIsOnlineSync(true);
+    setLastSyncTime(new Date());
+  }, []);
+
   // Supabase is the shared source of truth. These helpers replace the old
   // browser-only broadcast/storage layer so every device reads the same data.
   const notifyBroadcast = useCallback((_event: string, _payload: unknown) => {
@@ -138,35 +168,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [currentUser]);
 
-  const loadTeamData = useCallback(async () => {
-    const [n, m, a] = await Promise.all([
-      supabase.from('team_notices').select('*').order('criado_em', { ascending: false }).limit(200),
-      supabase.from('team_messages').select('*').order('criado_em', { ascending: true }).limit(500),
-      supabase.from('team_activity_logs').select('*').order('data_hora', { ascending: false }).limit(200),
-    ]);
-    if (n.error || m.error || a.error) {
-      console.error('Erro ao carregar dados da equipe no Supabase:', n.error || m.error || a.error);
-      setIsOnlineSync(false);
-      return;
-    }
-    setNotices((n.data || []).map((x:any) => ({
-      id:x.id,titulo:x.titulo,conteudo:x.conteudo,categoria:x.categoria,prioridade:x.prioridade,fixado:!!x.fixado,
-      viaturaRelacionadaId:x.viatura_relacionada_id,viaturaRelacionadaPrefixo:x.viatura_relacionada_prefixo,
-      autorId:x.autor_id || '',autorNome:x.autor_nome,autorRE:x.autor_re || '',autorGraduacao:x.autor_graduacao || '',
-      criadoEm:x.criado_em,atualizadoEm:x.atualizado_em,confirmacoes:Array.isArray(x.confirmacoes)?x.confirmacoes:[]
-    })));
-    setMessages((m.data || []).map((x:any) => ({
-      id:x.id,remetenteId:x.remetente_id || '',remetenteNome:x.remetente_nome,remetenteRE:x.remetente_re || '',
-      remetenteGraduacao:x.remetente_graduacao || '',remetenteRole:x.remetente_role || 'OPERADOR',texto:x.texto,
-      viaturaId:x.viatura_id,viaturaPrefixo:x.viatura_prefixo,criadoEm:x.criado_em,tipo:x.tipo || 'TEXTO'
-    })));
-    setActivityLogs((a.data || []).map((x:any) => ({
-      id:x.id,tipo:x.tipo,titulo:x.titulo,descricao:x.descricao,usuarioNome:x.usuario_nome,usuarioRE:x.usuario_re || '',
-      usuarioRole:x.usuario_role || 'OPERADOR',dataHora:x.data_hora,badge:x.badge,linkTab:x.link_tab
-    })));
-    setIsOnlineSync(true);
-    setLastSyncTime(new Date());
-  }, []);
+
 
   useEffect(() => {
     void loadTeamData();
