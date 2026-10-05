@@ -70,6 +70,74 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isOnlineSync, setIsOnlineSync] = useState<boolean>(true);
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
 
+
+  // Supabase is the shared source of truth. These helpers replace the old
+  // browser-only broadcast/storage layer so every device reads the same data.
+  const notifyBroadcast = useCallback((_event: string, _payload: unknown) => {
+    // Realtime subscriptions below provide cross-device synchronization.
+  }, []);
+
+  const syncWithServer = useCallback(async () => {
+    await loadTeamData();
+  }, [loadTeamData]);
+
+  const pushToServer = useCallback(async (kind: 'notice' | 'message' | 'activity', item: any) => {
+    try {
+      if (kind === 'notice') {
+        const { error } = await supabase.from('team_notices').upsert({
+          id: item.id,
+          titulo: item.titulo,
+          conteudo: item.conteudo,
+          categoria: item.categoria,
+          prioridade: item.prioridade,
+          fixado: !!item.fixado,
+          viatura_relacionada_id: item.viaturaRelacionadaId || null,
+          viatura_relacionada_prefixo: item.viaturaRelacionadaPrefixo || null,
+          autor_id: item.autorId || null,
+          autor_nome: item.autorNome,
+          autor_re: item.autorRE || null,
+          autor_graduacao: item.autorGraduacao || null,
+          criado_em: item.criadoEm,
+          atualizado_em: item.atualizadoEm || null,
+          confirmacoes: item.confirmacoes || [],
+        });
+        if (error) console.error('Erro ao sincronizar comunicado:', error);
+      } else if (kind === 'message') {
+        const { error } = await supabase.from('team_messages').upsert({
+          id: item.id,
+          remetente_id: item.remetenteId || null,
+          remetente_nome: item.remetenteNome,
+          remetente_re: item.remetenteRE || null,
+          remetente_graduacao: item.remetenteGraduacao || null,
+          remetente_role: item.remetenteRole || null,
+          texto: item.texto,
+          viatura_id: item.viaturaId || null,
+          viatura_prefixo: item.viaturaPrefixo || null,
+          criado_em: item.criadoEm,
+          tipo: item.tipo || 'TEXTO',
+        });
+        if (error) console.error('Erro ao sincronizar mensagem:', error);
+      } else {
+        const { error } = await supabase.from('team_activity_logs').upsert({
+          id: item.id,
+          tipo: item.tipo,
+          titulo: item.titulo,
+          descricao: item.descricao,
+          usuario_id: item.usuarioId || currentUser?.id || null,
+          usuario_nome: item.usuarioNome,
+          usuario_re: item.usuarioRE || null,
+          usuario_role: item.usuarioRole || null,
+          data_hora: item.dataHora,
+          badge: item.badge || null,
+          link_tab: item.linkTab || null,
+        });
+        if (error) console.error('Erro ao sincronizar atividade:', error);
+      }
+    } catch (error) {
+      console.error('Erro inesperado na sincronização da equipe:', error);
+    }
+  }, [currentUser]);
+
   const loadTeamData = useCallback(async () => {
     const [n, m, a] = await Promise.all([
       supabase.from('team_notices').select('*').order('criado_em', { ascending: false }).limit(200),
@@ -189,7 +257,8 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return next;
       });
 
-      pushToServer('notice', newNotice);
+      void pushToServer('activity', logEntry);
+      void pushToServer('notice', newNotice);
       return newNotice;
     },
     [currentUser, notifyBroadcast, pushToServer]
