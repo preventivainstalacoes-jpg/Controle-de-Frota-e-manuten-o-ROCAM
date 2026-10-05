@@ -16,6 +16,7 @@ import {
   INITIAL_TEAM_ACTIVITIES
 } from '../data/teamMockData';
 import { useAuth } from './AuthContext';
+import { supabase } from '../lib/supabase';
 
 interface TeamContextType {
   notices: TeamNotice[];
@@ -63,238 +64,52 @@ const STORAGE_KEY_ACTIVITIES = 'rocam_team_activities_v2';
 
 export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser } = useAuth();
-
-  // Notices
-  const [notices, setNotices] = useState<TeamNotice[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_NOTICES);
-      return saved ? JSON.parse(saved) : INITIAL_TEAM_NOTICES;
-    } catch {
-      return INITIAL_TEAM_NOTICES;
-    }
-  });
-
-  // Internal Team Messages
-  const [messages, setMessages] = useState<TeamMessage[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_MESSAGES);
-      return saved ? JSON.parse(saved) : INITIAL_TEAM_MESSAGES;
-    } catch {
-      return INITIAL_TEAM_MESSAGES;
-    }
-  });
-
-  // Activity stream
-  const [activityLogs, setActivityLogs] = useState<TeamActivityLog[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_ACTIVITIES);
-      return saved ? JSON.parse(saved) : INITIAL_TEAM_ACTIVITIES;
-    } catch {
-      return INITIAL_TEAM_ACTIVITIES;
-    }
-  });
-
+  const [notices, setNotices] = useState<TeamNotice[]>([]);
+  const [messages, setMessages] = useState<TeamMessage[]>([]);
+  const [activityLogs, setActivityLogs] = useState<TeamActivityLog[]>([]);
   const [isOnlineSync, setIsOnlineSync] = useState<boolean>(true);
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
 
-  // Broadcast channel for instantaneous cross-tab synchronization
-  const broadcastChannel = useMemo(() => {
-    try {
-      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-        return new BroadcastChannel('rocam_team_sync_channel');
-      }
-    } catch {
-      // ignore
+  const loadTeamData = useCallback(async () => {
+    const [n, m, a] = await Promise.all([
+      supabase.from('team_notices').select('*').order('criado_em', { ascending: false }).limit(200),
+      supabase.from('team_messages').select('*').order('criado_em', { ascending: true }).limit(500),
+      supabase.from('team_activity_logs').select('*').order('data_hora', { ascending: false }).limit(200),
+    ]);
+    if (n.error || m.error || a.error) {
+      console.error('Erro ao carregar dados da equipe no Supabase:', n.error || m.error || a.error);
+      setIsOnlineSync(false);
+      return;
     }
-    return null;
+    setNotices((n.data || []).map((x:any) => ({
+      id:x.id,titulo:x.titulo,conteudo:x.conteudo,categoria:x.categoria,prioridade:x.prioridade,fixado:!!x.fixado,
+      viaturaRelacionadaId:x.viatura_relacionada_id,viaturaRelacionadaPrefixo:x.viatura_relacionada_prefixo,
+      autorId:x.autor_id || '',autorNome:x.autor_nome,autorRE:x.autor_re || '',autorGraduacao:x.autor_graduacao || '',
+      criadoEm:x.criado_em,atualizadoEm:x.atualizado_em,confirmacoes:Array.isArray(x.confirmacoes)?x.confirmacoes:[]
+    })));
+    setMessages((m.data || []).map((x:any) => ({
+      id:x.id,remetenteId:x.remetente_id || '',remetenteNome:x.remetente_nome,remetenteRE:x.remetente_re || '',
+      remetenteGraduacao:x.remetente_graduacao || '',remetenteRole:x.remetente_role || 'OPERADOR',texto:x.texto,
+      viaturaId:x.viatura_id,viaturaPrefixo:x.viatura_prefixo,criadoEm:x.criado_em,tipo:x.tipo || 'TEXTO'
+    })));
+    setActivityLogs((a.data || []).map((x:any) => ({
+      id:x.id,tipo:x.tipo,titulo:x.titulo,descricao:x.descricao,usuarioNome:x.usuario_nome,usuarioRE:x.usuario_re || '',
+      usuarioRole:x.usuario_role || 'OPERADOR',dataHora:x.data_hora,badge:x.badge,linkTab:x.link_tab
+    })));
+    setIsOnlineSync(true);
+    setLastSyncTime(new Date());
   }, []);
 
-  // Sync to localStorage
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_NOTICES, JSON.stringify(notices));
-    } catch (e) {
-      console.warn('Could not save notices to localStorage', e);
-    }
-  }, [notices]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_MESSAGES, JSON.stringify(messages));
-    } catch (e) {
-      console.warn('Could not save messages to localStorage', e);
-    }
-  }, [messages]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_ACTIVITIES, JSON.stringify(activityLogs));
-    } catch (e) {
-      console.warn('Could not save activities to localStorage', e);
-    }
-  }, [activityLogs]);
-
-  // Broadcast listeners
-  useEffect(() => {
-    if (!broadcastChannel) return;
-
-    const handleMessage = (event: MessageEvent) => {
-      const data = event.data;
-      if (!data || !data.type) return;
-
-      if (data.type === 'SYNC_NOTICES' && Array.isArray(data.payload)) {
-        setNotices(data.payload);
-        setLastSyncTime(new Date());
-      } else if (data.type === 'SYNC_MESSAGES' && Array.isArray(data.payload)) {
-        setMessages(data.payload);
-        setLastSyncTime(new Date());
-      } else if (data.type === 'SYNC_ACTIVITIES' && Array.isArray(data.payload)) {
-        setActivityLogs(data.payload);
-        setLastSyncTime(new Date());
-      }
-    };
-
-    broadcastChannel.onmessage = handleMessage;
-    return () => {
-      broadcastChannel.onmessage = null;
-    };
-  }, [broadcastChannel]);
-
-  // Server-Sent Events listener for real-time multi-device sync
-  useEffect(() => {
-    if (typeof window === 'undefined' || !('EventSource' in window)) return;
-
-    let eventSource: EventSource | null = null;
-    try {
-      eventSource = new EventSource('/api/stream');
-
-      eventSource.addEventListener('SYNC_NOTICES', (e) => {
-        try {
-          const payload = JSON.parse(e.data);
-          if (Array.isArray(payload) && payload.length > 0) {
-            setNotices(payload);
-            setLastSyncTime(new Date());
-          }
-        } catch {}
-      });
-
-      eventSource.addEventListener('SYNC_MESSAGES', (e) => {
-        try {
-          const payload = JSON.parse(e.data);
-          if (Array.isArray(payload) && payload.length > 0) {
-            setMessages(payload);
-            setLastSyncTime(new Date());
-          }
-        } catch {}
-      });
-
-      eventSource.addEventListener('SYNC_ACTIVITIES', (e) => {
-        try {
-          const payload = JSON.parse(e.data);
-          if (Array.isArray(payload) && payload.length > 0) {
-            setActivityLogs(payload);
-            setLastSyncTime(new Date());
-          }
-        } catch {}
-      });
-
-      eventSource.onerror = () => {
-        // SSE error or endpoint not reachable in standalone Vite dev mode; local-first BroadcastChannel continues uninterrupted
-      };
-    } catch {
-      // ignore
-    }
-
-    return () => {
-      if (eventSource) {
-        eventSource.close();
-      }
-    };
-  }, []);
-
-  // Fallback storage event listener for cross-tab updates
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY_NOTICES && e.newValue) {
-        try {
-          setNotices(JSON.parse(e.newValue));
-          setLastSyncTime(new Date());
-        } catch {}
-      }
-      if (e.key === STORAGE_KEY_MESSAGES && e.newValue) {
-        try {
-          setMessages(JSON.parse(e.newValue));
-          setLastSyncTime(new Date());
-        } catch {}
-      }
-      if (e.key === STORAGE_KEY_ACTIVITIES && e.newValue) {
-        try {
-          setActivityLogs(JSON.parse(e.newValue));
-          setLastSyncTime(new Date());
-        } catch {}
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
-  // Broadcast helper
-  const notifyBroadcast = useCallback((type: string, payload: any) => {
-    if (broadcastChannel) {
-      try {
-        broadcastChannel.postMessage({ type, payload });
-      } catch (e) {
-        console.warn('Broadcast failed', e);
-      }
-    }
-  }, [broadcastChannel]);
-
-  // Server sync attempt (non-blocking)
-  const syncWithServer = useCallback(async () => {
-    try {
-      const response = await fetch('/api/team/sync', {
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.notices && Array.isArray(data.notices)) {
-          setNotices(data.notices);
-        }
-        if (data.messages && Array.isArray(data.messages)) {
-          setMessages(data.messages);
-        }
-        if (data.activities && Array.isArray(data.activities)) {
-          setActivityLogs(data.activities);
-        }
-        setIsOnlineSync(true);
-        setLastSyncTime(new Date());
-      }
-    } catch {
-      // Server routes might not be active, local-first mode remains intact
-      setIsOnlineSync(true);
-    }
-  }, []);
-
-  // Initial and periodic sync
-  useEffect(() => {
-    syncWithServer();
-    const interval = setInterval(syncWithServer, 30000);
-    return () => clearInterval(interval);
-  }, [syncWithServer]);
-
-  // Push update to server in background
-  const pushToServer = useCallback(async (type: 'notice' | 'message' | 'activity', payload: any) => {
-    try {
-      await fetch(`/api/team/${type}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-    } catch {
-      // Local-first maintains persistence
-    }
-  }, []);
+    void loadTeamData();
+    const channel = supabase.channel('rocam-team-shared')
+      .on('postgres_changes',{event:'*',schema:'public',table:'team_notices'},()=>void loadTeamData())
+      .on('postgres_changes',{event:'*',schema:'public',table:'team_messages'},()=>void loadTeamData())
+      .on('postgres_changes',{event:'*',schema:'public',table:'team_activity_logs'},()=>void loadTeamData())
+      .subscribe();
+    const timer = setInterval(() => void loadTeamData(), 30000);
+    return () => { clearInterval(timer); void supabase.removeChannel(channel); };
+  }, [loadTeamData]);
 
   // Unread notices count for current user
   const unreadNoticesCount = useMemo(() => {
@@ -382,6 +197,16 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateNotice = useCallback(
     (id: string, updates: Partial<TeamNotice>) => {
+      const dbUpdates:any = { atualizado_em: new Date().toISOString() };
+      if (updates.titulo !== undefined) dbUpdates.titulo = updates.titulo;
+      if (updates.conteudo !== undefined) dbUpdates.conteudo = updates.conteudo;
+      if (updates.categoria !== undefined) dbUpdates.categoria = updates.categoria;
+      if (updates.prioridade !== undefined) dbUpdates.prioridade = updates.prioridade;
+      if (updates.fixado !== undefined) dbUpdates.fixado = updates.fixado;
+      if (updates.confirmacoes !== undefined) dbUpdates.confirmacoes = updates.confirmacoes;
+      if (updates.viaturaRelacionadaId !== undefined) dbUpdates.viatura_relacionada_id = updates.viaturaRelacionadaId || null;
+      if (updates.viaturaRelacionadaPrefixo !== undefined) dbUpdates.viatura_relacionada_prefixo = updates.viaturaRelacionadaPrefixo || null;
+      void supabase.from('team_notices').update(dbUpdates).eq('id', id);
       setNotices((prev) => {
         const next = prev.map((n) =>
           n.id === id ? { ...n, ...updates, atualizadoEm: new Date().toISOString() } : n
@@ -395,6 +220,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteNotice = useCallback(
     (id: string) => {
+      void supabase.from('team_notices').delete().eq('id', id);
       setNotices((prev) => {
         const next = prev.filter((n) => n.id !== id);
         notifyBroadcast('SYNC_NOTICES', next);
@@ -406,13 +232,15 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const togglePinNotice = useCallback(
     (id: string) => {
+      const target = notices.find((n) => n.id === id);
+      if (target) void supabase.from('team_notices').update({fixado:!target.fixado,atualizado_em:new Date().toISOString()}).eq('id',id);
       setNotices((prev) => {
         const next = prev.map((n) => (n.id === id ? { ...n, fixado: !n.fixado } : n));
         notifyBroadcast('SYNC_NOTICES', next);
         return next;
       });
     },
-    [notifyBroadcast]
+    [notifyBroadcast, notices]
   );
 
   const acknowledgeNotice = useCallback(
@@ -433,10 +261,9 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
             acknowledgedAt: new Date().toISOString(),
           };
 
-          return {
-            ...n,
-            confirmacoes: [...n.confirmacoes, ack],
-          };
+          const updatedConfirmacoes = [...n.confirmacoes, ack];
+          void supabase.from('team_notices').update({confirmacoes:updatedConfirmacoes,atualizado_em:new Date().toISOString()}).eq('id',noticeId);
+          return { ...n, confirmacoes: updatedConfirmacoes };
         });
 
         notifyBroadcast('SYNC_NOTICES', next);
