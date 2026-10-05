@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { UserProfile, UserRole } from '../types';
+import { supabase } from '../lib/supabase';
 import {
   loadUsersFromStorage,
   saveUsersToStorage,
