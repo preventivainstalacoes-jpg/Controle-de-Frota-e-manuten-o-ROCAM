@@ -397,6 +397,8 @@ export const LoginScreen: React.FC = () => {
                   </form>
                 </div>
               )}
+            )}
+
           {/* TAB 2: CADASTRAR NOVO USUÁRIO */}
           {activeTab === 'register' && (
             <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
