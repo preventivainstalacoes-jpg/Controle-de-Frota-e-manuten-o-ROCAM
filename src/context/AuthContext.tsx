@@ -37,11 +37,6 @@ interface AuthContextType {
     name: string;
     password: string;
   }) => Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }>;
-  registerFirstAdmin: (data: {
-    email: string;
-    name: string;
-    password: string;
-  }) => Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }>;
   registerUserRequest: (data: {
     username: string;
     email?: string;
@@ -90,7 +85,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<UserProfile[]>([]);
-  const [hasAdmin, setHasAdmin] = useState<boolean>(true);
+  const [hasAdmin, setHasAdmin] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
