@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { UserProfile, UserRole } from '../types';
-import { supabase } from '../lib/supabase';
 import {
   loadUsersFromStorage,
   saveUsersToStorage,
@@ -25,18 +24,12 @@ interface AuthContextType {
   isAdmin: boolean;
   isOperator: boolean;
   users: UserProfile[];
-  hasAdmin: boolean;
   pendingUsers: UserProfile[];
   pendingApprovalsCount: number;
   isLoading: boolean;
   login: (identifier: string, pass: string) => Promise<{ success: boolean; error?: string }>;
   quickLoginAs: (role: 'ADMIN' | 'OPERADOR', specificUserId?: string) => Promise<boolean>;
   logout: () => void;
-  registerFirstAdmin: (data: {
-    email: string;
-    name: string;
-    password: string;
-  }) => Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }>;
   registerUserRequest: (data: {
     username: string;
     email?: string;
@@ -85,207 +78,148 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<UserProfile[]>([]);
-  const [hasAdmin, setHasAdmin] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Authentication is backed by Supabase Auth so the same account works on every device.
+  // Load users and check existing session on mount
   useEffect(() => {
-    let mounted = true;
+    let isMounted = true;
 
-    const loadProfile = async (authUserId: string): Promise<UserProfile | null> => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id,email,full_name,role,active,created_at')
-        .eq('id', authUserId)
-        .maybeSingle();
-      if (error) {
-        console.error('Erro ao carregar perfil Supabase:', error);
-        return null;
-      }
-      if (!data) return null;
-      const role = String(data.role).toUpperCase() === 'ADMIN' ? 'ADMIN' : 'OPERADOR';
-      return {
-        id: data.id,
-        username: data.email?.split('@')[0] || data.id.slice(0, 8),
-        email: data.email || undefined,
-        name: data.full_name || 'Usuário ROCAM',
-        re: '',
-        graduacao: '',
-        role,
-        pelotao: 'ROCAM',
-        passwordHash: '',
-        salt: '',
-        createdAt: data.created_at || new Date().toISOString(),
-        isActive: Boolean(data.active),
-        status: data.active ? 'ATIVO' : 'INATIVO',
-        lastLogin: new Date().toISOString(),
-      };
-    };
-
-    const loadAllProfiles = async (): Promise<UserProfile[]> => {
-      const { data, error } = await supabase.from('profiles').select('id,email,full_name,role,active,created_at');
-      if (error) { console.error('Erro ao carregar usuários:', error); return []; }
-      return (data || []).map((p:any) => ({
-        id:p.id, username:p.email?.split('@')[0] || p.id.slice(0,8), email:p.email || undefined,
-        name:p.full_name || 'Usuário ROCAM', re:'', graduacao:'', role:String(p.role).toUpperCase()==='ADMIN'?'ADMIN':'OPERADOR',
-        pelotao:'ROCAM',passwordHash:'',salt:'',createdAt:p.created_at || new Date().toISOString(),
-        isActive:Boolean(p.active),status:p.active?'ATIVO':'INATIVO',lastLogin:new Date().toISOString()
-      }));
-    };
-
-    const init = async () => {
+    async function initAuth() {
       try {
-        const allProfiles = await loadAllProfiles();
-        if (mounted) setUsers(allProfiles);
-        const { data: adminExists } = await supabase.rpc('has_admin');
-        if (mounted) setHasAdmin(Boolean(adminExists));
+        const loadedUsers = await loadUsersFromStorage();
+        if (isMounted) {
+          setUsers(loadedUsers);
 
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user && mounted) {
-          const profile = await loadProfile(session.user.id);
-          if (profile?.isActive) {
-            setCurrentUser(profile);
-            setUsers((prev) => [profile, ...prev.filter((u) => u.id !== profile.id)]);
-          } else {
-            await supabase.auth.signOut();
+          const savedSession = getSavedSession();
+          if (savedSession) {
+            const foundUser = loadedUsers.find((u) => u.id === savedSession.userId);
+            if (foundUser && foundUser.isActive && foundUser.status === 'ATIVO') {
+              setCurrentUser(foundUser);
+            } else {
+              clearSavedSession();
+            }
           }
         }
+      } catch (err) {
+        console.error('Failed to init auth context', err);
       } finally {
-        if (mounted) setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
-    };
+    }
 
-    init();
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!mounted) return;
-      if (!session?.user) {
-        setCurrentUser(null);
-        return;
-      }
-      const profile = await loadProfile(session.user.id);
-      if (profile?.isActive) {
-        setCurrentUser(profile);
-        setUsers((prev) => [profile, ...prev.filter((u) => u.id !== profile.id)]);
-      } else {
-        await supabase.auth.signOut();
-        setCurrentUser(null);
-      }
-    });
-
+    initAuth();
     return () => {
-      mounted = false;
-      listener.subscription.unsubscribe();
+      isMounted = false;
     };
   }, []);
 
   const login = async (identifier: string, pass: string): Promise<{ success: boolean; error?: string }> => {
-    const clean = identifier.trim().toLowerCase();
-    if (!clean || !pass) return { success: false, error: 'Informe usuário/e-mail e senha.' };
+    // Check against current state, and fall back to fresh storage if not found (avoids closure staleness)
+    const currentList = users.length > 0 ? users : await loadUsersFromStorage();
+    let authResult = await authenticateCredentials(identifier, pass, currentList);
+    let effectiveUsers = currentList;
 
-    // Prefer e-mail. For legacy username/RE, resolve it through profiles when those columns exist.
-    let email = clean;
-    if (!clean.includes('@')) {
-      const { data } = await supabase.from('profiles').select('email').or('email.eq.' + clean).maybeSingle();
-      if (data?.email) email = data.email;
+    if (!authResult.user) {
+      const freshUsers = await loadUsersFromStorage();
+      if (freshUsers.length > 0) {
+        const freshAuth = await authenticateCredentials(identifier, pass, freshUsers);
+        if (freshAuth.user) {
+          authResult = freshAuth;
+          effectiveUsers = freshUsers;
+        }
+      }
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
-    if (error || !data.user) return { success: false, error: error?.message || 'Credenciais inválidas.' };
-
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles').select('id,email,full_name,role,active,created_at').eq('id', data.user.id).single();
-    if (profileError || !profile) {
-      await supabase.auth.signOut();
-      return { success: false, error: 'Usuário autenticado, mas sem perfil no sistema.' };
-    }
-    if (!profile.active) {
-      await supabase.auth.signOut();
-      return { success: false, error: 'Seu acesso está inativo. Procure um administrador.' };
+    if (!authResult.user) {
+      return { success: false, error: authResult.error || 'Credenciais inválidas' };
     }
 
-    const user: UserProfile = {
-      id: profile.id, username: profile.email?.split('@')[0] || profile.id.slice(0,8), email: profile.email || undefined,
-      name: profile.full_name || 'Usuário ROCAM', re: '', graduacao: '',
-      role: String(profile.role).toUpperCase() === 'ADMIN' ? 'ADMIN' : 'OPERADOR', pelotao: 'ROCAM',
-      passwordHash: '', salt: '', createdAt: profile.created_at || new Date().toISOString(),
-      isActive: true, status: 'ATIVO', lastLogin: new Date().toISOString()
+    const updatedUser = {
+      ...authResult.user,
+      lastLogin: new Date().toISOString(),
     };
-    setCurrentUser(user);
-    setUsers((prev) => [user, ...prev.filter((u) => u.id !== user.id)]);
+
+    const nextUsers = effectiveUsers.map((u: UserProfile) => (u.id === updatedUser.id ? updatedUser : u));
+    setUsers(nextUsers);
+    saveUsersToStorage(nextUsers);
+
+    const session = createSessionForUser(updatedUser);
+    saveSavedSession(session);
+    setCurrentUser(updatedUser);
+
     return { success: true };
   };
 
-  const quickLoginAs = async (_role: 'ADMIN' | 'OPERADOR', _specificUserId?: string): Promise<boolean> => {
+  const quickLoginAs = async (role: 'ADMIN' | 'OPERADOR', specificUserId?: string): Promise<boolean> => {
+    try {
+      const listToSearch = users.length > 0 ? users : await loadUsersFromStorage();
+      let candidate: UserProfile | undefined = undefined;
+
+      if (specificUserId) {
+        candidate = listToSearch.find((u: UserProfile) => u.id === specificUserId && u.isActive && u.status === 'ATIVO');
+      }
+
+      if (!candidate) {
+        candidate = listToSearch.find((u: UserProfile) => u.role === role && u.isActive && u.status === 'ATIVO');
+      }
+
+      if (!candidate) {
+        const freshList = await loadUsersFromStorage();
+        if (specificUserId) {
+          candidate = freshList.find((u: UserProfile) => u.id === specificUserId && u.isActive && u.status === 'ATIVO');
+        }
+        if (!candidate) {
+          candidate = freshList.find((u: UserProfile) => u.role === role && u.isActive && u.status === 'ATIVO');
+        }
+      }
+
+      // If still not found and role is ADMIN, guarantee 1º Administrador Master access immediately
+      if (!candidate && role === 'ADMIN') {
+        candidate = FIRST_ADMIN;
+        const currentList = users.length > 0 ? users : await loadUsersFromStorage();
+        const nextUsers = [FIRST_ADMIN, ...currentList.filter((u) => u.id !== FIRST_ADMIN.id && u.username !== 'admin')];
+        setUsers(nextUsers);
+        saveUsersToStorage(nextUsers);
+      }
+
+      if (candidate) {
+        const updatedUser: UserProfile = {
+          ...candidate,
+          isActive: true,
+          status: 'ATIVO',
+          lastLogin: new Date().toISOString(),
+        };
+        const currentList = users.length > 0 ? users : await loadUsersFromStorage();
+        const nextUsers = currentList.map((u: UserProfile) => (u.id === updatedUser.id ? updatedUser : u));
+        if (!nextUsers.some((u) => u.id === updatedUser.id)) {
+          nextUsers.unshift(updatedUser);
+        }
+        setUsers(nextUsers);
+        saveUsersToStorage(nextUsers);
+
+        const session = createSessionForUser(updatedUser);
+        saveSavedSession(session);
+        setCurrentUser(updatedUser);
+        return true;
+      }
+    } catch (e) {
+      console.error('Error in quickLoginAs:', e);
+      if (role === 'ADMIN') {
+        const session = createSessionForUser(FIRST_ADMIN);
+        saveSavedSession(session);
+        setCurrentUser(FIRST_ADMIN);
+        return true;
+      }
+    }
     return false;
   };
 
   const logout = () => {
-    void supabase.auth.signOut();
+    clearSavedSession();
     setCurrentUser(null);
-  };
-
-  /**
-   * First-admin bootstrap. The database trigger assigns ADMIN only when no
-   * administrator exists. Supabase Auth remains responsible for passwords.
-   */
-  const registerFirstAdmin = async (data: {
-    email: string;
-    name: string;
-    password: string;
-  }): Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }> => {
-    const email = data.email.trim().toLowerCase();
-    const name = data.name.trim();
-    if (!email || !email.includes('@')) return { success: false, error: 'Informe um e-mail válido.' };
-    if (!name) return { success: false, error: 'Informe o nome do administrador.' };
-    if (data.password.length < 6) return { success: false, error: 'A senha deve ter no mínimo 6 caracteres.' };
-
-    const { data: hasAdmin, error: checkError } = await supabase.rpc('has_admin');
-    if (checkError) return { success: false, error: 'Não foi possível verificar se já existe administrador.' };
-    if (hasAdmin) return { success: false, error: 'Já existe um administrador cadastrado. O primeiro cadastro já foi realizado.' };
-
-    const { data: authData, error } = await supabase.auth.signUp({
-      email,
-      password: data.password,
-      options: { data: { full_name: name } },
-    });
-
-    if (error || !authData.user) {
-      return { success: false, error: error?.message || 'Não foi possível criar o administrador.' };
-    }
-
-    const needsEmailConfirmation = !authData.session;
-    if (authData.session) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id,email,full_name,role,active,created_at')
-        .eq('id', authData.user.id)
-        .maybeSingle();
-
-      if (profile) {
-        const user: UserProfile = {
-          id: profile.id,
-          username: profile.email?.split('@')[0] || profile.id.slice(0, 8),
-          email: profile.email || undefined,
-          name: profile.full_name || name,
-          re: '',
-          graduacao: '',
-          role: 'ADMIN',
-          pelotao: 'ROCAM',
-          passwordHash: '',
-          salt: '',
-          createdAt: profile.created_at || new Date().toISOString(),
-          isActive: Boolean(profile.active),
-          status: profile.active ? 'ATIVO' : 'INATIVO',
-          lastLogin: new Date().toISOString(),
-        };
-        setCurrentUser(user);
-        setUsers((prev) => [user, ...prev.filter((u) => u.id !== user.id)]);
-      }
-    }
-
-    setHasAdmin(true);
-    return { success: true, needsEmailConfirmation };
   };
 
   /**
@@ -883,14 +817,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isAdmin,
         isOperator,
         users,
-        hasAdmin,
         pendingUsers,
         pendingApprovalsCount,
         isLoading,
         login,
         quickLoginAs,
         logout,
-        registerFirstAdmin,
         registerUserRequest,
         createUser,
         approveUser,
