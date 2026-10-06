@@ -338,6 +338,8 @@ export const LoginScreen: React.FC = () => {
                 </button>
               </div>
 
+              </form>
+
               {!hasAdmin && (
                 <div className="mt-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/40 space-y-3">
                   <button
