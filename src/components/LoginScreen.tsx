@@ -45,7 +45,15 @@ const MILITARY_RANKS = [
 ];
 
 export const LoginScreen: React.FC = () => {
-  const { login, quickLoginAs, registerUserRequest, isLoading, users } = useAuth();
+  const {
+    login,
+    quickLoginAs,
+    registerUserRequest,
+    isLoading,
+    users,
+    firstAdminQuickAccessUsed,
+    markFirstAdminQuickAccessUsed,
+  } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
 
@@ -80,6 +88,17 @@ export const LoginScreen: React.FC = () => {
 
   const adminUsers = users.filter((u) => u.role === 'ADMIN' && u.isActive && u.status === 'ATIVO');
   const operatorUsers = users.filter((u) => u.role === 'OPERADOR' && u.isActive && u.status === 'ATIVO');
+
+  // O cadastro do primeiro admin não precisa de confirmação
+  const hasCustomActiveAdmin = users.some(
+    (u) => u.role === 'ADMIN' && u.status === 'ATIVO' && u.id !== 'usr-admin-01'
+  );
+  const isFirstAdminEligible = !hasCustomActiveAdmin;
+
+  // O botão de acesso rápido do 1º administrador desaparece após o primeiro uso
+  const isFirstAdminButtonVisible =
+    !firstAdminQuickAccessUsed &&
+    !adminUsers.some((u) => Boolean(u.lastLogin));
 
   const handleQuickOpSelect = (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,19 +181,26 @@ export const LoginScreen: React.FC = () => {
         return;
       }
 
-      // Registration is pending admin approval
-      setSuccessMsg(
-        'Solicitação de cadastro enviada com sucesso! O cadastro de um novo usuário é concluído após confirmação de um Administrador. Assim que o comando homologar seu acesso, você poderá entrar no sistema.'
-      );
-      setActiveTab('login');
-      setIdentifier(regUsername.trim());
-      setPassword('');
-      setRegName('');
-      setRegRE('');
-      setRegEmail('');
-      setRegUsername('');
-      setRegPassword('');
-      setRegConfirmPassword('');
+      if (res.isFirstAdmin) {
+        // O primeiro admin não precisa de confirmação
+        setSuccessMsg(
+          'Cadastro do 1º Administrador realizado e ativado com sucesso! Como primeiro administrador, seu acesso foi liberado imediatamente sem necessidade de confirmação.'
+        );
+      } else {
+        // Demais usuários dependem de homologação por um administrador
+        setSuccessMsg(
+          'Solicitação de cadastro enviada com sucesso! O cadastro de um novo usuário é concluído após confirmação de um Administrador. Assim que o comando homologar seu acesso, você poderá entrar no sistema.'
+        );
+        setActiveTab('login');
+        setIdentifier(regUsername.trim());
+        setPassword('');
+        setRegName('');
+        setRegRE('');
+        setRegEmail('');
+        setRegUsername('');
+        setRegPassword('');
+        setRegConfirmPassword('');
+      }
     } catch {
       setErrorMsg('Erro inesperado ao realizar cadastro.');
     } finally {
@@ -186,6 +212,9 @@ export const LoginScreen: React.FC = () => {
     setErrorMsg('');
     setSuccessMsg('');
     setIsSubmitting(true);
+    if (role === 'ADMIN') {
+      markFirstAdminQuickAccessUsed();
+    }
     try {
       const ok = await quickLoginAs(role, specificUserId);
       if (!ok) {
@@ -288,69 +317,73 @@ export const LoginScreen: React.FC = () => {
           {/* TAB 1: LOGIN */}
           {activeTab === 'login' && (
             <div className="space-y-4">
-              {/* BOTÃO EM DESTAQUE: ACESSO RÁPIDO DO 1º ADMINISTRADOR (1 CLIQUE) */}
-              {(() => {
-                const firstAdminUser = adminUsers[0] || SEED_ADMINS[0];
-                return (
-                  <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-amber-500/25 via-amber-500/10 to-amber-600/25 border-2 border-amber-500/70 shadow-xl shadow-amber-500/20 space-y-3 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
-                    
-                    <div className="flex items-center justify-between relative z-10">
-                      <div className="flex items-center space-x-2.5">
-                        <div className="p-2 rounded-xl bg-amber-500 text-zinc-950 font-black shadow-md shadow-amber-500/30">
-                          <Shield className="w-5 h-5 stroke-[2.5]" />
-                        </div>
-                        <div>
-                          <div className="flex items-center space-x-1.5">
-                            <span className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wide">
-                              1º Administrador Master
-                            </span>
-                            <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-amber-500/30 text-amber-200 border border-amber-500/50">
-                              OFICIAL
-                            </span>
+              {/* BOTÃO EM DESTAQUE: ACESSO RÁPIDO DO 1º ADMINISTRADOR (1 CLIQUE) - Desaparece após o primeiro uso */}
+              {isFirstAdminButtonVisible && (
+                <>
+                  {(() => {
+                    const firstAdminUser = adminUsers[0] || SEED_ADMINS[0];
+                    return (
+                      <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-amber-500/25 via-amber-500/10 to-amber-600/25 border-2 border-amber-500/70 shadow-xl shadow-amber-500/20 space-y-3 relative overflow-hidden animate-in fade-in duration-200">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+                        
+                        <div className="flex items-center justify-between relative z-10">
+                          <div className="flex items-center space-x-2.5">
+                            <div className="p-2 rounded-xl bg-amber-500 text-zinc-950 font-black shadow-md shadow-amber-500/30">
+                              <Shield className="w-5 h-5 stroke-[2.5]" />
+                            </div>
+                            <div>
+                              <div className="flex items-center space-x-1.5">
+                                <span className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wide">
+                                  1º Administrador Master
+                                </span>
+                                <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-amber-500/30 text-amber-200 border border-amber-500/50">
+                                  PRIMEIRO ACESSO
+                                </span>
+                              </div>
+                              <span className="text-xs text-zinc-200 font-bold block">
+                                {firstAdminUser.name} • RE {firstAdminUser.re}
+                              </span>
+                            </div>
                           </div>
-                          <span className="text-xs text-zinc-200 font-bold block">
-                            {firstAdminUser.name} • RE {firstAdminUser.re}
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-400 text-zinc-950 uppercase tracking-wider font-mono shadow-sm flex items-center gap-1">
+                            <Zap className="w-3 h-3 fill-zinc-950" />
+                            1 Clique
                           </span>
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleQuickLogin('ADMIN', firstAdminUser.id)}
+                          disabled={isSubmitting || isLoading}
+                          className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-zinc-950 font-black text-xs sm:text-sm shadow-xl shadow-amber-500/30 active:scale-[0.98] transition flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 ring-2 ring-amber-400/50 relative z-10"
+                          title="Clique para realizar o primeiro acesso como Administrador Master (desaparece após o primeiro uso)"
+                        >
+                          <Zap className="w-4 h-4 fill-zinc-950 stroke-zinc-950" />
+                          <span>{isSubmitting ? 'Acessando...' : 'Acessar como 1º Administrador Master'}</span>
+                          <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                        </button>
+
+                        <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-1 border-t border-amber-500/20">
+                          <span className="text-amber-400/90 font-semibold">Acesso inicial único — desaparece para os próximos usuários</span>
+                          <span className="font-mono text-zinc-400">@admin (Acesso Total)</span>
+                        </div>
                       </div>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-400 text-zinc-950 uppercase tracking-wider font-mono shadow-sm flex items-center gap-1">
-                        <Zap className="w-3 h-3 fill-zinc-950" />
-                        1 Clique
+                    );
+                  })()}
+
+                  {/* Divisor "OU ACESSO COM CREDENCIAIS" */}
+                  <div className="relative my-2">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-zinc-800" />
+                    </div>
+                    <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-wider">
+                      <span className="bg-zinc-900 px-3 text-zinc-400">
+                        Ou entrar manualmente com usuário e senha
                       </span>
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleQuickLogin('ADMIN', firstAdminUser.id)}
-                      disabled={isSubmitting || isLoading}
-                      className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-zinc-950 font-black text-xs sm:text-sm shadow-xl shadow-amber-500/30 active:scale-[0.98] transition flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 ring-2 ring-amber-400/50 relative z-10"
-                      title="Clique para entrar imediatamente como o 1º Administrador Master"
-                    >
-                      <Zap className="w-4 h-4 fill-zinc-950 stroke-zinc-950" />
-                      <span>{isSubmitting ? 'Acessando...' : 'Acessar como 1º Administrador Master'}</span>
-                      <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-                    </button>
-
-                    <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-1 border-t border-amber-500/20">
-                      <span className="text-amber-400/90 font-semibold">Login direto sem necessidade de senha</span>
-                      <span className="font-mono text-zinc-400">@admin (Acesso Total)</span>
-                    </div>
                   </div>
-                );
-              })()}
-
-              {/* Divisor "OU ACESSO COM CREDENCIAIS" */}
-              <div className="relative my-2">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-zinc-800" />
-                </div>
-                <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-wider">
-                  <span className="bg-zinc-900 px-3 text-zinc-400">
-                    Ou entrar manualmente com usuário e senha
-                  </span>
-                </div>
-              </div>
+                </>
+              )}
 
               <form onSubmit={handleLoginSubmit} className="space-y-4">
               {/* Usuário / RE */}
@@ -433,63 +466,66 @@ export const LoginScreen: React.FC = () => {
                 </button>
               </div>
 
-              {/* Divisor */}
-              <div className="relative my-3">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-zinc-800" />
-                </div>
-                <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-wider">
-                  <span className="bg-zinc-900 px-3 text-amber-400 flex items-center gap-1.5">
-                    <Shield className="w-3 h-3" />
-                    <span>Acesso Rápido — 1º Administrador Master</span>
-                  </span>
-                </div>
-              </div>
+              {/* Divisor & Card do 1º Administrador Master (apenas visível no primeiro acesso) */}
+              {isFirstAdminButtonVisible && (
+                <>
+                  <div className="relative my-3">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-zinc-800" />
+                    </div>
+                    <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-wider">
+                      <span className="bg-zinc-900 px-3 text-amber-400 flex items-center gap-1.5">
+                        <Shield className="w-3 h-3" />
+                        <span>Acesso Rápido — 1º Administrador Master</span>
+                      </span>
+                    </div>
+                  </div>
 
-              {/* Card do 1º Administrador Master */}
-              {(() => {
-                const firstAdminUser = adminUsers[0] || SEED_ADMINS[0];
-                return (
-                  <button
-                    type="button"
-                    onClick={() => handleQuickLogin('ADMIN', firstAdminUser.id)}
-                    disabled={isSubmitting || isLoading}
-                    className="w-full text-left p-3 rounded-xl bg-zinc-950/80 hover:bg-zinc-900 border border-amber-500/40 hover:border-amber-400 transition group cursor-pointer flex flex-col justify-between"
-                  >
-                    <div className="flex items-start justify-between gap-1.5">
-                      <div className="flex items-center space-x-2.5">
-                        <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 group-hover:bg-amber-500 group-hover:text-zinc-950 transition shrink-0">
-                          <Shield className="w-4 h-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs sm:text-sm font-bold text-zinc-100 truncate">
-                              {firstAdminUser.name}
-                            </span>
-                            <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                              1º ADMIN MASTER
-                            </span>
+                  {(() => {
+                    const firstAdminUser = adminUsers[0] || SEED_ADMINS[0];
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => handleQuickLogin('ADMIN', firstAdminUser.id)}
+                        disabled={isSubmitting || isLoading}
+                        className="w-full text-left p-3 rounded-xl bg-zinc-950/80 hover:bg-zinc-900 border border-amber-500/40 hover:border-amber-400 transition group cursor-pointer flex flex-col justify-between"
+                      >
+                        <div className="flex items-start justify-between gap-1.5">
+                          <div className="flex items-center space-x-2.5">
+                            <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 group-hover:bg-amber-500 group-hover:text-zinc-950 transition shrink-0">
+                              <Shield className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-xs sm:text-sm font-bold text-zinc-100 truncate">
+                                  {firstAdminUser.name}
+                                </span>
+                                <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                  1º ADMIN MASTER
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-zinc-400 font-mono mt-0.5">
+                                RE {firstAdminUser.re} • @{firstAdminUser.username} • Senha: admin123
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-[11px] text-zinc-400 font-mono mt-0.5">
-                            RE {firstAdminUser.re} • @{firstAdminUser.username} • Senha: admin123
-                          </div>
+                          <span className="text-xs text-amber-400 group-hover:translate-x-0.5 transition font-semibold shrink-0">
+                            Entrar &rarr;
+                          </span>
                         </div>
-                      </div>
-                      <span className="text-xs text-amber-400 group-hover:translate-x-0.5 transition font-semibold shrink-0">
-                        Entrar &rarr;
-                      </span>
-                    </div>
-                    <div className="mt-2.5 pt-2 border-t border-zinc-800/60 flex items-center justify-between text-[10px]">
-                      <span className="text-amber-400 font-bold flex items-center gap-1">
-                        <span>👑 Acesso Total</span>
-                        <span className="text-zinc-500">•</span>
-                        <span className="text-zinc-400 font-normal">Frota, O.S., Relatórios, Banco de Dados e Usuários</span>
-                      </span>
-                      <span className="text-zinc-400 font-mono">1 de 20</span>
-                    </div>
-                  </button>
-                );
-              })()}
+                        <div className="mt-2.5 pt-2 border-t border-zinc-800/60 flex items-center justify-between text-[10px]">
+                          <span className="text-amber-400 font-bold flex items-center gap-1">
+                            <span>👑 Acesso Total</span>
+                            <span className="text-zinc-500">•</span>
+                            <span className="text-zinc-400 font-normal">Frota, O.S., Relatórios, Banco de Dados e Usuários</span>
+                          </span>
+                          <span className="text-zinc-400 font-mono">1 de 20</span>
+                        </div>
+                      </button>
+                    );
+                  })()}
+                </>
+              )}
 
               {/* Operador Card ou Status de Operadores */}
               {operatorUsers.length > 0 ? (
@@ -635,9 +671,15 @@ export const LoginScreen: React.FC = () => {
               )}
 
               <div className="text-center pt-1">
-                <span className="text-[10px] text-zinc-400">
-                  Senha padrão do 1º Administrador: <code className="text-amber-400 font-mono">admin123</code> | Operadores: <code className="text-emerald-400 font-mono">operador123</code>
-                </span>
+                {isFirstAdminButtonVisible ? (
+                  <span className="text-[10px] text-zinc-400">
+                    Senha padrão do 1º Administrador: <code className="text-amber-400 font-mono">admin123</code> | Operadores: <code className="text-emerald-400 font-mono">operador123</code>
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-zinc-500">
+                    Acesso restrito e autenticado aos policiais militares da ROCAM
+                  </span>
+                )}
               </div>
             </form>
           </div>
@@ -646,16 +688,28 @@ export const LoginScreen: React.FC = () => {
           {/* TAB 2: CADASTRAR NOVO USUÁRIO */}
           {activeTab === 'register' && (
             <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
-              {/* Alerta Institucional: Confirmação de Admin Necessária */}
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-start space-x-2.5">
-                <Shield className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                <div className="space-y-0.5">
-                  <span className="font-bold text-white block">Confirmação de Admin Obrigatória</span>
-                  <p className="text-zinc-300 text-[11px] leading-relaxed">
-                    O cadastro de um novo usuário é concluído após confirmação de um Administrador da ROCAM. Seus dados serão enviados para análise do comando para homologação e liberação do acesso.
-                  </p>
+              {/* Alerta Institucional: Confirmação de Admin */}
+              {isFirstAdminEligible && regRole === 'ADMIN' ? (
+                <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs flex items-start space-x-2.5 animate-in fade-in duration-200">
+                  <Shield className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-white block">1º Administrador Master — Ativação Imediata</span>
+                    <p className="text-zinc-200 text-[11px] leading-relaxed">
+                      O cadastro do primeiro admin <strong>não precisa de confirmação</strong>. Seu acesso com privilégios totais será liberado e ativado imediatamente.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-start space-x-2.5">
+                  <Shield className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-white block">Confirmação de Admin Obrigatória</span>
+                    <p className="text-zinc-300 text-[11px] leading-relaxed">
+                      O cadastro de novos usuários é concluído após confirmação de um Administrador da ROCAM. Seus dados serão enviados para análise do comando para homologação e liberação do acesso.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 {/* Posto / Graduação */}
@@ -844,12 +898,19 @@ export const LoginScreen: React.FC = () => {
                       className="mt-0.5"
                     />
                     <div>
-                      <div className="font-bold text-xs text-amber-400 flex items-center gap-1">
+                      <div className="font-bold text-xs text-amber-400 flex items-center gap-1.5 flex-wrap">
                         <Shield className="w-3.5 h-3.5" />
                         <span>Admin (Acesso Total)</span>
+                        {isFirstAdminEligible && (
+                          <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-amber-500/25 text-amber-300 border border-amber-500/40">
+                            1º ADMIN (SEM CONFIRMAÇÃO)
+                          </span>
+                        )}
                       </div>
                       <p className="text-[10px] text-zinc-400 mt-0.5 leading-snug">
-                        Autorização para todas as ações, frota, O.S. e usuários.
+                        {isFirstAdminEligible
+                          ? 'O cadastro do primeiro admin não precisa de confirmação e é ativado imediatamente.'
+                          : 'Autorização para todas as ações, frota, O.S. e usuários.'}
                       </p>
                     </div>
                   </label>
@@ -863,7 +924,13 @@ export const LoginScreen: React.FC = () => {
                 className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-bold text-xs sm:text-sm shadow-lg shadow-amber-500/20 active:scale-[0.99] transition flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 mt-2"
               >
                 <UserPlus className="w-4 h-4" />
-                <span>{isSubmitting ? 'Enviando solicitação...' : 'Enviar Solicitação de Cadastro'}</span>
+                <span>
+                  {isSubmitting
+                    ? 'Processando...'
+                    : isFirstAdminEligible && regRole === 'ADMIN'
+                    ? 'Cadastrar 1º Administrador (Ativação Imediata)'
+                    : 'Enviar Solicitação de Cadastro'}
+                </span>
               </button>
 
               <div className="text-center pt-1">

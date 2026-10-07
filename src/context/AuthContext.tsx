@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { UserProfile, UserRole } from '../types';
-import { supabase } from '../lib/supabase';
 import {
   loadUsersFromStorage,
   saveUsersToStorage,
@@ -40,7 +39,7 @@ interface AuthContextType {
     role: UserRole;
     pelotao: string;
     password: string;
-  }) => Promise<{ success: boolean; error?: string }>;
+  }) => Promise<{ success: boolean; isFirstAdmin?: boolean; error?: string }>;
   createUser: (data: {
     username: string;
     email?: string;
@@ -73,6 +72,8 @@ interface AuthContextType {
     pelotao: string;
     password: string;
   }) => Promise<{ success: boolean; error?: string }>;
+  firstAdminQuickAccessUsed: boolean;
+  markFirstAdminQuickAccessUsed: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -82,151 +83,102 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  const STORAGE_FIRST_ADMIN_USED_KEY = 'rocam_first_admin_quick_used_v1';
+
+  const [firstAdminQuickAccessUsed, setFirstAdminQuickAccessUsed] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_FIRST_ADMIN_USED_KEY);
+      if (stored === 'true') return true;
+      if (localStorage.getItem('rocam_first_admin_quick_used') === 'true') return true;
+      return false;
+    } catch {
+      return false;
+    }
+  });
+
+  const markFirstAdminQuickAccessUsed = () => {
+    try {
+      localStorage.setItem(STORAGE_FIRST_ADMIN_USED_KEY, 'true');
+      localStorage.setItem('rocam_first_admin_quick_used', 'true');
+    } catch (e) {
+      console.warn('Could not persist first admin quick access flag', e);
+    }
+    setFirstAdminQuickAccessUsed(true);
+  };
+
   // Load users and check existing session on mount
   useEffect(() => {
     let isMounted = true;
 
-    const profileToUser = (p: any): UserProfile => ({
-      id: p.id,
-      username: p.username || (p.email ? p.email.split('@')[0] : ''),
-      email: p.email || undefined,
-      name: p.full_name || '',
-      graduacao: p.graduacao || '',
-      re: p.re || '',
-      role: String(p.role).toUpperCase() as UserRole,
-      pelotao: p.pelotao || 'ROCAM',
-      passwordHash: '',
-      salt: '',
-      createdAt: p.created_at || new Date().toISOString(),
-      isActive: !!p.active,
-      status: p.active ? 'ATIVO' : 'INATIVO',
-    });
-
     async function initAuth() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (session?.user && isMounted) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('id,full_name,role,active,email,username,re,graduacao,pelotao,created_at')
-            .eq('id', session.user.id)
-            .maybeSingle();
-
-          if (profile && profile.active) {
-            const user = profileToUser(profile);
-            setCurrentUser(user);
-            setUsers([user]);
-            saveSavedSession(createSessionForUser(user));
-          } else {
-            await supabase.auth.signOut();
-            clearSavedSession();
-          }
-        } else if (isMounted) {
-          const loadedUsers = await loadUsersFromStorage();
+        const loadedUsers = await loadUsersFromStorage();
+        if (isMounted) {
           setUsers(loadedUsers);
+
           const savedSession = getSavedSession();
           if (savedSession) {
             const foundUser = loadedUsers.find((u) => u.id === savedSession.userId);
-            if (foundUser && foundUser.isActive && foundUser.status === 'ATIVO') setCurrentUser(foundUser);
-            else clearSavedSession();
+            if (foundUser && foundUser.isActive && foundUser.status === 'ATIVO') {
+              setCurrentUser(foundUser);
+            } else {
+              clearSavedSession();
+            }
           }
         }
-
-        const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-          if (!isMounted) return;
-          if (!session?.user) {
-            setCurrentUser(null);
-            return;
-          }
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('id,full_name,role,active,email,username,re,graduacao,pelotao,created_at')
-            .eq('id', session.user.id)
-            .maybeSingle();
-          if (profile && profile.active) {
-            const user = profileToUser(profile);
-            setCurrentUser(user);
-            setUsers((prev) => prev.some((u) => u.id === user.id) ? prev.map((u) => u.id === user.id ? user : u) : [user, ...prev]);
-          } else {
-            setCurrentUser(null);
-          }
-        });
-
-        return () => listener.subscription.unsubscribe();
       } catch (err) {
         console.error('Failed to init auth context', err);
       } finally {
-        if (isMounted) setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     }
 
-    let cleanup: (() => void) | undefined;
-    initAuth().then((fn) => { cleanup = fn; });
-
+    initAuth();
     return () => {
       isMounted = false;
-      cleanup?.();
     };
   }, []);
 
   const login = async (identifier: string, pass: string): Promise<{ success: boolean; error?: string }> => {
-    const cleanIdentifier = identifier.trim().toLowerCase();
+    // Check against current state, and fall back to fresh storage if not found (avoids closure staleness)
+    const currentList = users.length > 0 ? users : await loadUsersFromStorage();
+    let authResult = await authenticateCredentials(identifier, pass, currentList);
+    let effectiveUsers = currentList;
 
-    if (cleanIdentifier.includes('@')) {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: cleanIdentifier,
-        password: pass,
-      });
-
-      if (!error && data.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id,full_name,role,active,email,username,re,graduacao,pelotao,created_at')
-          .eq('id', data.user.id)
-          .maybeSingle();
-
-        if (!profile) {
-          await supabase.auth.signOut();
-          return { success: false, error: 'Perfil do usuário não encontrado no Supabase.' };
+    if (!authResult.user) {
+      const freshUsers = await loadUsersFromStorage();
+      if (freshUsers.length > 0) {
+        const freshAuth = await authenticateCredentials(identifier, pass, freshUsers);
+        if (freshAuth.user) {
+          authResult = freshAuth;
+          effectiveUsers = freshUsers;
         }
-        if (!profile.active) {
-          await supabase.auth.signOut();
-          return { success: false, error: 'Usuário ainda não foi aprovado pelo Administrador.' };
-        }
-
-        const updatedUser: UserProfile = {
-          id: profile.id,
-          username: profile.username || cleanIdentifier.split('@')[0],
-          email: profile.email || cleanIdentifier,
-          name: profile.full_name || '',
-          graduacao: profile.graduacao || '',
-          re: profile.re || '',
-          role: String(profile.role).toUpperCase() as UserRole,
-          pelotao: profile.pelotao || 'ROCAM',
-          passwordHash: '',
-          salt: '',
-          createdAt: profile.created_at || new Date().toISOString(),
-          isActive: true,
-          status: 'ATIVO',
-          lastLogin: new Date().toISOString(),
-        };
-
-        setCurrentUser(updatedUser);
-        setUsers((prev) => prev.some((u) => u.id === updatedUser.id) ? prev.map((u) => u.id === updatedUser.id ? updatedUser : u) : [updatedUser, ...prev]);
-        saveSavedSession(createSessionForUser(updatedUser));
-        return { success: true };
       }
-
-      return { success: false, error: error?.message || 'Credenciais inválidas' };
     }
 
-    const currentList = users.length > 0 ? users : await loadUsersFromStorage();
-    const authResult = await authenticateCredentials(identifier, pass, currentList);
-    if (!authResult.user) return { success: false, error: authResult.error || 'Use o e-mail cadastrado para acesso compartilhado.' };
+    if (!authResult.user) {
+      return { success: false, error: authResult.error || 'Credenciais inválidas' };
+    }
 
-    setCurrentUser(authResult.user);
-    saveSavedSession(createSessionForUser(authResult.user));
+    const updatedUser = {
+      ...authResult.user,
+      lastLogin: new Date().toISOString(),
+    };
+
+    if (updatedUser.role === 'ADMIN') {
+      markFirstAdminQuickAccessUsed();
+    }
+
+    const nextUsers = effectiveUsers.map((u: UserProfile) => (u.id === updatedUser.id ? updatedUser : u));
+    setUsers(nextUsers);
+    saveUsersToStorage(nextUsers);
+
+    const session = createSessionForUser(updatedUser);
+    saveSavedSession(session);
+    setCurrentUser(updatedUser);
+
     return { success: true };
   };
 
@@ -263,6 +215,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       if (candidate) {
+        if (candidate.role === 'ADMIN' || role === 'ADMIN') {
+          markFirstAdminQuickAccessUsed();
+        }
+
         const updatedUser: UserProfile = {
           ...candidate,
           isActive: true,
@@ -285,6 +241,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (e) {
       console.error('Error in quickLoginAs:', e);
       if (role === 'ADMIN') {
+        markFirstAdminQuickAccessUsed();
         const session = createSessionForUser(FIRST_ADMIN);
         saveSavedSession(session);
         setCurrentUser(FIRST_ADMIN);
@@ -295,13 +252,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = () => {
-    void supabase.auth.signOut();
     clearSavedSession();
     setCurrentUser(null);
   };
 
   /**
-   * Self-registration requested by user (requires Admin approval)
+   * Self-registration requested by user (requires Admin approval, except 1st admin)
    */
   const registerUserRequest = async (data: {
     username: string;
@@ -312,7 +268,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     role: UserRole;
     pelotao: string;
     password: string;
-  }): Promise<{ success: boolean; error?: string }> => {
+  }): Promise<{ success: boolean; isFirstAdmin?: boolean; error?: string }> => {
     const cleanUser = data.username.trim().toLowerCase();
     const cleanEmail = data.email ? data.email.trim().toLowerCase() : undefined;
     if (!cleanUser) {
@@ -349,6 +305,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const salt = generateSalt();
     const hash = await hashPassword(data.password, salt);
 
+    // O cadastro do primeiro admin não precisa de confirmação
+    const hasCustomActiveAdmin = users.some(
+      (u) => u.role === 'ADMIN' && u.status === 'ATIVO' && u.id !== 'usr-admin-01'
+    );
+    const isFirstAdmin = data.role === 'ADMIN' && !hasCustomActiveAdmin;
+
     const newUser: UserProfile = {
       id: `usr-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
       username: cleanUser,
@@ -361,15 +323,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       passwordHash: hash,
       salt,
       createdAt: new Date().toISOString(),
-      isActive: false, // PENDENTE de aprovação por um Administrador
-      status: 'PENDENTE',
+      isActive: isFirstAdmin,
+      status: isFirstAdmin ? 'ATIVO' : 'PENDENTE',
       solicitadoEm: new Date().toISOString(),
+      aprovadoPor: isFirstAdmin ? '1º Administrador (Ativação Automática)' : undefined,
+      aprovadoEm: isFirstAdmin ? new Date().toISOString() : undefined,
     };
+
+    if (isFirstAdmin) {
+      markFirstAdminQuickAccessUsed();
+    }
 
     const nextUsers = [newUser, ...users];
     setUsers(nextUsers);
     saveUsersToStorage(nextUsers);
-    return { success: true };
+
+    if (isFirstAdmin) {
+      const session = createSessionForUser(newUser);
+      saveSavedSession(session);
+      setCurrentUser(newUser);
+    }
+
+    return { success: true, isFirstAdmin };
   };
 
   /**
@@ -869,6 +844,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }): Promise<{ success: boolean; error?: string }> => {
     try {
       const resetList = await resetUsersToFirstAdmin(customAdminData);
+      try {
+        localStorage.removeItem(STORAGE_FIRST_ADMIN_USED_KEY);
+        localStorage.removeItem('rocam_first_admin_quick_used');
+      } catch {}
+      setFirstAdminQuickAccessUsed(false);
       setUsers(resetList);
       setCurrentUser(resetList[0]);
       const session = createSessionForUser(resetList[0]);
@@ -914,6 +894,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         toggleUserActive,
         resetUsersToDefault,
         resetToFirstAdmin,
+        firstAdminQuickAccessUsed,
+        markFirstAdminQuickAccessUsed,
       }}
     >
       {children}
