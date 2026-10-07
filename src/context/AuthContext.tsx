@@ -287,9 +287,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // A shared fleet application must use the same Supabase Auth credentials on every device.
     return {
       success: false,
-      error: lookupError?.message
-        ? 'Não foi possível localizar sua conta no servidor. Tente novamente.'
-        : 'Credenciais inválidas. Confira o usuário/e-mail/RE e a senha cadastrados.',
+      error: 'Credenciais inválidas. Confira o usuário/e-mail/RE e a senha cadastrados.',
     };
 
   const quickLoginAs = async (role: 'ADMIN' | 'OPERADOR', specificUserId?: string): Promise<boolean> => {
