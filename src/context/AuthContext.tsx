@@ -201,6 +201,51 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.warn('Falha ao autenticar pelo Supabase; tentando compatibilidade local.', error);
     }
 
+    // Se o usuário informou diretamente um e-mail, tente o Supabase Auth mesmo
+    // quando o perfil ainda não tiver username/RE preenchidos.
+    if (cleanId.includes('@')) {
+      const { data: directAuth, error: directError } = await supabase.auth.signInWithPassword({
+        email: cleanId,
+        password: pass,
+      });
+      if (!directError && directAuth.user) {
+        const { data: directProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', directAuth.user.id)
+          .maybeSingle();
+
+        if (directProfile && directProfile.active !== false) {
+          const mappedUser: UserProfile = {
+            id: directProfile.id,
+            username: directProfile.username || cleanId.split('@')[0],
+            email: directProfile.email || cleanId,
+            name: directProfile.full_name || cleanId.split('@')[0],
+            graduacao: directProfile.graduacao || '',
+            re: directProfile.re || '',
+            role: directProfile.role === 'admin' ? 'ADMIN' : 'OPERADOR',
+            pelotao: directProfile.pelotao || 'ROCAM',
+            passwordHash: '',
+            salt: '',
+            createdAt: directProfile.created_at || new Date().toISOString(),
+            isActive: true,
+            status: 'ATIVO',
+            lastLogin: new Date().toISOString(),
+          };
+          setUsers((prev) => {
+            const next = [mappedUser, ...prev.filter((u) => u.id !== mappedUser.id)];
+            saveUsersToStorage(next);
+            return next;
+          });
+          setCurrentUser(mappedUser);
+          saveSavedSession(createSessionForUser(mappedUser));
+          if (mappedUser.role === 'ADMIN') markFirstAdminQuickAccessUsed();
+          return { success: true };
+        }
+        await supabase.auth.signOut();
+      }
+    }
+
     // Compatibilidade com cadastros antigos armazenados neste navegador.
     const currentList = users.length > 0 ? users : await loadUsersFromStorage();
     const authResult = await authenticateCredentials(identifier, pass, currentList);
@@ -288,6 +333,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = () => {
+    void supabase.auth.signOut();
     clearSavedSession();
     setCurrentUser(null);
   };
