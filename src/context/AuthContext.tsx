@@ -283,28 +283,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     }
 
-    // IMPORTANT: never fall back to localStorage after a Supabase password error.
-    // A local-only credential would make one phone work while another rejects the same login.
-    // The shared application must authenticate exclusively through Supabase Auth.
-    if (cleanId.includes('@')) {
-      return { success: false, error: 'Credenciais inválidas. Confira o e-mail e a senha cadastrados no Supabase.' };
-    }
-
-    const currentList = users.length > 0 ? users : await loadUsersFromStorage();
-    const authResult = await authenticateCredentials(identifier, pass, currentList);
-    if (!authResult.user) {
-      return { success: false, error: authResult.error || 'Credenciais inválidas' };
-    }
-
-    const updatedUser = { ...authResult.user, lastLogin: new Date().toISOString() };
-    if (updatedUser.role === 'ADMIN') markFirstAdminQuickAccessUsed();
-    const nextUsers = currentList.map((u: UserProfile) => (u.id === updatedUser.id ? updatedUser : u));
-    setUsers(nextUsers);
-    saveUsersToStorage(nextUsers);
-    saveSavedSession(createSessionForUser(updatedUser));
-    setCurrentUser(updatedUser);
-    return { success: true };
-  };
+    // No local-storage authentication fallback.
+    // A shared fleet application must use the same Supabase Auth credentials on every device.
+    return {
+      success: false,
+      error: lookupError?.message
+        ? 'Não foi possível localizar sua conta no servidor. Tente novamente.'
+        : 'Credenciais inválidas. Confira o usuário/e-mail/RE e a senha cadastrados.',
+    };
 
   const quickLoginAs = async (role: 'ADMIN' | 'OPERADOR', specificUserId?: string): Promise<boolean> => {
     try {
