@@ -148,60 +148,54 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Fonte compartilhada para autenticação: Supabase Auth + public.profiles.
     // Isso permite o mesmo usuário entrar em celulares diferentes.
     try {
-      const { data: profileRows, error: profileError } = await supabase
-        .from('profiles')
-        .select('*');
+      // Resolve username/RE/email through a SECURITY DEFINER RPC so a new device
+      // can identify the account before Supabase Auth creates the session.
+      const { data: profile, error: lookupError } = await supabase
+        .rpc('find_profile_for_login', { p_identifier: cleanId })
+        .maybeSingle();
 
-      if (!profileError && profileRows) {
-        const profile = profileRows.find((p: any) =>
-          (p.email || '').toLowerCase() === cleanId ||
-          (p.username || '').toLowerCase() === cleanId ||
-          (p.re || '').replace(/[^0-9]/g, '') === cleanId.replace(/[^0-9]/g, '')
-        );
+      if (!lookupError && profile?.email) {
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: profile.email,
+          password: pass,
+        });
 
-        if (profile?.email) {
-          const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-            email: profile.email,
-            password: pass,
-          });
-
-          if (authError || !authData.user) {
-            return { success: false, error: authError?.message || 'Credenciais inválidas.' };
-          }
-
-          if (profile.active === false) {
-            await supabase.auth.signOut();
-            return { success: false, error: 'Acesso bloqueado: este usuário foi desativado pelo Administrador.' };
-          }
-
-          const mappedUser: UserProfile = {
-            id: profile.id,
-            username: profile.username || profile.email.split('@')[0],
-            email: profile.email,
-            name: profile.full_name || profile.username || profile.email,
-            graduacao: profile.graduacao || '',
-            re: profile.re || '',
-            role: profile.role === 'admin' ? 'ADMIN' : 'OPERADOR',
-            pelotao: profile.pelotao || 'ROCAM',
-            passwordHash: '',
-            salt: '',
-            createdAt: profile.created_at || new Date().toISOString(),
-            isActive: profile.active !== false,
-            status: profile.active === false ? 'INATIVO' : 'ATIVO',
-            lastLogin: new Date().toISOString(),
-          };
-
-          setUsers((prev) => {
-            const without = prev.filter((u) => u.id !== mappedUser.id);
-            const next = [mappedUser, ...without];
-            saveUsersToStorage(next);
-            return next;
-          });
-          saveSavedSession(createSessionForUser(mappedUser));
-          setCurrentUser(mappedUser);
-          if (mappedUser.role === 'ADMIN') markFirstAdminQuickAccessUsed();
-          return { success: true };
+        if (authError || !authData.user) {
+          return { success: false, error: authError?.message || 'Credenciais inválidas.' };
         }
+
+        if (profile.active === false) {
+          await supabase.auth.signOut();
+          return { success: false, error: 'Acesso bloqueado: este usuário foi desativado pelo Administrador.' };
+        }
+
+        const mappedUser: UserProfile = {
+          id: profile.id,
+          username: profile.username || profile.email.split('@')[0],
+          email: profile.email,
+          name: profile.full_name || profile.username || profile.email,
+          graduacao: profile.graduacao || '',
+          re: profile.re || '',
+          role: profile.role === 'admin' ? 'ADMIN' : 'OPERADOR',
+          pelotao: profile.pelotao || 'ROCAM',
+          passwordHash: '',
+          salt: '',
+          createdAt: profile.created_at || new Date().toISOString(),
+          isActive: profile.active !== false,
+          status: profile.active === false ? 'INATIVO' : 'ATIVO',
+          lastLogin: new Date().toISOString(),
+        };
+
+        setUsers((prev) => {
+          const without = prev.filter((u) => u.id !== mappedUser.id);
+          const next = [mappedUser, ...without];
+          saveUsersToStorage(next);
+          return next;
+        });
+        saveSavedSession(createSessionForUser(mappedUser));
+        setCurrentUser(mappedUser);
+        if (mappedUser.role === 'ADMIN') markFirstAdminQuickAccessUsed();
+        return { success: true };
       }
     } catch (error) {
       console.warn('Falha ao autenticar pelo Supabase; tentando compatibilidade local.', error);
