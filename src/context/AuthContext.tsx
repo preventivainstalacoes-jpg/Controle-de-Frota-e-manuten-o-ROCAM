@@ -370,91 +370,64 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
    * Self-registration requested by user (requires Admin approval, except 1st admin)
    */
   const registerUserRequest = async (data: {
-    username: string;
-    email?: string;
-    name: string;
-    graduacao: string;
-    re: string;
-    role: UserRole;
-    pelotao: string;
-    password: string;
+    username: string; email?: string; name: string; graduacao: string; re: string;
+    role: UserRole; pelotao: string; password: string;
   }): Promise<{ success: boolean; isFirstAdmin?: boolean; error?: string }> => {
     const cleanUser = data.username.trim().toLowerCase();
-    const cleanEmail = data.email ? data.email.trim().toLowerCase() : undefined;
-    if (!cleanUser) {
-      return { success: false, error: 'O nome de usuário é obrigatório.' };
-    }
-    if (users.some((u) => u.username.toLowerCase() === cleanUser)) {
-      return { success: false, error: 'Já existe um policial com este nome de usuário cadastrado.' };
-    }
-    if (cleanEmail && users.some((u) => u.email && u.email.toLowerCase() === cleanEmail)) {
-      return { success: false, error: 'Já existe um policial com este e-mail cadastrado.' };
-    }
-    if (users.some((u) => u.re.replace(/[^0-9]/g, '') === data.re.replace(/[^0-9]/g, ''))) {
-      return { success: false, error: 'Já existe um cadastro com esta matrícula RE.' };
-    }
-    if (!data.password || data.password.length < 4) {
-      return { success: false, error: 'A senha deve ter no mínimo 4 caracteres.' };
-    }
+    const cleanEmail = data.email?.trim().toLowerCase() || '';
+    const cleanRe = data.re.trim();
+    if (!cleanUser || !data.name.trim() || !cleanRe) return { success: false, error: 'Preencha nome, usuário e RE.' };
+    if (!cleanEmail || !cleanEmail.includes('@')) return { success: false, error: 'O e-mail é obrigatório para criar o acesso em todos os celulares.' };
+    if (!data.password || data.password.length < 6) return { success: false, error: 'A senha deve ter no mínimo 6 caracteres.' };
 
-    const currentAdmins = users.filter((u) => u.role === 'ADMIN').length;
-    const currentOps = users.filter((u) => u.role === 'OPERADOR').length;
-    if (data.role === 'ADMIN' && currentAdmins >= MAX_ADMINS) {
-      return {
-        success: false,
-        error: `Capacidade máxima atingida: O sistema permite no máximo ${MAX_ADMINS} Administradores com acesso total.`,
+    try {
+      const { data: existing } = await supabase.from('profiles').select('id,email,username,re')
+        .or(`email.eq.${cleanEmail},username.eq.${cleanUser},re.eq.${cleanRe}`).limit(1).maybeSingle();
+      if (existing) return { success: false, error: 'Já existe um usuário com este e-mail, usuário ou RE.' };
+
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: cleanEmail, password: data.password,
+        options: { data: { full_name: data.name.trim(), username: cleanUser, re: cleanRe, graduacao: data.graduacao, pelotao: data.pelotao.trim() || 'ROCAM' } }
+      });
+      if (signUpError) {
+        if (/already registered|already exists/i.test(signUpError.message)) return { success: false, error: 'Este e-mail já está cadastrado. Use Entrar ou recupere a senha.' };
+        return { success: false, error: signUpError.message };
+      }
+      if (!signUpData.user) return { success: false, error: 'O Supabase não retornou o usuário criado.' };
+
+      const adminCheck = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'admin').eq('active', true);
+      const hasAdmin = (adminCheck.count || 0) > 0 || users.some(u => u.role === 'ADMIN' && u.isActive && u.status === 'ATIVO');
+      const isFirstAdmin = data.role === 'ADMIN' && !hasAdmin;
+
+      const { error: profileError } = await supabase.from('profiles').upsert({
+        id: signUpData.user.id, full_name: data.name.trim(),
+        role: isFirstAdmin || data.role === 'ADMIN' ? 'admin' : 'operador',
+        active: isFirstAdmin, email: cleanEmail, username: cleanUser, re: cleanRe,
+        graduacao: data.graduacao, pelotao: data.pelotao.trim() || 'ROCAM'
+      }, { onConflict: 'id' });
+      if (profileError) {
+        await supabase.auth.signOut();
+        return { success: false, error: `Usuário criado no Auth, mas o perfil não foi gravado: ${profileError.message}` };
+      }
+
+      const mapped: UserProfile = {
+        id: signUpData.user.id, username: cleanUser, email: cleanEmail, name: data.name.trim(),
+        graduacao: data.graduacao, re: cleanRe, role: isFirstAdmin || data.role === 'ADMIN' ? 'ADMIN' : 'OPERADOR',
+        pelotao: data.pelotao.trim() || 'ROCAM', passwordHash: '', salt: '',
+        createdAt: new Date().toISOString(), isActive: isFirstAdmin, status: isFirstAdmin ? 'ATIVO' : 'PENDENTE'
       };
+      setUsers(prev => { const next=[mapped,...prev.filter(u=>u.id!==mapped.id)]; saveUsersToStorage(next); return next; });
+
+      if (signUpData.session && isFirstAdmin) {
+        setCurrentUser(mapped); saveSavedSession(createSessionForUser(mapped)); markFirstAdminQuickAccessUsed();
+      } else {
+        await supabase.auth.signOut();
+      }
+      return { success: true, isFirstAdmin };
+    } catch (e: any) {
+      console.error('Erro no cadastro Supabase:', e);
+      return { success: false, error: e?.message || 'Não foi possível concluir o cadastro.' };
     }
-    if (data.role === 'OPERADOR' && currentOps >= MAX_OPERATORS) {
-      return {
-        success: false,
-        error: `Capacidade máxima atingida: O sistema permite no máximo ${MAX_OPERATORS} Operadores com acesso limitado.`,
-      };
-    }
-
-    const salt = generateSalt();
-    const hash = await hashPassword(data.password, salt);
-
-    // O cadastro do primeiro admin não precisa de confirmação
-    const hasCustomActiveAdmin = users.some(
-      (u) => u.role === 'ADMIN' && u.status === 'ATIVO' && u.id !== 'usr-admin-01'
-    );
-    const isFirstAdmin = data.role === 'ADMIN' && !hasCustomActiveAdmin;
-
-    const newUser: UserProfile = {
-      id: `usr-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
-      username: cleanUser,
-      email: cleanEmail,
-      name: data.name.trim(),
-      graduacao: data.graduacao,
-      re: data.re.trim(),
-      role: data.role,
-      pelotao: data.pelotao.trim() || 'ROCAM',
-      passwordHash: hash,
-      salt,
-      createdAt: new Date().toISOString(),
-      isActive: isFirstAdmin,
-      status: isFirstAdmin ? 'ATIVO' : 'PENDENTE',
-      solicitadoEm: new Date().toISOString(),
-      aprovadoPor: isFirstAdmin ? '1º Administrador (Ativação Automática)' : undefined,
-      aprovadoEm: isFirstAdmin ? new Date().toISOString() : undefined,
-    };
-
-    if (isFirstAdmin) {
-      markFirstAdminQuickAccessUsed();
-    }
-
-    const nextUsers = [newUser, ...users];
-    setUsers(nextUsers);
-    saveUsersToStorage(nextUsers);
-
-    if (isFirstAdmin) {
-      const session = createSessionForUser(newUser);
-      saveSavedSession(session);
-      setCurrentUser(newUser);
-    }
-
-    return { success: true, isFirstAdmin };
   };
 
   /**
