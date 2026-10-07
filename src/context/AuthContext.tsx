@@ -289,6 +289,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       success: false,
       error: 'Credenciais inválidas. Confira o usuário/e-mail/RE e a senha cadastrados.',
     };
+  };
 
   const quickLoginAs = async (role: 'ADMIN' | 'OPERADOR', specificUserId?: string): Promise<boolean> => {
     try {
