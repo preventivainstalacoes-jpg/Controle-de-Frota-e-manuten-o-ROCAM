@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '../lib/supabase';
 import { UserProfile, UserRole } from '../types';
 import {
   loadUsersFromStorage,
@@ -142,43 +143,84 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const login = async (identifier: string, pass: string): Promise<{ success: boolean; error?: string }> => {
-    // Check against current state, and fall back to fresh storage if not found (avoids closure staleness)
-    const currentList = users.length > 0 ? users : await loadUsersFromStorage();
-    let authResult = await authenticateCredentials(identifier, pass, currentList);
-    let effectiveUsers = currentList;
+    const cleanId = identifier.trim().toLowerCase();
 
-    if (!authResult.user) {
-      const freshUsers = await loadUsersFromStorage();
-      if (freshUsers.length > 0) {
-        const freshAuth = await authenticateCredentials(identifier, pass, freshUsers);
-        if (freshAuth.user) {
-          authResult = freshAuth;
-          effectiveUsers = freshUsers;
+    // Fonte compartilhada para autenticação: Supabase Auth + public.profiles.
+    // Isso permite o mesmo usuário entrar em celulares diferentes.
+    try {
+      const { data: profileRows, error: profileError } = await supabase
+        .from('profiles')
+        .select('*');
+
+      if (!profileError && profileRows) {
+        const profile = profileRows.find((p: any) =>
+          (p.email || '').toLowerCase() === cleanId ||
+          (p.username || '').toLowerCase() === cleanId ||
+          (p.re || '').replace(/[^0-9]/g, '') === cleanId.replace(/[^0-9]/g, '')
+        );
+
+        if (profile?.email) {
+          const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            email: profile.email,
+            password: pass,
+          });
+
+          if (authError || !authData.user) {
+            return { success: false, error: authError?.message || 'Credenciais inválidas.' };
+          }
+
+          if (profile.active === false) {
+            await supabase.auth.signOut();
+            return { success: false, error: 'Acesso bloqueado: este usuário foi desativado pelo Administrador.' };
+          }
+
+          const mappedUser: UserProfile = {
+            id: profile.id,
+            username: profile.username || profile.email.split('@')[0],
+            email: profile.email,
+            name: profile.full_name || profile.username || profile.email,
+            graduacao: profile.graduacao || '',
+            re: profile.re || '',
+            role: profile.role === 'admin' ? 'ADMIN' : 'OPERADOR',
+            pelotao: profile.pelotao || 'ROCAM',
+            passwordHash: '',
+            salt: '',
+            createdAt: profile.created_at || new Date().toISOString(),
+            isActive: profile.active !== false,
+            status: profile.active === false ? 'INATIVO' : 'ATIVO',
+            lastLogin: new Date().toISOString(),
+          };
+
+          setUsers((prev) => {
+            const without = prev.filter((u) => u.id !== mappedUser.id);
+            const next = [mappedUser, ...without];
+            saveUsersToStorage(next);
+            return next;
+          });
+          saveSavedSession(createSessionForUser(mappedUser));
+          setCurrentUser(mappedUser);
+          if (mappedUser.role === 'ADMIN') markFirstAdminQuickAccessUsed();
+          return { success: true };
         }
       }
+    } catch (error) {
+      console.warn('Falha ao autenticar pelo Supabase; tentando compatibilidade local.', error);
     }
 
+    // Compatibilidade com cadastros antigos armazenados neste navegador.
+    const currentList = users.length > 0 ? users : await loadUsersFromStorage();
+    const authResult = await authenticateCredentials(identifier, pass, currentList);
     if (!authResult.user) {
       return { success: false, error: authResult.error || 'Credenciais inválidas' };
     }
 
-    const updatedUser = {
-      ...authResult.user,
-      lastLogin: new Date().toISOString(),
-    };
-
-    if (updatedUser.role === 'ADMIN') {
-      markFirstAdminQuickAccessUsed();
-    }
-
-    const nextUsers = effectiveUsers.map((u: UserProfile) => (u.id === updatedUser.id ? updatedUser : u));
+    const updatedUser = { ...authResult.user, lastLogin: new Date().toISOString() };
+    if (updatedUser.role === 'ADMIN') markFirstAdminQuickAccessUsed();
+    const nextUsers = currentList.map((u: UserProfile) => (u.id === updatedUser.id ? updatedUser : u));
     setUsers(nextUsers);
     saveUsersToStorage(nextUsers);
-
-    const session = createSessionForUser(updatedUser);
-    saveSavedSession(session);
+    saveSavedSession(createSessionForUser(updatedUser));
     setCurrentUser(updatedUser);
-
     return { success: true };
   };
 
