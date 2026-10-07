@@ -18,13 +18,13 @@ import {
   Wrench
 } from 'lucide-react';
 
-interface DescautelaModalProps {
+interface DevoluçãoModalProps {
   isOpen: boolean;
   onClose: () => void;
   cautela: CautelaRecord | null;
-  onFinalizeDescautela: (
+  onFinalizeDevolução: (
     id: string,
-    descautelaData: {
+    devoluçãoData: {
       dataHoraRetorno: string;
       kmRetorno: number;
       combustivelRetorno: 'RESERVA' | '1/4' | '1/2' | '3/4' | 'CHEIO';
@@ -41,11 +41,11 @@ interface DescautelaModalProps {
   ) => void;
 }
 
-export const DescautelaModal: React.FC<DescautelaModalProps> = ({
+export const DevoluçãoModal: React.FC<DevoluçãoModalProps> = ({
   isOpen,
   onClose,
   cautela,
-  onFinalizeDescautela,
+  onFinalizeDevolução,
 }) => {
   const [dataHoraRetorno, setDataHoraRetorno] = useState<string>('');
   const [kmRetorno, setKmRetorno] = useState<number>(0);
@@ -124,17 +124,6 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
       prev.map((item) => (item.id === id ? { ...item, observacao: obs } : item))
     );
   };
-
-  const handleMarkAllConforme = () => {
-    setChecklist((prev) =>
-      prev.map((item) => ({
-        ...item,
-        conforme: true,
-        observacao: '',
-      }))
-    );
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (kmRetorno < cautela.kmSaida) {
@@ -146,7 +135,7 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
       return;
     }
 
-    onFinalizeDescautela(cautela.id, {
+    onFinalizeDevolução(cautela.id, {
       dataHoraRetorno,
       kmRetorno: Number(kmRetorno),
       combustivelRetorno,
@@ -175,7 +164,7 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold text-zinc-100 flex items-center gap-2">
-                <span>Descautela de Viatura • Retorno do Serviço</span>
+                <span>Devolução de Viatura • Retorno do Serviço</span>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono">
                   {cautela.numeroTermo}
                 </span>
@@ -306,7 +295,7 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
             </div>
           </div>
 
-          {/* Checklist de Descautela (Retorno) */}
+          {/* Checklist de Devolução (Retorno) */}
           <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-zinc-800">
               <div className="flex items-center space-x-2">
@@ -323,23 +312,7 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
                   </span>
                 )}
               </div>
-
-              {/* Botões de Ação do Checklist: Tudo OK & Baixar Viatura */}
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleMarkAllConforme}
-                  title="Marcar todos os itens de retorno como Conformes (Tudo OK)"
-                  className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer shadow-sm ${
-                    nonConformeCount === 0 && !baixarViatura
-                      ? 'bg-emerald-950/60 text-emerald-300 border-emerald-700/70 hover:bg-emerald-900/60 shadow-emerald-950/30'
-                      : 'bg-emerald-600 text-white hover:bg-emerald-500 border-emerald-500 active:scale-95 shadow-md shadow-emerald-950/50'
-                  }`}
-                >
-                  <Check className="w-4 h-4 stroke-[2.5]" />
-                  <span>Tudo OK (Conforme)</span>
-                </button>
-
                 {/* Botão Baixar Viatura no Checklist */}
                 <button
                   type="button"
@@ -421,13 +394,13 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
                     <div className="flex items-center bg-zinc-950 p-0.5 rounded-lg border border-zinc-800/80 shrink-0">
                       <button
                         type="button"
-                        onClick={() => handleSetItemStatus(item.id, true)}
+                        onClick={() => handleToggleCheckItem(item.id)}
                         className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center gap-1 ${
                           item.conforme
                             ? 'bg-emerald-600 text-white shadow-xs'
                             : 'text-zinc-400 hover:text-emerald-300 hover:bg-emerald-950/40'
                         }`}
-                        title="Marcar este item como Conforme (OK)"
+                        title={item.conforme ? "Retirar OK deste item" : "Marcar este item como Conforme (OK)"}
                       >
                         <Check className="w-3 h-3 stroke-[2.5]" />
                         <span>OK</span>
@@ -595,7 +568,7 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
               photos={fotosAvariasRetorno}
               onChange={setFotosAvariasRetorno}
               momento="RETORNO"
-              title="Registro Fotográfico de Avarias no Retorno (Descautela)"
+              title="Registro Fotográfico de Avarias no Retorno (Devolução)"
               subtitle="Registre fotos comprobatórias de quaisquer novas avarias, arranhões, mossas ou danos constatados na devolução da viatura."
             />
           </div>
@@ -628,7 +601,7 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
               className="flex items-center space-x-2 px-5 py-2 text-sm font-semibold rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow-md shadow-amber-500/20 transition cursor-pointer"
             >
               <RotateCcw className="w-4 h-4" />
-              <span>Concluir Descautela & Atualizar Odômetro</span>
+              <span>Concluir Devolução & Atualizar Odômetro</span>
             </button>
           </div>
         </form>
