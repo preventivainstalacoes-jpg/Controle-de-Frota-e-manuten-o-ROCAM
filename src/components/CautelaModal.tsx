@@ -175,17 +175,6 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
       prev.map((item) => (item.id === id ? { ...item, observacao: obs } : item))
     );
   };
-
-  const handleMarkAllConforme = () => {
-    setChecklist((prev) =>
-      prev.map((item) => ({
-        ...item,
-        conforme: true,
-        observacao: '',
-      }))
-    );
-  };
-
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -538,23 +527,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
                   </span>
                 )}
               </div>
-
-              {/* Botões de Ação do Checklist: Tudo OK & Baixar Viatura */}
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleMarkAllConforme}
-                  title="Marcar todos os itens como Conformes (Tudo OK)"
-                  className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer shadow-sm ${
-                    nonConformeCount === 0
-                      ? 'bg-emerald-950/60 text-emerald-300 border-emerald-700/70 hover:bg-emerald-900/60 shadow-emerald-950/30'
-                      : 'bg-emerald-600 text-white hover:bg-emerald-500 border-emerald-500 active:scale-95 shadow-md shadow-emerald-950/50'
-                  }`}
-                >
-                  <Check className="w-4 h-4 stroke-[2.5]" />
-                  <span>Tudo OK (Conforme)</span>
-                </button>
-
                 {/* Botão Baixar Viatura no Checklist */}
                 {selectedVehicle && onBaixarViatura && (
                   <button
@@ -602,13 +575,13 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
                     <div className="flex items-center bg-zinc-950 p-0.5 rounded-lg border border-zinc-800/80 shrink-0">
                       <button
                         type="button"
-                        onClick={() => handleSetItemStatus(item.id, true)}
+                        onClick={() => handleToggleCheckItem(item.id)}
                         className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center gap-1 ${
                           item.conforme
                             ? 'bg-emerald-600 text-white shadow-xs'
                             : 'text-zinc-400 hover:text-emerald-300 hover:bg-emerald-950/40'
                         }`}
-                        title="Marcar este item como Conforme (OK)"
+                        title={item.conforme ? "Retirar OK deste item" : "Marcar este item como Conforme (OK)"}
                       >
                         <Check className="w-3 h-3 stroke-[2.5]" />
                         <span>OK</span>
