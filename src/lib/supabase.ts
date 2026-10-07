@@ -4,9 +4,7 @@ const supabaseUrl =
   import.meta.env.VITE_SUPABASE_URL ||
   'https://njfaukgcozgbxgwxhmyu.supabase.co';
 
-const supabasePublishableKey =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  'sb_publishable_vc2av1RqAOyYfao6qSC7wQ_WhlwpYvJ';
+const supabasePublishableKey = 'sb_publishable_vc2av1RqAOyYfao6qSC7wQ_WhlwpYvJ';
 
 if (!supabaseUrl || !supabasePublishableKey) {
   throw new Error('Configuração do Supabase ausente.');
