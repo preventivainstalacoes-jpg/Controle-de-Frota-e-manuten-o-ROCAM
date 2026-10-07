@@ -107,38 +107,75 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setFirstAdminQuickAccessUsed(true);
   };
 
-  // Load users and check existing session on mount
+  // Supabase Auth is the source of truth for sessions across devices.
+  // localStorage is kept only as a UI cache; it must never authenticate a user.
   useEffect(() => {
     let isMounted = true;
 
-    async function initAuth() {
-      try {
-        const loadedUsers = await loadUsersFromStorage();
-        if (isMounted) {
-          setUsers(loadedUsers);
+    const hydrateFromSupabaseUser = async (authUser: any) => {
+      if (!authUser?.id || !isMounted) {
+        if (isMounted) setCurrentUser(null);
+        return;
+      }
 
-          const savedSession = getSavedSession();
-          if (savedSession) {
-            const foundUser = loadedUsers.find((u) => u.id === savedSession.userId);
-            if (foundUser && foundUser.isActive && foundUser.status === 'ATIVO') {
-              setCurrentUser(foundUser);
-            } else {
-              clearSavedSession();
-            }
-          }
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .maybeSingle();
+
+      if (error || !profile || profile.active === false) {
+        if (isMounted) setCurrentUser(null);
+        return;
+      }
+
+      const mappedUser: UserProfile = {
+        id: profile.id,
+        username: profile.username || profile.email?.split('@')[0] || authUser.email || '',
+        email: profile.email || authUser.email || '',
+        name: profile.full_name || profile.username || authUser.email || '',
+        graduacao: profile.graduacao || '',
+        re: profile.re || '',
+        role: profile.role === 'admin' ? 'ADMIN' : 'OPERADOR',
+        pelotao: profile.pelotao || 'ROCAM',
+        passwordHash: '',
+        salt: '',
+        createdAt: profile.created_at || new Date().toISOString(),
+        isActive: profile.active !== false,
+        status: profile.active === false ? 'INATIVO' : 'ATIVO',
+        lastLogin: new Date().toISOString(),
+      };
+
+      if (isMounted) {
+        setCurrentUser(mappedUser);
+        setUsers((prev) => [mappedUser, ...prev.filter((u) => u.id !== mappedUser.id)]);
+      }
+    };
+
+    const initAuth = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data.session?.user) {
+          await hydrateFromSupabaseUser(data.session.user);
+        } else if (isMounted) {
+          setCurrentUser(null);
         }
       } catch (err) {
-        console.error('Failed to init auth context', err);
+        console.error('Failed to initialize Supabase Auth', err);
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (isMounted) setIsLoading(false);
       }
-    }
+    };
 
     initAuth();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      void hydrateFromSupabaseUser(session?.user ?? null);
+    });
+
     return () => {
       isMounted = false;
+      listener.subscription.unsubscribe();
     };
   }, []);
 
@@ -246,7 +283,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     }
 
-    // Compatibilidade com cadastros antigos armazenados neste navegador.
+    // IMPORTANT: never fall back to localStorage after a Supabase password error.
+    // A local-only credential would make one phone work while another rejects the same login.
+    // The shared application must authenticate exclusively through Supabase Auth.
+    if (cleanId.includes('@')) {
+      return { success: false, error: 'Credenciais inválidas. Confira o e-mail e a senha cadastrados no Supabase.' };
+    }
+
     const currentList = users.length > 0 ? users : await loadUsersFromStorage();
     const authResult = await authenticateCredentials(identifier, pass, currentList);
     if (!authResult.user) {
