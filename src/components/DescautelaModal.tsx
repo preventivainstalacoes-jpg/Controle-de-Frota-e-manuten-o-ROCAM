@@ -18,13 +18,13 @@ import {
   Wrench
 } from 'lucide-react';
 
-interface DevoluçãoModalProps {
+interface DescautelaModalProps {
   isOpen: boolean;
   onClose: () => void;
   cautela: CautelaRecord | null;
-  onFinalizeDevolução: (
+  onFinalizeDescautela: (
     id: string,
-    devoluçãoData: {
+    descautelaData: {
       dataHoraRetorno: string;
       kmRetorno: number;
       combustivelRetorno: 'RESERVA' | '1/4' | '1/2' | '3/4' | 'CHEIO';
@@ -41,11 +41,11 @@ interface DevoluçãoModalProps {
   ) => void;
 }
 
-export const DevoluçãoModal: React.FC<DevoluçãoModalProps> = ({
+export const DescautelaModal: React.FC<DescautelaModalProps> = ({
   isOpen,
   onClose,
   cautela,
-  onFinalizeDevolução,
+  onFinalizeDescautela,
 }) => {
   const [dataHoraRetorno, setDataHoraRetorno] = useState<string>('');
   const [kmRetorno, setKmRetorno] = useState<number>(0);
@@ -135,7 +135,7 @@ export const DevoluçãoModal: React.FC<DevoluçãoModalProps> = ({
       return;
     }
 
-    onFinalizeDevolução(cautela.id, {
+    onFinalizeDescautela(cautela.id, {
       dataHoraRetorno,
       kmRetorno: Number(kmRetorno),
       combustivelRetorno,
