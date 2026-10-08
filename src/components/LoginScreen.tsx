@@ -96,9 +96,7 @@ export const LoginScreen: React.FC = () => {
   const isFirstAdminEligible = !hasCustomActiveAdmin;
 
   // O botão de acesso rápido do 1º administrador desaparece após o primeiro uso
-  const isFirstAdminButtonVisible =
-    !firstAdminQuickAccessUsed &&
-    !adminUsers.some((u) => Boolean(u.lastLogin));
+  const isFirstAdminButtonVisible = false;
 
   const handleQuickOpSelect = (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,8 +150,8 @@ export const LoginScreen: React.FC = () => {
       return;
     }
 
-    if (regPassword.length < 4) {
-      setErrorMsg('A senha deve ter no mínimo 4 caracteres.');
+    if (regPassword.length < 6) {
+      setErrorMsg('A senha deve ter no mínimo 6 caracteres.');
       return;
     }
 
@@ -828,7 +826,7 @@ export const LoginScreen: React.FC = () => {
                     type={showRegPassword ? 'text' : 'password'}
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
-                    placeholder="Mínimo 4 caracteres"
+                    placeholder="Mínimo 6 caracteres"
                     className="w-full px-3 py-2 bg-zinc-950 border border-zinc-750 rounded-xl text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500 font-mono"
                     required
                   />
