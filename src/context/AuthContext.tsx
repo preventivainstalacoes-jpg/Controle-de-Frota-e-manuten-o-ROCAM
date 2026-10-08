@@ -424,70 +424,69 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
    * Admin-created user (pre-authorized by Admin)
    */
   const createUser = async (data: {
-    username: string;
-    email?: string;
-    name: string;
-    graduacao: string;
-    re: string;
-    role: UserRole;
-    pelotao: string;
-    password: string;
+    username: string; email?: string; name: string; graduacao: string; re: string;
+    role: UserRole; pelotao: string; password: string;
   }): Promise<{ success: boolean; error?: string }> => {
     const cleanUser = data.username.trim().toLowerCase();
-    const cleanEmail = data.email ? data.email.trim().toLowerCase() : undefined;
-    if (!cleanUser) {
-      return { success: false, error: 'O nome de usuário é obrigatório.' };
+    const cleanEmail = data.email?.trim().toLowerCase() || '';
+    if (!cleanUser || !cleanEmail || !data.name.trim() || !data.re.trim()) {
+      return { success: false, error: 'Nome, usuário, e-mail e RE são obrigatórios.' };
     }
-    if (users.some((u) => u.username.toLowerCase() === cleanUser)) {
-      return { success: false, error: 'Já existe um policial com este nome de usuário cadastrado.' };
+    if (!data.password || data.password.length < 6) {
+      return { success: false, error: 'A senha deve ter no mínimo 6 caracteres.' };
     }
-    if (cleanEmail && users.some((u) => u.email && u.email.toLowerCase() === cleanEmail)) {
-      return { success: false, error: 'Já existe um policial com este e-mail cadastrado.' };
-    }
-    if (!data.password || data.password.length < 4) {
-      return { success: false, error: 'A senha deve ter no mínimo 4 caracteres.' };
+    if (!currentUser || currentUser.role !== 'ADMIN') {
+      return { success: false, error: 'Somente Administrador pode cadastrar usuários.' };
     }
 
-    const currentAdmins = users.filter((u) => u.role === 'ADMIN').length;
-    const currentOps = users.filter((u) => u.role === 'OPERADOR').length;
-    if (data.role === 'ADMIN' && currentAdmins >= MAX_ADMINS) {
-      return {
-        success: false,
-        error: `Capacidade máxima atingida: O sistema permite no máximo ${MAX_ADMINS} Administradores com acesso total.`,
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) return { success: false, error: 'Sessão do administrador expirada. Entre novamente.' };
+
+      const { data: result, error } = await supabase.functions.invoke('admin-user-management', {
+        body: {
+          action: 'create_user',
+          email: cleanEmail,
+          password: data.password,
+          username: cleanUser,
+          name: data.name.trim(),
+          graduacao: data.graduacao,
+          re: data.re.trim(),
+          pelotao: data.pelotao.trim() || 'ROCAM',
+          role: data.role
+        },
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+
+      if (error || !result?.success) {
+        return { success: false, error: result?.error || error?.message || 'Não foi possível criar o usuário no Supabase.' };
+      }
+
+      const mappedUser: UserProfile = {
+        id: result.userId,
+        username: cleanUser,
+        email: cleanEmail,
+        name: data.name.trim(),
+        graduacao: data.graduacao,
+        re: data.re.trim(),
+        role: data.role,
+        pelotao: data.pelotao.trim() || 'ROCAM',
+        passwordHash: '',
+        salt: '',
+        createdAt: new Date().toISOString(),
+        isActive: true,
+        status: 'ATIVO',
+        aprovadoPor: currentUser.name || 'Administrador',
+        aprovadoEm: new Date().toISOString()
       };
+
+      setUsers(prev => [mappedUser, ...prev.filter(u => u.id !== mappedUser.id)]);
+      return { success: true };
+    } catch (e: any) {
+      console.error('Erro ao criar usuário no Supabase:', e);
+      return { success: false, error: e?.message || 'Não foi possível concluir o cadastro.' };
     }
-    if (data.role === 'OPERADOR' && currentOps >= MAX_OPERATORS) {
-      return {
-        success: false,
-        error: `Capacidade máxima atingida: O sistema permite no máximo ${MAX_OPERATORS} Operadores com acesso limitado.`,
-      };
-    }
-
-    const salt = generateSalt();
-    const hash = await hashPassword(data.password, salt);
-
-    const newUser: UserProfile = {
-      id: `usr-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
-      username: cleanUser,
-      email: cleanEmail,
-      name: data.name.trim(),
-      graduacao: data.graduacao,
-      re: data.re.trim(),
-      role: data.role,
-      pelotao: data.pelotao.trim() || 'ROCAM',
-      passwordHash: hash,
-      salt,
-      createdAt: new Date().toISOString(),
-      isActive: true,
-      status: 'ATIVO',
-      aprovadoPor: currentUser?.name || 'Administrador',
-      aprovadoEm: new Date().toISOString(),
-    };
-
-    const nextUsers = [newUser, ...users];
-    setUsers(nextUsers);
-    saveUsersToStorage(nextUsers);
-    return { success: true };
   };
 
   /**
@@ -724,44 +723,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     userId: string,
     newPass: string
   ): Promise<{ success: boolean; error?: string }> => {
-    if (!newPass || newPass.trim().length < 4) {
-      return { success: false, error: 'A nova senha deve ter no mínimo 4 caracteres.' };
+    if (!newPass || newPass.trim().length < 6) {
+      return { success: false, error: 'A nova senha deve ter no mínimo 6 caracteres.' };
+    }
+    if (!currentUser || currentUser.role !== 'ADMIN') {
+      return { success: false, error: 'Somente Administrador pode alterar senhas.' };
     }
 
-    const currentList = users.length > 0 ? users : await loadUsersFromStorage();
-    let index = currentList.findIndex((u) => u.id === userId);
-    let listToUpdate = currentList;
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) return { success: false, error: 'Sessão do administrador expirada. Entre novamente.' };
 
-    if (index === -1) {
-      const freshList = await loadUsersFromStorage();
-      index = freshList.findIndex((u) => u.id === userId);
-      listToUpdate = freshList;
+      const { data: result, error } = await supabase.functions.invoke('admin-user-management', {
+        body: { action: 'change_password', userId, newPassword: newPass.trim() },
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      if (error || !result?.success) {
+        return { success: false, error: result?.error || error?.message || 'Não foi possível alterar a senha.' };
+      }
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Não foi possível alterar a senha.' };
     }
-
-    if (index === -1) {
-      return { success: false, error: 'Usuário não encontrado.' };
-    }
-
-    const user = listToUpdate[index];
-    const newSalt = generateSalt();
-    const newHash = await hashPassword(newPass.trim(), newSalt);
-
-    const updatedUser: UserProfile = {
-      ...user,
-      passwordHash: newHash,
-      salt: newSalt,
-    };
-
-    const nextUsers = [...listToUpdate];
-    nextUsers[index] = updatedUser;
-    setUsers(nextUsers);
-    saveUsersToStorage(nextUsers);
-
-    if (currentUser?.id === userId) {
-      setCurrentUser(updatedUser);
-    }
-
-    return { success: true };
   };
 
   /**
@@ -828,42 +812,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const toggleUserActive = async (userId: string): Promise<{ success: boolean; error?: string }> => {
-    if (currentUser?.id === userId) {
-      return { success: false, error: 'Você não pode desativar seu próprio acesso ativo.' };
+    if (!currentUser || currentUser.role !== 'ADMIN') {
+      return { success: false, error: 'Somente Administrador pode alterar o acesso.' };
+    }
+    if (currentUser.id === userId) {
+      return { success: false, error: 'Você não pode desativar seu próprio acesso.' };
     }
 
-    const currentList = users.length > 0 ? users : await loadUsersFromStorage();
-    let index = currentList.findIndex((u) => u.id === userId);
-    let listToUpdate = currentList;
+    const target = users.find(u => u.id === userId);
+    if (!target) return { success: false, error: 'Usuário não localizado.' };
 
-    if (index === -1) {
-      const freshList = await loadUsersFromStorage();
-      index = freshList.findIndex((u) => u.id === userId);
-      listToUpdate = freshList;
-    }
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) return { success: false, error: 'Sessão do administrador expirada. Entre novamente.' };
 
-    if (index === -1) {
-      return { success: false, error: 'Usuário não localizado.' };
-    }
-
-    const user = listToUpdate[index];
-    // If deactivating an admin, ensure another active admin exists
-    if (user.role === 'ADMIN' && user.isActive) {
-      const otherActiveAdmins = listToUpdate.filter((u) => u.role === 'ADMIN' && u.id !== userId && u.isActive && u.status === 'ATIVO');
-      if (otherActiveAdmins.length === 0) {
-        return { success: false, error: 'Não é permitido desativar o único administrador ativo.' };
+      const { data: result, error } = await supabase.functions.invoke('admin-user-management', {
+        body: { action: 'set_active', userId, active: !target.isActive },
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      if (error || !result?.success) {
+        return { success: false, error: result?.error || error?.message || 'Não foi possível alterar o acesso.' };
       }
+
+      const updated = { ...target, isActive: !target.isActive, status: !target.isActive ? 'ATIVO' : 'INATIVO' };
+      setUsers(prev => prev.map(u => u.id === userId ? updated : u));
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Não foi possível alterar o acesso.' };
     }
-
-    const nextActive = !user.isActive;
-    const nextStatus = nextActive ? 'ATIVO' : 'INATIVO';
-    const updated: UserProfile = { ...user, isActive: nextActive, status: nextStatus };
-    const nextUsers = [...listToUpdate];
-    nextUsers[index] = updated;
-
-    setUsers(nextUsers);
-    await saveUsersToStorage(nextUsers);
-    return { success: true };
   };
 
   /**
