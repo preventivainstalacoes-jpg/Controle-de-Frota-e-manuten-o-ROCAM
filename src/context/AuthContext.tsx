@@ -185,8 +185,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Fonte compartilhada para autenticação: Supabase Auth + public.profiles.
     // Isso permite o mesmo usuário entrar em celulares diferentes.
     try {
-      // Resolve username/RE/email through a SECURITY DEFINER RPC so a new device
-      // can identify the account before Supabase Auth creates the session.
+      // Primeiro tenta e-mail diretamente no Supabase Auth. Isso garante o login
+      // em qualquer celular mesmo quando o perfil ainda não possui username/RE.
+      if (cleanId.includes('@')) {
+        const { data: directAuth, error: directError } = await supabase.auth.signInWithPassword({
+          email: cleanId,
+          password: pass,
+        });
+        if (!directError && directAuth.user) {
+          const { data: directProfile } = await supabase
+            .from('profiles').select('*').eq('id', directAuth.user.id).maybeSingle();
+          if (directProfile?.active !== false && directProfile) {
+            const mappedUser: UserProfile = {
+              id: directProfile.id,
+              username: directProfile.username || cleanId.split('@')[0],
+              email: directProfile.email || cleanId,
+              name: directProfile.full_name || cleanId.split('@')[0],
+              graduacao: directProfile.graduacao || '', re: directProfile.re || '',
+              role: directProfile.role === 'admin' ? 'ADMIN' : 'OPERADOR',
+              pelotao: directProfile.pelotao || 'ROCAM', passwordHash: '', salt: '',
+              createdAt: directProfile.created_at || new Date().toISOString(),
+              isActive: true, status: 'ATIVO', lastLogin: new Date().toISOString(),
+            };
+            setCurrentUser(mappedUser);
+            setUsers(prev => [mappedUser, ...prev.filter(u => u.id !== mappedUser.id)]);
+            saveSavedSession(createSessionForUser(mappedUser));
+            if (mappedUser.role === 'ADMIN') markFirstAdminQuickAccessUsed();
+            return { success: true };
+          }
+          await supabase.auth.signOut();
+          if (directProfile?.active === false) return { success: false, error: 'Acesso bloqueado: este usuário foi desativado pelo Administrador.' };
+        } else if (directError && /email not confirmed/i.test(directError.message)) {
+          return { success: false, error: 'E-mail ainda não confirmado. Confirme o e-mail cadastrado no Supabase antes de entrar.' };
+        }
+      }
+
+      // Para usuário/RE, resolve o e-mail pela função segura no Supabase.
       const { data: profile, error: lookupError } = await supabase
         .rpc('find_profile_for_login', { p_identifier: cleanId })
         .maybeSingle();
@@ -238,50 +272,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.warn('Falha ao autenticar pelo Supabase; tentando compatibilidade local.', error);
     }
 
-    // Se o usuário informou diretamente um e-mail, tente o Supabase Auth mesmo
-    // quando o perfil ainda não tiver username/RE preenchidos.
-    if (cleanId.includes('@')) {
-      const { data: directAuth, error: directError } = await supabase.auth.signInWithPassword({
-        email: cleanId,
-        password: pass,
-      });
-      if (!directError && directAuth.user) {
-        const { data: directProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', directAuth.user.id)
-          .maybeSingle();
-
-        if (directProfile && directProfile.active !== false) {
-          const mappedUser: UserProfile = {
-            id: directProfile.id,
-            username: directProfile.username || cleanId.split('@')[0],
-            email: directProfile.email || cleanId,
-            name: directProfile.full_name || cleanId.split('@')[0],
-            graduacao: directProfile.graduacao || '',
-            re: directProfile.re || '',
-            role: directProfile.role === 'admin' ? 'ADMIN' : 'OPERADOR',
-            pelotao: directProfile.pelotao || 'ROCAM',
-            passwordHash: '',
-            salt: '',
-            createdAt: directProfile.created_at || new Date().toISOString(),
-            isActive: true,
-            status: 'ATIVO',
-            lastLogin: new Date().toISOString(),
-          };
-          setUsers((prev) => {
-            const next = [mappedUser, ...prev.filter((u) => u.id !== mappedUser.id)];
-            saveUsersToStorage(next);
-            return next;
-          });
-          setCurrentUser(mappedUser);
-          saveSavedSession(createSessionForUser(mappedUser));
-          if (mappedUser.role === 'ADMIN') markFirstAdminQuickAccessUsed();
-          return { success: true };
-        }
-        await supabase.auth.signOut();
-      }
-    }
 
     // No local-storage authentication fallback.
     // A shared fleet application must use the same Supabase Auth credentials on every device.
