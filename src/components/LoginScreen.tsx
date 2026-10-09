@@ -84,10 +84,31 @@ export const LoginScreen: React.FC = () => {
   const [recoveryConfirmPassword, setRecoveryConfirmPassword] = useState('');
 
   useEffect(() => {
-    const syncRecoveryMode = () => setIsRecoveryMode(window.location.hash.includes('type=recovery'));
+    // Supabase pode retornar o link de recuperação por hash (implicit flow)
+    // ou por ?code= (PKCE). Detectamos ambos e também o evento oficial.
+    const syncRecoveryMode = () => {
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const query = new URLSearchParams(window.location.search);
+      const isRecoveryLink =
+        hash.get('type') === 'recovery' ||
+        query.get('type') === 'recovery' ||
+        query.has('code') ||
+        (query.has('token_hash') && query.get('type') === 'recovery');
+      if (isRecoveryLink) setIsRecoveryMode(true);
+    };
+
     syncRecoveryMode();
     window.addEventListener('hashchange', syncRecoveryMode);
-    return () => window.removeEventListener('hashchange', syncRecoveryMode);
+    window.addEventListener('popstate', syncRecoveryMode);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') setIsRecoveryMode(true);
+    });
+
+    return () => {
+      window.removeEventListener('hashchange', syncRecoveryMode);
+      window.removeEventListener('popstate', syncRecoveryMode);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleSendPasswordRecovery = async () => {
