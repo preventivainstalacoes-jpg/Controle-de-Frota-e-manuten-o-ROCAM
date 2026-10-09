@@ -1,13 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl =
-  import.meta.env.VITE_SUPABASE_URL ||
-  'https://njfaukgcozgbxgwxhmyu.supabase.co';
-
-const supabasePublishableKey = 'sb_publishable_vc2av1RqAOyYfao6qSC7wQ_WhlwpYvJ';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 if (!supabaseUrl || !supabasePublishableKey) {
-  throw new Error('Configuração do Supabase ausente.');
+  throw new Error(
+    'Configuração do Supabase ausente. Confira VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY nas variáveis de ambiente.'
+  );
 }
 
 export const supabase = createClient(supabaseUrl, supabasePublishableKey);
