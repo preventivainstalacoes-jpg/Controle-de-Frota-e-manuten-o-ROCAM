@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../types';
 import { SEED_ADMINS, SEED_OPERATORS } from '../data/seedUsers';
@@ -78,6 +79,81 @@ export const LoginScreen: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  const [recoveryPassword, setRecoveryPassword] = useState('');
+  const [recoveryConfirmPassword, setRecoveryConfirmPassword] = useState('');
+
+  useEffect(() => {
+    const syncRecoveryMode = () => setIsRecoveryMode(window.location.hash.includes('type=recovery'));
+    syncRecoveryMode();
+    window.addEventListener('hashchange', syncRecoveryMode);
+    return () => window.removeEventListener('hashchange', syncRecoveryMode);
+  }, []);
+
+  const handleSendPasswordRecovery = async () => {
+    setErrorMsg('');
+    setSuccessMsg('');
+    const cleanIdentifier = identifier.trim().toLowerCase();
+    if (!cleanIdentifier) {
+      setErrorMsg('Informe o e-mail cadastrado, usuário ou RE para localizar sua conta.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      let recoveryEmail = cleanIdentifier;
+      if (!cleanIdentifier.includes('@')) {
+        const { data: profile, error: lookupError } = await supabase
+          .rpc('find_profile_for_login', { p_identifier: cleanIdentifier })
+          .maybeSingle();
+        if (lookupError || !profile?.email) {
+          setErrorMsg('Não foi possível localizar o e-mail da conta. Informe o e-mail cadastrado ou contate o administrador do Supabase.');
+          return;
+        }
+        recoveryEmail = String(profile.email).trim().toLowerCase();
+      }
+      const { error } = await supabase.auth.resetPasswordForEmail(recoveryEmail, {
+        redirectTo: window.location.origin,
+      });
+      if (error) throw error;
+      setSuccessMsg('Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha. Confira a caixa de entrada e o spam.');
+    } catch (error: any) {
+      setErrorMsg(error?.message || 'Não foi possível enviar o link de recuperação. Verifique a configuração de URLs de redirecionamento do Supabase.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCompletePasswordRecovery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setSuccessMsg('');
+    if (recoveryPassword.length < 8) {
+      setErrorMsg('A nova senha deve ter pelo menos 8 caracteres.');
+      return;
+    }
+    if (recoveryPassword !== recoveryConfirmPassword) {
+      setErrorMsg('A confirmação da senha não confere.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) throw new Error('O link expirou ou já foi usado. Solicite um novo link de recuperação.');
+      const { error } = await supabase.auth.updateUser({ password: recoveryPassword });
+      if (error) throw error;
+      await supabase.auth.signOut();
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+      setIsRecoveryMode(false);
+      setRecoveryPassword('');
+      setRecoveryConfirmPassword('');
+      setPassword('');
+      setSuccessMsg('Senha redefinida com sucesso. Entre usando sua nova senha.');
+    } catch (error: any) {
+      setErrorMsg(error?.message || 'Não foi possível redefinir a senha. Solicite um novo link.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Contingent modal and quick access state (20 admins & 300 operators)
   const [isContingentModalOpen, setIsContingentModalOpen] = useState(false);
@@ -383,6 +459,16 @@ export const LoginScreen: React.FC = () => {
                 </>
               )}
 
+              {isRecoveryMode && (
+                <form onSubmit={handleCompletePasswordRecovery} className="mb-4 space-y-3 rounded-xl border border-amber-500/30 bg-zinc-950/70 p-4">
+                  <h3 className="text-sm font-bold text-amber-300">Redefinir senha do ROCAM FROTA</h3>
+                  <p className="text-xs text-zinc-400">Crie uma nova senha para sua conta. Use pelo menos 8 caracteres.</p>
+                  <input type="password" value={recoveryPassword} onChange={(e) => setRecoveryPassword(e.target.value)} placeholder="Nova senha" autoComplete="new-password" className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-white" required minLength={8} />
+                  <input type="password" value={recoveryConfirmPassword} onChange={(e) => setRecoveryConfirmPassword(e.target.value)} placeholder="Confirme a nova senha" autoComplete="new-password" className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-white" required minLength={8} />
+                  <button type="submit" disabled={isSubmitting} className="w-full rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-bold text-zinc-950 disabled:opacity-50">{isSubmitting ? 'Salvando senha...' : 'Salvar nova senha'}</button>
+                </form>
+              )}
+
               <form onSubmit={handleLoginSubmit} className="space-y-4">
               {/* Usuário / RE */}
               <div className="space-y-1.5">
@@ -449,6 +535,12 @@ export const LoginScreen: React.FC = () => {
                 <span>{isSubmitting ? 'Verificando...' : 'Acessar Sistema'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
+
+              <div className="text-center pt-1">
+                <button type="button" onClick={handleSendPasswordRecovery} disabled={isSubmitting || isLoading} className="text-xs text-zinc-400 hover:text-amber-300 underline underline-offset-4 disabled:opacity-50">
+                  {isSubmitting ? 'Aguarde...' : 'Esqueci minha senha — enviar link de recuperação'}
+                </button>
+              </div>
 
               {/* Botão de Atalho para Cadastro */}
               <div className="text-center pt-1">
