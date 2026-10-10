@@ -585,7 +585,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
 
       if (error || !result?.success) {
-        return { success: false, error: result?.error || error?.message || 'Não foi possível criar o usuário no Supabase.' };
+        // Supabase FunctionsHttpError guarda a resposta original em error.context.
+        // Ler o JSON permite exibir a causa real devolvida pela Edge Function,
+        // em vez da mensagem genérica "Edge Function returned a non-2xx status code".
+        let functionError = '';
+        if (error && typeof error === 'object' && 'context' in error) {
+          try {
+            const response = (error as { context?: Response }).context;
+            if (response && typeof response.json === 'function') {
+              const payload = await response.json();
+              functionError = payload?.error || payload?.message || '';
+            }
+          } catch {
+            // Mantém a mensagem padrão se a resposta não contiver JSON legível.
+          }
+        }
+        return {
+          success: false,
+          error: result?.error || functionError || error?.message || 'Não foi possível criar o usuário no Supabase.'
+        };
       }
 
       const mappedUser: UserProfile = {
