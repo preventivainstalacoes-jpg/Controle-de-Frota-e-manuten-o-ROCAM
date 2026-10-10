@@ -78,7 +78,7 @@ interface FleetContextType {
       motivoBaixa?: string;
       fotosAvariasRetorno?: DamagePhoto[];
     }
-  ) => void;
+  ) => Promise<void>;
   deleteCautela: (id: string) => void;
 
   updateRule: (id: string, updates: Partial<MaintenanceRule>) => void;
@@ -359,7 +359,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return true;
   };
 
-  const finalizeDescautela = (
+  const finalizeDescautela = async (
     id: string,
     descautelaData: {
       dataHoraRetorno: string;
@@ -408,7 +408,11 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       observacoes_retorno:descautelaData.observacoesRetorno,checklist_retorno:descautelaData.checklistRetorno||[],houve_avaria:descautelaData.houveAvaria,
       descricao_avaria:descautelaData.descricaoAvaria,viatura_baixada:descautelaData.baixarViatura||false,fotos_retorno:descautelaData.fotosAvariasRetorno||[]
     };
-    supabase.from('cautelas').update(dbUpdate).eq('id',id).then(({error})=>{if(error)console.error('Erro ao salvar descautela:',error)});
+    const { error: cautelaUpdateError } = await supabase.from('cautelas').update(dbUpdate).eq('id', id);
+    if (cautelaUpdateError) {
+      console.error('Erro ao salvar devolução da cautela no Supabase:', cautelaUpdateError);
+      return;
+    }
 
     // Find cautela to get viaturaId
     const currentCautela = cautelas.find((c) => c.id === id);
