@@ -335,7 +335,7 @@ function AppContent() {
                   Acesso Operador: {currentUser?.name} (RE: {currentUser?.re})
                 </h3>
                 <p className="text-[11px] text-emerald-300">
-                  Visualize as viaturas disponíveis para patrulhamento. Clique em <strong>"Cautelar"</strong> para registrar saída ou em <strong>"Descautelar"</strong> para registrar a devolução do turno com fotos de avarias.
+                  Visualize as viaturas disponíveis para patrulhamento. Use <strong>“Cautelar”</strong> para registrar a saída e <strong>“Devolução de Viatura”</strong> ao final do serviço, incluindo checklist e fotos de avarias.
                 </p>
               </div>
             </div>
