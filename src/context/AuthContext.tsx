@@ -441,21 +441,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         email: cleanEmail, password: data.password,
         options: { data: { full_name: data.name.trim(), username: cleanUser, re: cleanRe, graduacao: data.graduacao, pelotao: data.pelotao.trim() || 'ROCAM' } }
       });
+      let registeredAuthUser = signUpData?.user || null;
+      let recoveredExistingAuth = false;
       if (signUpError) {
-        if (/already registered|already exists/i.test(signUpError.message)) return { success: false, error: 'Este e-mail já está cadastrado. Use Entrar ou recupere a senha.' };
-        return { success: false, error: signUpError.message };
+        if (/already registered|already exists/i.test(signUpError.message)) {
+          // Pode existir uma conta Auth sem perfil. Recuperamos apenas com a senha correta.
+          const { data: existingLogin, error: existingLoginError } = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password: data.password,
+          });
+          if (existingLoginError || !existingLogin.user) {
+            return { success: false, error: 'Este e-mail já existe na autenticação, mas a senha não pôde ser confirmada. Entre com a conta existente ou recupere a senha.' };
+          }
+          registeredAuthUser = existingLogin.user;
+          recoveredExistingAuth = true;
+        } else {
+          return { success: false, error: signUpError.message };
+        }
       }
-      if (!signUpData.user) return { success: false, error: 'O Supabase não retornou o usuário criado.' };
+      if (!registeredAuthUser) return { success: false, error: 'O Supabase não retornou o usuário criado.' };
 
       const hasCustomActiveAdmin = users.some(
         (u) => u.role === 'ADMIN' && u.status === 'ATIVO' && u.id !== 'usr-admin-01' && u.username !== 'admin'
       );
-      const isFirstAdmin = data.role === 'ADMIN' && !hasCustomActiveAdmin;
+      const isFirstAdmin = !recoveredExistingAuth && data.role === 'ADMIN' && !hasCustomActiveAdmin;
 
       const { error: profileError } = await supabase.from('profiles').upsert({
-        id: signUpData.user.id,
+        id: registeredAuthUser.id,
         full_name: data.name.trim(),
-        role: isFirstAdmin || data.role === 'ADMIN' ? 'admin' : 'operador',
+        role: isFirstAdmin || (!recoveredExistingAuth && data.role === 'ADMIN') ? 'admin' : 'operador',
         active: isFirstAdmin,
         email: cleanEmail,
         username: cleanUser,
@@ -477,13 +491,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const passwordHash = await hashPassword(data.password, salt);
 
       const mapped: UserProfile = {
-        id: signUpData.user.id,
+        id: registeredAuthUser.id,
         username: cleanUser,
         email: cleanEmail,
         name: data.name.trim(),
         graduacao: data.graduacao,
         re: cleanRe,
-        role: isFirstAdmin || data.role === 'ADMIN' ? 'ADMIN' : 'OPERADOR',
+        role: isFirstAdmin || (!recoveredExistingAuth && data.role === 'ADMIN') ? 'ADMIN' : 'OPERADOR',
         pelotao: data.pelotao.trim() || 'ROCAM',
         passwordHash,
         salt,
