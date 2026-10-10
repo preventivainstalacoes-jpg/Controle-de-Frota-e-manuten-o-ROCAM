@@ -248,7 +248,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           status: profile.approval_status === 'PENDENTE' ? 'PENDENTE' : profile.approval_status === 'REJEITADO' ? 'REJEITADO' : profile.active === false ? 'INATIVO' : 'ATIVO',
         }));
 
-        setUsers((previous) => {
+        setUsers(() => {
           // A lista compartilhada vem exclusivamente do Supabase. Usuários locais
           // não sincronizados não devem aparecer como se estivessem cadastrados para todos.
           saveUsersToStorage(cloudUsers);
@@ -260,8 +260,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     void syncUsersFromSupabase();
+
+    // Atualiza a lista de usuários em outros aparelhos sem depender de recarregar a página.
+    const channel = supabase
+      .channel('rocam-profiles-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        void syncUsersFromSupabase();
+      })
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('Canal de sincronização de usuários indisponível; será feita atualização periódica.');
+        }
+      });
+    const refreshTimer = window.setInterval(() => void syncUsersFromSupabase(), 15000);
+
     return () => {
       cancelled = true;
+      window.clearInterval(refreshTimer);
+      void supabase.removeChannel(channel);
     };
   }, [currentUser?.id, currentUser?.role]);
 
