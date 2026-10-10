@@ -51,9 +51,13 @@ export const MonthlyReport: React.FC = () => {
     }
   };
 
-  // Filter records for this month (by dataEntrada)
+  // Include maintenance orders opened or concluded during the selected month.
+  // A single order is listed only once, even when both dates are in the same month.
   const monthRecords = useMemo(() => {
-    return maintenanceRecords.filter((r) => r.dataEntrada.startsWith(selectedMonth));
+    return maintenanceRecords.filter((r) =>
+      (r.dataEntrada || '').startsWith(selectedMonth) ||
+      (r.dataConclusao || '').startsWith(selectedMonth)
+    );
   }, [maintenanceRecords, selectedMonth]);
 
   // Include exits and returns recorded during the selected month for all vehicle types.
@@ -184,11 +188,12 @@ export const MonthlyReport: React.FC = () => {
     csvContent += `Atendimentos 04 Rodas;${stats.servicosQuatroRodas}\n`;
     csvContent += `Total de Pecas e Insumos Aplicados;${stats.totalPecasAplicadas}\n\n`;
 
-    csvContent += `ORDENS DE SERVICO DO MES\n`;
-    csvContent += `Nro OS;Data;Prefixo;Tipo Vtr;Tipo OS;Categoria;Status;Qtd Pecas;Oficina;Mecanico\n`;
+    csvContent += `ORDENS DE SERVICO ABERTAS OU CONCLUIDAS NO MES\n`;
+    csvContent += `Nro OS;Data Entrada;Data Conclusao;Prefixo;Tipo Vtr;Tipo OS;Categoria;Status;KM Entrada;Descricao;Servicos Executados;Qtd Pecas;Oficina;Mecanico\n`;
     monthRecords.forEach((r) => {
       const qtdPecas = r.pecasSubstituidas ? r.pecasSubstituidas.reduce((acc, p) => acc + p.quantidade, 0) : 0;
-      csvContent += `${r.numeroOS};${r.dataEntrada};${r.prefixoViatura};${r.tipoViatura};${r.tipoManutencao};${r.categoria};${r.status};${qtdPecas};"${r.oficinaResponsavel}";"${r.mecanicoResponsavel}"\n`;
+      const safe = (value?: string) => (value || '-').replace(/"/g, '""');
+      csvContent += `"${safe(r.numeroOS)}";"${safe(r.dataEntrada)}";"${safe(r.dataConclusao)}";"${safe(r.prefixoViatura)}";"${safe(r.tipoViatura)}";"${safe(r.tipoManutencao)}";"${safe(String(r.categoria))}";"${safe(r.status)}";${r.kmEntrada};"${safe(r.descricaoProblema)}";"${safe(r.servicosExecutados)}";${qtdPecas};"${safe(r.oficinaResponsavel)}";"${safe(r.mecanicoResponsavel)}"\n`;
     });
 
     csvContent += '\nCAUTELAS E DEVOLUCOES DE TODAS AS VIATURAS\n';
@@ -586,7 +591,7 @@ export const MonthlyReport: React.FC = () => {
                   <thead className="bg-zinc-100 border-b border-zinc-400 font-bold">
                     <tr>
                       <th className="p-1 border-r border-zinc-300">Nº O.S.</th>
-                      <th className="p-1 border-r border-zinc-300">Data</th>
+                      <th className="p-1 border-r border-zinc-300">Entrada / conclusão</th>
                       <th className="p-1 border-r border-zinc-300">Vtr</th>
                       <th className="p-1 border-r border-zinc-300">Tipo</th>
                       <th className="p-1 border-r border-zinc-300">Categoria</th>
@@ -603,11 +608,17 @@ export const MonthlyReport: React.FC = () => {
                       return (
                         <tr key={r.id}>
                           <td className="p-1 font-bold border-r border-zinc-300">{r.numeroOS}</td>
-                          <td className="p-1 border-r border-zinc-300">{formatDate(r.dataEntrada)}</td>
+                          <td className="p-1 border-r border-zinc-300">
+                            <div>Entrada: {formatDate(r.dataEntrada)}</div>
+                            {r.dataConclusao && <div>Conclusão: {formatDate(r.dataConclusao)}</div>}
+                          </td>
                           <td className="p-1 border-r border-zinc-300">{r.prefixoViatura}</td>
                           <td className="p-1 border-r border-zinc-300">{r.tipoManutencao}</td>
                           <td className="p-1 border-r border-zinc-300 font-sans">{getCategoryLabel(r.categoria)}</td>
-                          <td className="p-1 border-r border-zinc-300 font-sans">{r.descricaoProblema}</td>
+                          <td className="p-1 border-r border-zinc-300 font-sans">
+                            <div>{r.descricaoProblema || 'Sem descrição'}</div>
+                            {r.servicosExecutados && <div className="mt-1 text-emerald-800">Executado: {r.servicosExecutados}</div>}
+                          </td>
                           <td className="p-1 border-r border-zinc-300 font-sans">
                             {r.oficinaResponsavel}
                             {r.tipoOficina === 'EXTERNA' && (
