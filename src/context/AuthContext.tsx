@@ -213,6 +213,61 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, []);
 
+  // Sincroniza a lista de usuários com o banco compartilhado do Supabase.
+  // A lista local continua preservada para cadastros pendentes/compatibilidade.
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== 'ADMIN') return;
+    let cancelled = false;
+
+    const syncUsersFromSupabase = async () => {
+      try {
+        const { data: profiles, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Não foi possível carregar todos os usuários do Supabase:', error.message);
+          return;
+        }
+        if (cancelled || !profiles) return;
+
+        const cloudUsers: UserProfile[] = profiles.map((profile: any) => ({
+          id: profile.id,
+          username: profile.username || profile.email?.split('@')[0] || '',
+          email: profile.email || '',
+          name: profile.full_name || profile.username || profile.email || 'Usuário sem nome',
+          graduacao: profile.graduacao || '',
+          re: profile.re || '',
+          role: profile.role === 'admin' ? 'ADMIN' : 'OPERADOR',
+          pelotao: profile.pelotao || 'ROCAM',
+          passwordHash: '',
+          salt: '',
+          createdAt: profile.created_at || new Date().toISOString(),
+          isActive: profile.active !== false,
+          status: profile.active === false ? 'INATIVO' : 'ATIVO',
+        }));
+
+        setUsers((previous) => {
+          const cloudIds = new Set(cloudUsers.map((user) => user.id));
+          // Dados do Supabase são a fonte principal; mantém registros locais
+          // que ainda não foram sincronizados, sem duplicar os já existentes.
+          const localOnlyUsers = previous.filter((user) => !cloudIds.has(user.id));
+          const merged = [...cloudUsers, ...localOnlyUsers];
+          saveUsersToStorage(merged);
+          return merged;
+        });
+      } catch (error) {
+        console.error('Falha ao sincronizar usuários do Supabase:', error);
+      }
+    };
+
+    void syncUsersFromSupabase();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.id, currentUser?.role]);
+
   const login = async (identifier: string, pass: string): Promise<{ success: boolean; error?: string }> => {
     const cleanId = identifier.trim().toLowerCase();
 
