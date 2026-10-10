@@ -1041,7 +1041,7 @@ export const LoginScreen: React.FC = () => {
             <span>Sessão Local Criptografada e Segura (SHA-256)</span>
           </div>
           <div className="font-mono text-[10px]">
-            ROCAM • 1º BPChq • Seção Logística
+            ROCAM • Seção Logística
           </div>
         </div>
       </div>
