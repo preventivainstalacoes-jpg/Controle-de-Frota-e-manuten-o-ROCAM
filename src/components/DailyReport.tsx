@@ -703,8 +703,18 @@ export const DailyReport: React.FC<DailyReportProps> = ({
                         {r.tipoManutencao}
                       </span>
                     </td>
-                    <td className="py-2.5 px-4 text-zinc-300 max-w-xs truncate">
-                      {r.descricaoProblema}
+                    <td className="py-2.5 px-4 text-zinc-300 max-w-xs">
+                      <div className="font-semibold">{r.descricaoProblema || 'Sem descrição'}</div>
+                      {r.servicosExecutados && (
+                        <div className="mt-1 whitespace-normal text-emerald-300">
+                          Executado: {r.servicosExecutados}
+                        </div>
+                      )}
+                      {r.dataConclusao && (
+                        <div className="mt-1 text-[10px] text-zinc-500">
+                          Conclusão: {formatDate(r.dataConclusao)}
+                        </div>
+                      )}
                     </td>
                     <td className="py-2.5 px-4 text-zinc-400">
                       {r.oficinaResponsavel} ({r.mecanicoResponsavel})
