@@ -129,15 +129,14 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Operadores só podem devolver motocicleta cautelada em seu próprio RE.
-    // Administradores mantêm permissão para regularizar devoluções excepcionais.
+    // Operadores simples só podem devolver viaturas (motocicletas ou quatro rodas)
+    // cauteladas em seu próprio RE. Administradores podem regularizar exceções.
     if (
-      cautela.tipoViatura === 'MOTOCICLETA' &&
       currentUser?.role === 'OPERADOR' &&
       (!currentUser.re?.trim() || currentUser.re.trim().toUpperCase() !== cautela.condutorRE?.trim().toUpperCase())
     ) {
       setErrorMessage(
-        `Devolução bloqueada: a motocicleta ${cautela.prefixoViatura} está cautelada em nome de ${cautela.condutorGraduacao} ${cautela.condutorNome} (RE ${cautela.condutorRE}). Somente o policial responsável pela cautela pode registrar a devolução. Solicite ao responsável ou ao Administrador.`
+        `Devolução bloqueada: a viatura ${cautela.prefixoViatura} está cautelada em nome de ${cautela.condutorGraduacao} ${cautela.condutorNome} (RE ${cautela.condutorRE}). Somente o operador responsável pela cautela ou um Administrador pode registrar a devolução.`
       );
       return;
     }
