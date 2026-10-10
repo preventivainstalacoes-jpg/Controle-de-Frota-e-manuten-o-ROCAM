@@ -215,7 +215,7 @@ function AppContent() {
   const handleSaveCautela = async (cautelaData: Parameters<typeof addCautela>[0]) => {
     const saved = await addCautela(cautelaData);
     if (!saved) {
-      showToast('Esta viatura já está cautelada por outro operador. Faça a descautela antes de iniciar um novo serviço.', 'warning');
+      showToast('Esta viatura já está cautelada por outro operador. Registre a devolução antes de iniciar um novo serviço.', 'warning');
       return;
     }
     logActivity({
@@ -262,8 +262,8 @@ function AppContent() {
     logActivity({
       tipo: descautelaData.houveAvaria ? 'AVARIA' : 'DESCAUTELA',
       titulo: descautelaData.houveAvaria
-        ? `Descautela com Avaria: ${c?.prefixoViatura || 'Viatura'}`
-        : `Descautela Finalizada: ${c?.prefixoViatura || 'Viatura'}`,
+        ? `Devolução com Avaria: ${c?.prefixoViatura || 'Viatura'}`
+        : `Devolução Finalizada: ${c?.prefixoViatura || 'Viatura'}`,
       descricao: descautelaData.houveAvaria
         ? `Retorno com registro de avaria: "${descautelaData.descricaoAvaria || 'Dano'}" ${descautelaData.baixarViatura ? '(Viatura baixada)' : ''}.`
         : `Turno finalizado com sucesso. Km retorno: ${descautelaData.kmRetorno?.toLocaleString('pt-BR')} km.`,
@@ -335,7 +335,7 @@ function AppContent() {
                   Acesso Operador: {currentUser?.name} (RE: {currentUser?.re})
                 </h3>
                 <p className="text-[11px] text-emerald-300">
-                  Visualize as viaturas disponíveis para patrulhamento. Clique em <strong>"Cautelar"</strong> para registrar saída ou em <strong>"Descautelar"</strong> para finalizar o turno com fotos de avarias.
+                  Visualize as viaturas disponíveis para patrulhamento. Clique em <strong>"Cautelar"</strong> para registrar saída ou em <strong>"Descautelar"</strong> para registrar a devolução do turno com fotos de avarias.
                 </p>
               </div>
             </div>
