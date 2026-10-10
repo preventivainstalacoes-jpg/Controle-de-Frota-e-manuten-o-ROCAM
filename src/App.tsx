@@ -215,8 +215,8 @@ function AppContent() {
   const handleSaveCautela = async (cautelaData: Parameters<typeof addCautela>[0]) => {
     const saved = await addCautela(cautelaData);
     if (!saved) {
-      showToast('Esta viatura já está cautelada por outro operador. Registre a devolução antes de iniciar um novo serviço.', 'warning');
-      return;
+      showToast('Não foi possível registrar a cautela. A viatura pode já estar cautelada ou o banco de dados recusou o registro. Tente novamente e, se persistir, informe o administrador.', 'error');
+      return false;
     }
     logActivity({
       tipo: 'CAUTELA',
@@ -228,6 +228,7 @@ function AppContent() {
       badge: cautelaData.prefixoViatura,
       linkTab: 'cautelas',
     });
+    return true;
   };
 
   const handleBaixarViaturaChecklist = (vehicleId: string, motivo: string) => {
