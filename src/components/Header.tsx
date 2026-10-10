@@ -248,17 +248,17 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Devolução de Viatura (Fim de Serviço) Button */}
             {onOpenDescautelar && (
               <button
-                id="btn-header-descautelar"
+                id="btn-header-devolucao-viatura"
                 onClick={onOpenDescautelar}
                 className={`flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition active:scale-95 cursor-pointer ${
                   activeCautelasCount > 0
                     ? 'bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow-md shadow-amber-500/20 font-bold'
                     : 'bg-zinc-800 hover:bg-zinc-750 text-zinc-300 border border-zinc-700'
                 }`}
-                title="Registrar devolução da viatura ao final do serviço policial"
+                title="Registrar Devolução de Viatura ao Final do Serviço"
               >
                 <RotateCcw className="w-4 h-4" />
-                <span className="hidden sm:inline">Devolução</span>
+                <span>Devolução de Viatura</span>
                 {activeCautelasCount > 0 && <span className="font-bold">({activeCautelasCount})</span>}
               </button>
             )}
