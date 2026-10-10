@@ -184,6 +184,19 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
       return;
     }
 
+    // Impede a mesma pessoa de manter mais de uma viatura em cautela ativa.
+    const normalizedRE = condutorRE.trim().toUpperCase();
+    const userActiveCautela = activeCautelas.find(
+      (c) => c.status === 'EM_PATRULHAMENTO' &&
+        (c.condutorRE || '').trim().toUpperCase() === normalizedRE
+    );
+    if (userActiveCautela) {
+      setErrorMessage(
+        `O policial ${condutorGraduacao} ${condutorNome} (RE ${normalizedRE}) já possui a viatura ${userActiveCautela.prefixoViatura} em cautela ativa, termo ${userActiveCautela.numeroTermo}. Registre a devolução dessa viatura antes de cautelar outra.`
+      );
+      return;
+    }
+
     // Bloqueio rigoroso: não permitir que viatura cautelada seja cautelada novamente
     if (selectedVehicleActiveCautela) {
       setErrorMessage(
