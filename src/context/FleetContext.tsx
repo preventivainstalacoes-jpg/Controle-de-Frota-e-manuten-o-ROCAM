@@ -168,14 +168,23 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     else setVehicles(sharedVehicles);
 
     if (mr.error) console.error('Erro ao carregar manutenções do Supabase:', mr.error);
-    else setMaintenanceRecords((mr.data || []).map((r: any) => ({
-      id:r.id,numeroOS:r.id,viaturaId:r.vehicle_id,prefixoViatura:'',tipoViatura:'MOTOCICLETA',
-      tipoManutencao:r.maintenance_type==='preventiva'?'PREVENTIVA':'CORRETIVA',categoria:'OUTROS',
-      status:r.status==='em_andamento'?'EM_EXECUCAO':r.status==='concluida'?'CONCLUIDA':r.status==='cancelada'?'CANCELADA':'AGENDADA',
-      dataEntrada:r.opened_at?.split('T')[0],dataConclusao:r.closed_at?.split('T')[0],kmEntrada:r.mileage||0,
-      descricaoProblema:r.description||'',servicosExecutados:r.service_performed||'',pecasSubstituidas:[],
-      oficinaResponsavel:'',mecanicoResponsavel:'',policialSolicitante:'',matriculaRE:'',urgencia:'MEDIA'
-    })));
+    else setMaintenanceRecords((mr.data || []).map((r: any) => {
+      const vehicle = sharedVehicles.find((v) => v.id === r.vehicle_id);
+      let parts: any[] = [];
+      try {
+        parts = Array.isArray(r.parts) ? r.parts : typeof r.parts === 'string' ? JSON.parse(r.parts || '[]') : [];
+      } catch {
+        parts = [];
+      }
+      return {
+        id:r.id,numeroOS:r.id,viaturaId:r.vehicle_id,prefixoViatura:vehicle?.prefixo||'Viatura não identificada',tipoViatura:vehicle?.tipo||'MOTOCICLETA',
+        tipoManutencao:r.maintenance_type==='preventiva'?'PREVENTIVA':'CORRETIVA',categoria:'OUTROS',
+        status:r.status==='em_andamento'?'EM_EXECUCAO':r.status==='concluida'?'CONCLUIDA':r.status==='cancelada'?'CANCELADA':r.status==='aberta'?'AGENDADA':'AGENDADA',
+        dataEntrada:r.opened_at?.split('T')[0] || '',dataConclusao:r.closed_at?.split('T')[0],kmEntrada:r.mileage||0,
+        descricaoProblema:r.description||'',servicosExecutados:r.service_performed||'',pecasSubstituidas:parts,
+        oficinaResponsavel:'',mecanicoResponsavel:'',policialSolicitante:'',matriculaRE:'',urgencia:'MEDIA'
+      };
+    }));
 
     if (cr.error) console.error('Erro ao carregar cautelas do Supabase:', cr.error);
     else setCautelas((cr.data || []).map((c: any) => fromDbCautela(c, sharedVehicles)));
