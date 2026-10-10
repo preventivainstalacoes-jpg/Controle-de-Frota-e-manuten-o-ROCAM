@@ -575,7 +575,7 @@ export const MonthlyReport: React.FC = () => {
             {/* Header Documento Militar Oficial */}
             <div className="text-center border-b-2 border-zinc-900 pb-4 mb-6">
               <div className="text-xs font-bold uppercase tracking-widest text-zinc-700">
-                POLÍCIA MILITAR DO ESTADO DE SÃO PAULO
+                POLÍCIA MILITAR DO ESTADO DO RIO GRANDE DO NORTE
               </div>
               <div className="text-sm font-black uppercase tracking-widest text-zinc-950 mt-1">
                 ROCAM — RONDAS OSTENSIVAS COM APOIO DE MOTOCICLETAS
@@ -723,7 +723,7 @@ export const MonthlyReport: React.FC = () => {
               <div>
                 <div className="border-t border-zinc-800 w-48 mx-auto mb-1"></div>
                 <div className="font-bold">Comandante da Subunidade ROCAM</div>
-                <div className="text-[10px] text-zinc-600">Polícia Militar do Estado de São Paulo</div>
+                <div className="text-[10px] text-zinc-600">Polícia Militar do Estado do Rio Grande do Norte</div>
               </div>
             </div>
 
