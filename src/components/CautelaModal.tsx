@@ -26,7 +26,7 @@ interface CautelaModalProps {
   vehicles: Vehicle[];
   activeCautelas: CautelaRecord[];
   initialVehicleId?: string;
-  onSaveCautela: (cautelaData: Omit<CautelaRecord, 'id' | 'numeroTermo' | 'status'>) => void;
+  onSaveCautela: (cautelaData: Omit<CautelaRecord, 'id' | 'numeroTermo' | 'status'>) => Promise<boolean>;
   onBaixarViatura?: (vehicleId: string, motivo: string) => void;
 }
 
@@ -177,7 +177,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
   };
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedVehicle) {
       setErrorMessage('Selecione uma viatura para cautelar.');
@@ -212,7 +212,8 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
       return;
     }
 
-    onSaveCautela({
+    setErrorMessage('');
+    const saved = await onSaveCautela({
       viaturaId: selectedVehicle.id,
       prefixoViatura: selectedVehicle.prefixo,
       tipoViatura: selectedVehicle.tipo,
@@ -231,7 +232,11 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
       fotosAvariasSaida: fotosAvariasSaida.length > 0 ? fotosAvariasSaida : undefined,
     });
 
-    onClose();
+    if (saved) {
+      onClose();
+    } else {
+      setErrorMessage('Não foi possível registrar a cautela no banco de dados. Confira a conexão e tente novamente; a viatura não foi registrada.');
+    }
   };
 
   const nonConformeCount = checklist.filter((c) => !c.conforme).length;
