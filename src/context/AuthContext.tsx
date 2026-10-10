@@ -116,16 +116,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const hydrateFromSupabaseUser = async (authUser: any) => {
       if (!authUser?.id || !isMounted) {
         if (isMounted) {
-          // If no Supabase auth user, preserve valid local session if present
-          const savedSession = getSavedSession();
-          if (savedSession) {
-            const loadedUsers = users.length > 0 ? users : await loadUsersFromStorage();
-            const foundUser = loadedUsers.find((u) => u.id === savedSession.userId);
-            if (foundUser && foundUser.isActive && foundUser.status === 'ATIVO') {
-              setCurrentUser(foundUser);
-              return;
-            }
-          }
+          // Sessão local não comprova identidade nem é compartilhada entre celulares.
+          clearSavedSession();
           setCurrentUser(null);
         }
         return;
@@ -174,18 +166,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (data.session?.user) {
           await hydrateFromSupabaseUser(data.session.user);
         } else if (isMounted) {
-          const savedSession = getSavedSession();
-          if (savedSession) {
-            const foundUser = loadedUsers.find((u) => u.id === savedSession.userId);
-            if (foundUser && foundUser.isActive && foundUser.status === 'ATIVO') {
-              setCurrentUser(foundUser);
-            } else {
-              clearSavedSession();
-              setCurrentUser(null);
-            }
-          } else {
-            setCurrentUser(null);
-          }
+          // Exigir sessão do Supabase para autenticação compartilhada.
+          clearSavedSession();
+          setCurrentUser(null);
         }
       } catch (err) {
         console.error('Failed to initialize Auth', err);
@@ -297,7 +280,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (!directError && directAuth.user) {
           const { data: directProfile } = await supabase
             .from('profiles').select('*').eq('id', directAuth.user.id).maybeSingle();
-          if (directProfile?.active !== false && directProfile) {
+          if (directProfile && directProfile.active !== false && (!directProfile.approval_status || directProfile.approval_status === 'ATIVO')) {
             const mappedUser: UserProfile = {
               id: directProfile.id,
               username: directProfile.username || cleanId.split('@')[0],
@@ -316,7 +299,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return { success: true };
           }
           await supabase.auth.signOut();
-          if (directProfile?.active === false) return { success: false, error: 'Acesso bloqueado: este usuário foi desativado pelo Administrador.' };
+          if (directProfile?.active === false || ['PENDENTE', 'REJEITADO', 'INATIVO', 'EXCLUIDO'].includes(directProfile?.approval_status)) {
+            return { success: false, error: directProfile?.approval_status === 'PENDENTE' ? 'Cadastro aguardando aprovação do Administrador.' : 'Acesso bloqueado: este usuário não está ativo.' };
+          }
+          if (!directProfile) return { success: false, error: 'Conta autenticada, mas perfil não encontrado no banco compartilhado. Solicite a regularização ao Administrador.' };
         } else if (directError && /email not confirmed/i.test(directError.message)) {
           return { success: false, error: 'E-mail ainda não confirmado. Confirme o e-mail cadastrado no Supabase antes de entrar.' };
         }
@@ -338,9 +324,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           return { success: false, error: authError?.message || 'Credenciais inválidas.' };
         }
 
-        if (profileData.active === false) {
+        if (profileData.active === false || ['PENDENTE', 'REJEITADO', 'INATIVO', 'EXCLUIDO'].includes(profileData.approval_status)) {
           await supabase.auth.signOut();
-          return { success: false, error: 'Acesso bloqueado: este usuário foi desativado pelo Administrador.' };
+          return { success: false, error: profileData.approval_status === 'PENDENTE' ? 'Cadastro aguardando aprovação do Administrador.' : 'Acesso bloqueado: este usuário não está ativo.' };
         }
 
         const mappedUser: UserProfile = {
@@ -371,43 +357,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (mappedUser.role === 'ADMIN') markFirstAdminQuickAccessUsed();
         return { success: true };
       }
-    } catch (error) {
-      console.warn('Falha ao autenticar pelo Supabase; tentando compatibilidade local.', error);
-    }
-
-    // Fallback de compatibilidade local (permite acesso com admin/admin123 ou quando offline)
-    const currentList = users.length > 0 ? users : await loadUsersFromStorage();
-    let authResult = await authenticateCredentials(identifier, pass, currentList);
-    if (!authResult.user) {
-      const freshUsers = await loadUsersFromStorage();
-      if (freshUsers.length > 0) {
-        const freshAuth = await authenticateCredentials(identifier, pass, freshUsers);
-        if (freshAuth.user) {
-          authResult = freshAuth;
-        }
-      }
-    }
-
-    if (authResult.user) {
-      const updatedUser: UserProfile = {
-        ...authResult.user,
-        lastLogin: new Date().toISOString(),
-      };
-      setUsers((prev) => {
-        const without = prev.filter((u) => u.id !== updatedUser.id);
-        const next = [updatedUser, ...without];
-        saveUsersToStorage(next);
-        return next;
-      });
-      saveSavedSession(createSessionForUser(updatedUser));
-      setCurrentUser(updatedUser);
-      if (updatedUser.role === 'ADMIN') markFirstAdminQuickAccessUsed();
-      return { success: true };
+    } catch (error: any) {
+      console.error('Falha na autenticação compartilhada do Supabase:', error);
+      return { success: false, error: error?.message || 'Não foi possível validar o acesso no servidor. Verifique a conexão e tente novamente.' };
     }
 
     return {
       success: false,
-      error: authResult.error || 'Credenciais inválidas. Confira o usuário/e-mail/RE e a senha cadastrados.',
+      error: 'Credenciais inválidas ou conta não cadastrada/ativa no banco compartilhado. Confira e-mail/usuário/RE e senha.',
     };
   };
 
