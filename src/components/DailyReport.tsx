@@ -778,7 +778,7 @@ export const DailyReport: React.FC<DailyReportProps> = ({
             {/* Header Documento Militar Oficial */}
             <div className="text-center border-b-2 border-zinc-900 pb-4 mb-6">
               <div className="text-xs font-bold uppercase tracking-widest text-zinc-700">
-                POLÍCIA MILITAR DO ESTADO DE SÃO PAULO
+                POLÍCIA MILITAR DO ESTADO DO RIO GRANDE DO NORTE
               </div>
               <div className="text-sm font-black uppercase tracking-widest text-zinc-950 mt-1">
                 ROCAM — RONDAS OSTENSIVAS COM APOIO DE MOTOCICLETAS
