@@ -125,6 +125,12 @@ export const DailyReport: React.FC<DailyReportProps> = ({
       csvContent += `"${c.numeroTermo}";"${tipoMov}";"${c.status}";"${c.prefixoViatura}";"${c.modeloViatura}";"${c.placaViatura}";"${c.condutorGraduacao} ${c.condutorNome}";"${c.condutorRE}";"${c.pelotao}";"${c.dataHoraSaida.replace('T', ' ')}";${c.kmSaida};"${c.dataHoraRetorno ? c.dataHoraRetorno.replace('T', ' ') : '-'}";${c.kmRetorno || '-'};${c.kmPercorrido || '-'};"${c.houveAvaria ? (c.viaturaBaixadaAposRetorno ? 'SIM (BAIXADA)' : 'SIM') : 'NAO'}"\n`;
     });
 
+    csvContent += '\nMANUTENCOES E ORDENS DE SERVICO NA DATA\n';
+    csvContent += 'Nro OS;Data Entrada;Data Conclusao;Prefixo;Tipo Viatura;Tipo Manutencao;Categoria;Status;KM Entrada;Descricao;Servicos Executados;Oficina;Mecanico\n';
+    movimentacoesDoDia.forEach((item) => {
+      csvContent += '"' + item.numeroOS + '";' + item.dataEntrada + ';' + (item.dataConclusao || '-') + ';"' + item.prefixoViatura + '";"' + item.tipoViatura + '";"' + item.tipoManutencao + '";"' + item.categoria + '";"' + item.status + '";' + item.kmEntrada + ';"' + (item.descricaoProblema || '').replace(/"/g, '""') + '";"' + (item.servicosExecutados || '').replace(/"/g, '""') + '";"' + (item.oficinaResponsavel || '').replace(/"/g, '""') + '";"' + (item.mecanicoResponsavel || '').replace(/"/g, '""') + '"\n';
+    });
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
