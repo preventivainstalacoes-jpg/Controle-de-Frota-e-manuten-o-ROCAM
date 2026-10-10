@@ -22,6 +22,7 @@ import { formatKm, getCategoryLabel, formatDate } from '../utils/formatters';
 export const MonthlyReport: React.FC = () => {
   const {
     maintenanceRecords,
+    cautelas,
     vehicles,
     generateMonthlyBackupNow,
     downloadBackupFile,
@@ -54,6 +55,15 @@ export const MonthlyReport: React.FC = () => {
   const monthRecords = useMemo(() => {
     return maintenanceRecords.filter((r) => r.dataEntrada.startsWith(selectedMonth));
   }, [maintenanceRecords, selectedMonth]);
+
+  // Include exits and returns recorded during the selected month for all vehicle types.
+  const monthCautelas = useMemo(() => cautelas.filter((item) =>
+    item.dataHoraSaida.startsWith(selectedMonth) || (item.dataHoraRetorno || '').startsWith(selectedMonth)
+  ), [cautelas, selectedMonth]);
+  const monthCautelaSaidas = monthCautelas.filter((item) => item.dataHoraSaida.startsWith(selectedMonth));
+  const monthCautelaRetornos = monthCautelas.filter((item) => (item.dataHoraRetorno || '').startsWith(selectedMonth));
+  const monthCautelasMotos = monthCautelas.filter((item) => item.tipoViatura === 'MOTOCICLETA').length;
+  const monthCautelasQuatroRodas = monthCautelas.filter((item) => item.tipoViatura === 'QUATRO_RODAS').length;
 
   // Operational metrics and statistics
   const stats = useMemo(() => {
@@ -180,6 +190,13 @@ export const MonthlyReport: React.FC = () => {
       const qtdPecas = r.pecasSubstituidas ? r.pecasSubstituidas.reduce((acc, p) => acc + p.quantidade, 0) : 0;
       csvContent += `${r.numeroOS};${r.dataEntrada};${r.prefixoViatura};${r.tipoViatura};${r.tipoManutencao};${r.categoria};${r.status};${qtdPecas};"${r.oficinaResponsavel}";"${r.mecanicoResponsavel}"\n`;
     });
+
+    csvContent += '\nCAUTELAS E DEVOLUCOES DE TODAS AS VIATURAS\n';
+    csvContent += 'Termo;Prefixo;Tipo Viatura;Modelo;Placa;Condutor;RE;Pelotao;Data/Hora Saida;KM Saida;Combustivel Saida;Data/Hora Retorno;KM Retorno;KM Rodado;Status;Avaria\n';
+    monthCautelas.forEach((item) => {
+      csvContent += '"' + item.numeroTermo + '";"' + item.prefixoViatura + '";"' + item.tipoViatura + '";"' + item.modeloViatura + '";"' + item.placaViatura + '";"' + item.condutorGraduacao + ' ' + item.condutorNome + '";"' + item.condutorRE + '";"' + item.pelotao + '";"' + item.dataHoraSaida.replace('T', ' ') + '";' + item.kmSaida + ';"' + item.combustivelSaida + '";"' + (item.dataHoraRetorno ? item.dataHoraRetorno.replace('T', ' ') : '-') + '";' + (item.kmRetorno ?? '-') + ';' + (item.kmPercorrido ?? '-') + ';"' + item.status + '";"' + (item.houveAvaria ? (item.viaturaBaixadaAposRetorno ? 'SIM - BAIXADA' : 'SIM') : 'NAO') + '"\n';
+    });
+    csvContent += '\nRESUMO DE CAUTELAS\nSaidas no mes;' + monthCautelaSaidas.length + '\nRetornos no mes;' + monthCautelaRetornos.length + '\nCautelas de motocicletas;' + monthCautelasMotos + '\nCautelas de viaturas 04 rodas;' + monthCautelasQuatroRodas + '\n';
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -605,6 +622,51 @@ export const MonthlyReport: React.FC = () => {
                         </tr>
                       );
                     })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Quadro mensal de cautelas e devoluções */}
+            <div className="mb-6">
+              <h4 className="text-xs font-black uppercase border-b border-zinc-800 pb-1 mb-2">
+                REGISTRO MENSAL DE CAUTELAS E DEVOLUÇÕES DE TODAS AS VIATURAS
+              </h4>
+              <div className="grid grid-cols-4 gap-2 mb-3 text-center text-[10px]">
+                <div className="border border-zinc-400 rounded p-2"><div className="font-bold">SAÍDAS</div><div className="text-base font-black">{monthCautelaSaidas.length}</div></div>
+                <div className="border border-zinc-400 rounded p-2"><div className="font-bold">RETORNOS</div><div className="text-base font-black">{monthCautelaRetornos.length}</div></div>
+                <div className="border border-zinc-400 rounded p-2"><div className="font-bold">MOTOCICLETAS</div><div className="text-base font-black">{monthCautelasMotos}</div></div>
+                <div className="border border-zinc-400 rounded p-2"><div className="font-bold">04 RODAS</div><div className="text-base font-black">{monthCautelasQuatroRodas}</div></div>
+              </div>
+              {monthCautelas.length === 0 ? (
+                <div className="text-xs text-zinc-600 italic">Nenhuma cautela ou devolução registrada no mês selecionado.</div>
+              ) : (
+                <table className="w-full text-left text-[9px] border border-zinc-400">
+                  <thead className="bg-zinc-100 border-b border-zinc-400 font-bold">
+                    <tr>
+                      <th className="p-1 border-r border-zinc-300">Termo</th>
+                      <th className="p-1 border-r border-zinc-300">Data saída</th>
+                      <th className="p-1 border-r border-zinc-300">Viatura / tipo</th>
+                      <th className="p-1 border-r border-zinc-300">Condutor / RE</th>
+                      <th className="p-1 border-r border-zinc-300">KM saída</th>
+                      <th className="p-1 border-r border-zinc-300">Data retorno</th>
+                      <th className="p-1 border-r border-zinc-300">KM retorno / rodado</th>
+                      <th className="p-1">Status / avaria</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-300 font-mono">
+                    {monthCautelas.map((item) => (
+                      <tr key={item.id}>
+                        <td className="p-1 border-r border-zinc-300">{item.numeroTermo}</td>
+                        <td className="p-1 border-r border-zinc-300">{formatDate(item.dataHoraSaida.slice(0, 10))} {item.dataHoraSaida.slice(11, 16)}</td>
+                        <td className="p-1 border-r border-zinc-300">{item.prefixoViatura} ({item.tipoViatura === 'MOTOCICLETA' ? 'Moto' : '04 rodas'})</td>
+                        <td className="p-1 border-r border-zinc-300">{item.condutorGraduacao} {item.condutorNome} / {item.condutorRE}</td>
+                        <td className="p-1 border-r border-zinc-300">{formatKm(item.kmSaida)}</td>
+                        <td className="p-1 border-r border-zinc-300">{item.dataHoraRetorno ? formatDate(item.dataHoraRetorno.slice(0, 10)) + ' ' + item.dataHoraRetorno.slice(11, 16) : 'Em serviço'}</td>
+                        <td className="p-1 border-r border-zinc-300">{item.kmRetorno !== undefined ? formatKm(item.kmRetorno) + ' / ' + formatKm(item.kmPercorrido || 0) : '-'}</td>
+                        <td className="p-1">{item.status === 'CONCLUIDA' ? 'Devolvida' : 'Em serviço'}{item.houveAvaria ? ' / Avaria: ' + (item.descricaoAvaria || 'Sim') : ''}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               )}
