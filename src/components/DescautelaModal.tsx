@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CautelaRecord, ChecklistItem, Vehicle, DamagePhoto } from '../types';
 import { generateDefaultChecklist } from '../data/defaultChecklist';
+import { useAuth } from '../context/AuthContext';
 import { DamagePhotoManager } from './DamagePhotoManager';
 import {
   X,
@@ -47,6 +48,7 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
   cautela,
   onFinalizeDescautela,
 }) => {
+  const { currentUser } = useAuth();
   const [dataHoraRetorno, setDataHoraRetorno] = useState<string>('');
   const [kmRetorno, setKmRetorno] = useState<number>(0);
   const [combustivelRetorno, setCombustivelRetorno] = useState<'RESERVA' | '1/4' | '1/2' | '3/4' | 'CHEIO'>('1/2');
@@ -126,6 +128,20 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
   };
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Operadores só podem devolver motocicleta cautelada em seu próprio RE.
+    // Administradores mantêm permissão para regularizar devoluções excepcionais.
+    if (
+      cautela.tipoViatura === 'MOTOCICLETA' &&
+      currentUser?.role === 'OPERADOR' &&
+      (!currentUser.re?.trim() || currentUser.re.trim().toUpperCase() !== cautela.condutorRE?.trim().toUpperCase())
+    ) {
+      setErrorMessage(
+        `Devolução bloqueada: a motocicleta ${cautela.prefixoViatura} está cautelada em nome de ${cautela.condutorGraduacao} ${cautela.condutorNome} (RE ${cautela.condutorRE}). Somente o policial responsável pela cautela pode registrar a devolução. Solicite ao responsável ou ao Administrador.`
+      );
+      return;
+    }
+
     if (kmRetorno < cautela.kmSaida) {
       setErrorMessage(`O odômetro de retorno (${kmRetorno} km) não pode ser menor que o de saída (${cautela.kmSaida} km).`);
       return;
