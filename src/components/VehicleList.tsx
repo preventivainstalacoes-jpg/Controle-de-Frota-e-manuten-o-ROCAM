@@ -150,11 +150,11 @@ export const VehicleList: React.FC<VehicleListProps> = ({
 
         <div className="bg-zinc-900 border border-emerald-900/40 rounded-xl p-3.5 shadow-sm">
           <div className="flex items-center justify-between text-emerald-400 text-xs font-semibold uppercase">
-            <span>Operacionais</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            <span>Cauteladas / Em Patrulhamento</span>
+            <Shield className="w-4 h-4 text-emerald-500" />
           </div>
-          <div className="mt-2 text-2xl font-black font-mono text-emerald-400">{stats.operacionais}</div>
-          <div className="text-[11px] text-emerald-500/80 mt-0.5">Prontas para empenho</div>
+          <div className="mt-2 text-2xl font-black font-mono text-emerald-400">{cautelas.filter((c) => c.status === 'EM_PATRULHAMENTO').length}</div>
+          <div className="text-[11px] text-emerald-500/80 mt-0.5">Saídas registradas e ainda não devolvidas</div>
         </div>
 
         <div className="bg-zinc-900 border border-rose-900/40 rounded-xl p-3.5 shadow-sm">
