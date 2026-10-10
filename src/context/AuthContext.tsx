@@ -155,7 +155,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         salt: '',
         createdAt: profile.created_at || new Date().toISOString(),
         isActive: profile.active !== false,
-        status: profile.active === false ? 'INATIVO' : 'ATIVO',
+        status: profile.approval_status === 'PENDENTE' ? 'PENDENTE' : profile.approval_status === 'REJEITADO' ? 'REJEITADO' : profile.active === false ? 'INATIVO' : 'ATIVO',
         lastLogin: new Date().toISOString(),
       };
 
@@ -232,7 +232,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
         if (cancelled || !profiles) return;
 
-        const cloudUsers: UserProfile[] = profiles.map((profile: any) => ({
+        const cloudUsers: UserProfile[] = profiles.filter((profile: any) => profile.approval_status !== 'EXCLUIDO').map((profile: any) => ({
           id: profile.id,
           username: profile.username || profile.email?.split('@')[0] || '',
           email: profile.email || '',
@@ -245,17 +245,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           salt: '',
           createdAt: profile.created_at || new Date().toISOString(),
           isActive: profile.active !== false,
-          status: profile.active === false ? 'INATIVO' : 'ATIVO',
+          status: profile.approval_status === 'PENDENTE' ? 'PENDENTE' : profile.approval_status === 'REJEITADO' ? 'REJEITADO' : profile.active === false ? 'INATIVO' : 'ATIVO',
         }));
 
         setUsers((previous) => {
-          const cloudIds = new Set(cloudUsers.map((user) => user.id));
-          // Dados do Supabase são a fonte principal; mantém registros locais
-          // que ainda não foram sincronizados, sem duplicar os já existentes.
-          const localOnlyUsers = previous.filter((user) => !cloudIds.has(user.id));
-          const merged = [...cloudUsers, ...localOnlyUsers];
-          saveUsersToStorage(merged);
-          return merged;
+          // A lista compartilhada vem exclusivamente do Supabase. Usuários locais
+          // não sincronizados não devem aparecer como se estivessem cadastrados para todos.
+          saveUsersToStorage(cloudUsers);
+          return cloudUsers;
         });
       } catch (error) {
         console.error('Falha ao sincronizar usuários do Supabase:', error);
@@ -343,7 +340,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           salt: '',
           createdAt: profileData.created_at || new Date().toISOString(),
           isActive: profileData.active !== false,
-          status: profileData.active === false ? 'INATIVO' : 'ATIVO',
+          status: profileData.approval_status === 'PENDENTE' ? 'PENDENTE' : profileData.approval_status === 'REJEITADO' ? 'REJEITADO' : profileData.active === false ? 'INATIVO' : 'ATIVO',
           lastLogin: new Date().toISOString(),
         };
 
@@ -526,6 +523,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         full_name: data.name.trim(),
         role: isFirstAdmin || (!recoveredExistingAuth && data.role === 'ADMIN') ? 'admin' : 'operador',
         active: isFirstAdmin,
+        approval_status: isFirstAdmin ? 'ATIVO' : 'PENDENTE',
         email: cleanEmail,
         username: cleanUser,
         re: cleanRe,
@@ -577,45 +575,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       return { success: true, isFirstAdmin };
     } catch (e: any) {
-      console.warn('Erro no cadastro Supabase; utilizando persistência local com segurança criptográfica:', e);
-      // Fallback local seguro (permite cadastrar e liberar primeiro admin mesmo offline)
-      try {
-        const salt = generateSalt();
-        const passwordHash = await hashPassword(data.password, salt);
-        const hasCustomActiveAdmin = users.some(
-          (u) => u.role === 'ADMIN' && u.status === 'ATIVO' && u.id !== 'usr-admin-01' && u.username !== 'admin'
-        );
-        const isFirstAdmin = data.role === 'ADMIN' && !hasCustomActiveAdmin;
-        const localId = `usr-${data.role.toLowerCase()}-${Date.now()}`;
-        const mapped: UserProfile = {
-          id: localId,
-          username: cleanUser,
-          email: cleanEmail || `${cleanUser}@rocam.pm.sp.gov.br`,
-          name: data.name.trim(),
-          graduacao: data.graduacao,
-          re: cleanRe,
-          role: isFirstAdmin || data.role === 'ADMIN' ? 'ADMIN' : 'OPERADOR',
-          pelotao: data.pelotao.trim() || 'ROCAM',
-          passwordHash,
-          salt,
-          createdAt: new Date().toISOString(),
-          isActive: isFirstAdmin,
-          status: isFirstAdmin ? 'ATIVO' : 'PENDENTE',
-          lastLogin: isFirstAdmin ? new Date().toISOString() : undefined,
-        };
-        const currentList = users.length > 0 ? users : await loadUsersFromStorage();
-        const nextUsers = [mapped, ...currentList.filter((u) => u.username !== cleanUser && u.re !== cleanRe)];
-        setUsers(nextUsers);
-        await saveUsersToStorage(nextUsers);
-        if (isFirstAdmin) {
-          setCurrentUser(mapped);
-          saveSavedSession(createSessionForUser(mapped));
-          markFirstAdminQuickAccessUsed();
-        }
-        return { success: true, isFirstAdmin };
-      } catch (localErr: any) {
-        return { success: false, error: localErr?.message || 'Não foi possível concluir o cadastro.' };
-      }
+      console.error('Falha no cadastro compartilhado do Supabase:', e);
+      return {
+        success: false,
+        error: e?.message || 'Não foi possível salvar o cadastro no banco compartilhado. Verifique a conexão e tente novamente.'
+      };
     }
   };
 
@@ -713,55 +677,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     userId: string,
     targetRole?: UserRole
   ): Promise<{ success: boolean; error?: string }> => {
-    const currentList = users.length > 0 ? users : await loadUsersFromStorage();
-    let index = currentList.findIndex((u) => u.id === userId);
-    let listToUse = currentList;
-
-    if (index === -1) {
-      const freshList = await loadUsersFromStorage();
-      index = freshList.findIndex((u) => u.id === userId);
-      listToUse = freshList;
-    }
-
-    if (index === -1) {
-      return { success: false, error: 'Usuário não localizado.' };
-    }
-
-    const user = listToUse[index];
-    const finalRole = targetRole || user.role;
-
-    if (finalRole === 'ADMIN') {
-      const activeAdmins = listToUse.filter((u) => u.role === 'ADMIN' && u.isActive && u.status === 'ATIVO').length;
-      if (activeAdmins >= MAX_ADMINS) {
-        return {
-          success: false,
-          error: `Capacidade máxima atingida: O sistema permite no máximo ${MAX_ADMINS} Administradores com acesso total.`,
-        };
-      }
-    } else if (finalRole === 'OPERADOR') {
-      const activeOps = listToUse.filter((u) => u.role === 'OPERADOR' && u.isActive && u.status === 'ATIVO').length;
-      if (activeOps >= MAX_OPERATORS) {
-        return {
-          success: false,
-          error: `Capacidade máxima atingida: O sistema permite no máximo ${MAX_OPERATORS} Operadores.`,
-        };
-      }
-    }
-
+    if (!currentUser || currentUser.role !== 'ADMIN') return { success: false, error: 'Somente Administrador pode aprovar usuários.' };
+    const { data: target, error: readError } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+    if (readError || !target) return { success: false, error: readError?.message || 'Usuário não localizado no banco compartilhado.' };
+    const finalRole = targetRole || (target.role === 'admin' ? 'ADMIN' : 'OPERADOR');
+    const { data: saved, error } = await supabase.from('profiles').update({
+      role: finalRole === 'ADMIN' ? 'admin' : 'operador', active: true, approval_status: 'ATIVO', updated_at: new Date().toISOString()
+    }).eq('id', userId).select('*').maybeSingle();
+    if (error || !saved) return { success: false, error: error?.message || 'Não foi possível salvar a aprovação no Supabase.' };
     const updated: UserProfile = {
-      ...user,
-      isActive: true,
-      status: 'ATIVO',
-      role: finalRole,
-      aprovadoPor: currentUser?.name || 'Administrador',
-      aprovadoEm: new Date().toISOString(),
+      id: saved.id, username: saved.username || saved.email?.split('@')[0] || '', email: saved.email || '',
+      name: saved.full_name || saved.username || '', graduacao: saved.graduacao || '', re: saved.re || '',
+      role: finalRole, pelotao: saved.pelotao || 'ROCAM', passwordHash: '', salt: '',
+      createdAt: saved.created_at || new Date().toISOString(), isActive: true, status: 'ATIVO',
+      aprovadoPor: currentUser.name || 'Administrador', aprovadoEm: new Date().toISOString()
     };
-
-    const nextUsers = [...listToUse];
-    nextUsers[index] = updated;
-
-    setUsers(nextUsers);
-    saveUsersToStorage(nextUsers);
+    setUsers(prev => [updated, ...prev.filter(u => u.id !== userId)]);
     return { success: true };
   };
 
@@ -772,33 +703,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     userId: string,
     motivo?: string
   ): Promise<{ success: boolean; error?: string }> => {
-    const currentList = users.length > 0 ? users : await loadUsersFromStorage();
-    let index = currentList.findIndex((u) => u.id === userId);
-    let listToUse = currentList;
-
-    if (index === -1) {
-      const freshList = await loadUsersFromStorage();
-      index = freshList.findIndex((u) => u.id === userId);
-      listToUse = freshList;
-    }
-
-    if (index === -1) {
-      return { success: false, error: 'Usuário não localizado.' };
-    }
-
-    const user = listToUse[index];
+    if (!currentUser || currentUser.role !== 'ADMIN') return { success: false, error: 'Somente Administrador pode rejeitar usuários.' };
+    const { data: saved, error } = await supabase.from('profiles').update({
+      active: false, approval_status: 'REJEITADO', updated_at: new Date().toISOString()
+    }).eq('id', userId).select('*').maybeSingle();
+    if (error || !saved) return { success: false, error: error?.message || 'Não foi possível registrar a rejeição no Supabase.' };
     const updated: UserProfile = {
-      ...user,
-      isActive: false,
-      status: 'REJEITADO',
-      motivoRejeicao: motivo || 'Cadastro não homologado pelo Administrador da Seção de Logística.',
+      id: saved.id, username: saved.username || saved.email?.split('@')[0] || '', email: saved.email || '',
+      name: saved.full_name || saved.username || '', graduacao: saved.graduacao || '', re: saved.re || '',
+      role: saved.role === 'admin' ? 'ADMIN' : 'OPERADOR', pelotao: saved.pelotao || 'ROCAM',
+      passwordHash: '', salt: '', createdAt: saved.created_at || new Date().toISOString(),
+      isActive: false, status: 'REJEITADO', motivoRejeicao: motivo || 'Cadastro não homologado pelo Administrador.'
     };
-
-    const nextUsers = [...listToUse];
-    nextUsers[index] = updated;
-
-    setUsers(nextUsers);
-    saveUsersToStorage(nextUsers);
+    setUsers(prev => [updated, ...prev.filter(u => u.id !== userId)]);
     return { success: true };
   };
 
@@ -806,31 +723,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     userId: string,
     data: Partial<UserProfile>
   ): Promise<{ success: boolean; error?: string }> => {
-    const currentList = users.length > 0 ? users : await loadUsersFromStorage();
-    let index = currentList.findIndex((u) => u.id === userId);
-    let listToUpdate = currentList;
-
-    if (index === -1) {
-      const freshList = await loadUsersFromStorage();
-      index = freshList.findIndex((u) => u.id === userId);
-      listToUpdate = freshList;
-    }
-
-    if (index === -1) {
-      return { success: false, error: 'Usuário não localizado.' };
-    }
-
-    const updated = { ...listToUpdate[index], ...data };
-    const nextUsers = [...listToUpdate];
-    nextUsers[index] = updated;
-
-    setUsers(nextUsers);
-    await saveUsersToStorage(nextUsers);
-
-    if (currentUser?.id === userId) {
-      setCurrentUser(updated);
-    }
-
+    if (!currentUser || currentUser.role !== 'ADMIN') return { success: false, error: 'Somente Administrador pode alterar usuários.' };
+    const dbUpdate: Record<string, unknown> = {};
+    if (data.username !== undefined) dbUpdate.username = data.username.trim().toLowerCase();
+    if (data.email !== undefined) dbUpdate.email = data.email.trim().toLowerCase();
+    if (data.name !== undefined) dbUpdate.full_name = data.name.trim();
+    if (data.graduacao !== undefined) dbUpdate.graduacao = data.graduacao;
+    if (data.re !== undefined) dbUpdate.re = data.re.trim();
+    if (data.pelotao !== undefined) dbUpdate.pelotao = data.pelotao.trim() || 'ROCAM';
+    if (data.role !== undefined) dbUpdate.role = data.role === 'ADMIN' ? 'admin' : 'operador';
+    if (data.isActive !== undefined) dbUpdate.active = data.isActive;
+    if (data.status !== undefined) dbUpdate.approval_status = data.status;
+    dbUpdate.updated_at = new Date().toISOString();
+    const { data: saved, error } = await supabase.from('profiles').update(dbUpdate).eq('id', userId).select('*').maybeSingle();
+    if (error || !saved) return { success: false, error: error?.message || 'Não foi possível salvar a alteração no Supabase.' };
+    const updated: UserProfile = {
+      id: saved.id, username: saved.username || saved.email?.split('@')[0] || '', email: saved.email || '',
+      name: saved.full_name || saved.username || '', graduacao: saved.graduacao || '', re: saved.re || '',
+      role: saved.role === 'admin' ? 'ADMIN' : 'OPERADOR', pelotao: saved.pelotao || 'ROCAM',
+      passwordHash: '', salt: '', createdAt: saved.created_at || new Date().toISOString(),
+      isActive: saved.active !== false,
+      status: saved.approval_status === 'PENDENTE' ? 'PENDENTE' : saved.approval_status === 'REJEITADO' ? 'REJEITADO' : saved.active === false ? 'INATIVO' : 'ATIVO'
+    };
+    setUsers(prev => [updated, ...prev.filter(u => u.id !== userId)]);
+    if (currentUser.id === userId) setCurrentUser(updated);
     return { success: true };
   };
 
@@ -841,34 +757,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     userId: string,
     adminPassword?: string
   ): Promise<{ success: boolean; error?: string }> => {
-    if (!currentUser || currentUser.role !== 'ADMIN') {
-      return { success: false, error: 'Acesso negado: Somente administradores têm permissão para excluir usuários.' };
+    if (!currentUser || currentUser.role !== 'ADMIN') return { success: false, error: 'Acesso negado: somente administradores podem excluir usuários.' };
+    if (currentUser.id === userId) return { success: false, error: 'Você não pode excluir sua própria conta de administrador por aqui.' };
+    if (adminPassword?.trim()) {
+      const valid = await verifyPassword(adminPassword, currentUser.passwordHash, currentUser.salt);
+      if (!valid) return { success: false, error: 'Senha de administrador incorreta. Exclusão cancelada.' };
     }
-
-    if (currentUser.id === userId) {
-      return { success: false, error: 'Você não pode excluir sua própria conta de administrador por aqui. Use a opção "Excluir Minha Conta".' };
+    const target = users.find(u => u.id === userId);
+    if (target?.role === 'ADMIN' && target.status === 'ATIVO' &&
+        users.filter(u => u.id !== userId && u.role === 'ADMIN' && u.isActive && u.status === 'ATIVO').length === 0) {
+      return { success: false, error: 'Não é possível excluir o único administrador ativo do sistema.' };
     }
-
-    // Optional admin password verification (if provided, verify it)
-    if (adminPassword && adminPassword.trim()) {
-      const isPassValid = await verifyPassword(adminPassword, currentUser.passwordHash, currentUser.salt);
-      if (!isPassValid) {
-        return { success: false, error: 'Senha de administrador incorreta. Exclusão cancelada.' };
-      }
-    }
-
-    // Verify if there's at least one remaining active ADMIN
-    const target = users.find((u) => u.id === userId);
-    if (target?.role === 'ADMIN' && target.status === 'ATIVO') {
-      const activeAdmins = users.filter((u) => u.role === 'ADMIN' && u.id !== userId && u.isActive && u.status === 'ATIVO');
-      if (activeAdmins.length === 0) {
-        return { success: false, error: 'Não é possível excluir o único administrador ativo do sistema.' };
-      }
-    }
-
-    const nextUsers = users.filter((u) => u.id !== userId);
-    setUsers(nextUsers);
-    saveUsersToStorage(nextUsers);
+    const { error } = await supabase.from('profiles').update({
+      active: false, approval_status: 'EXCLUIDO', updated_at: new Date().toISOString()
+    }).eq('id', userId);
+    if (error) return { success: false, error: error.message || 'Não foi possível registrar a exclusão no banco compartilhado.' };
+    const next = users.filter(u => u.id !== userId);
+    setUsers(next);
+    await saveUsersToStorage(next);
     return { success: true };
   };
 
@@ -878,26 +784,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const deleteMultipleUsers = async (
     userIds: string[]
   ): Promise<{ success: boolean; deletedCount: number; error?: string }> => {
-    if (!currentUser || currentUser.role !== 'ADMIN') {
-      return { success: false, deletedCount: 0, error: 'Acesso negado: Somente administradores podem excluir usuários.' };
-    }
-
-    // Never delete current user via batch delete
-    const validIdsToDelete = userIds.filter((id) => id !== currentUser.id);
-    if (validIdsToDelete.length === 0) {
-      return { success: false, deletedCount: 0, error: 'Nenhum outro usuário selecionado para exclusão.' };
-    }
-
-    // Check that at least 1 active admin remains
-    const remainingUsers = users.filter((u) => !validIdsToDelete.includes(u.id));
-    const remainingAdmins = remainingUsers.filter((u) => u.role === 'ADMIN' && u.isActive && u.status === 'ATIVO');
-    if (remainingAdmins.length === 0) {
-      return { success: false, deletedCount: 0, error: 'Operação bloqueada: O sistema deve manter pelo menos 1 Administrador ativo.' };
-    }
-
-    setUsers(remainingUsers);
-    saveUsersToStorage(remainingUsers);
-    return { success: true, deletedCount: validIdsToDelete.length };
+    if (!currentUser || currentUser.role !== 'ADMIN') return { success: false, deletedCount: 0, error: 'Somente administradores podem excluir usuários.' };
+    const ids = [...new Set(userIds)].filter(id => id !== currentUser.id);
+    if (!ids.length) return { success: false, deletedCount: 0, error: 'Nenhum outro usuário selecionado para exclusão.' };
+    const remainingAdmins = users.filter(u => !ids.includes(u.id) && u.role === 'ADMIN' && u.isActive && u.status === 'ATIVO');
+    if (!remainingAdmins.length) return { success: false, deletedCount: 0, error: 'O sistema deve manter pelo menos 1 Administrador ativo.' };
+    const { error } = await supabase.from('profiles').update({
+      active: false, approval_status: 'EXCLUIDO', updated_at: new Date().toISOString()
+    }).in('id', ids);
+    if (error) return { success: false, deletedCount: 0, error: error.message || 'Não foi possível excluir os usuários no banco compartilhado.' };
+    const next = users.filter(u => !ids.includes(u.id));
+    setUsers(next);
+    await saveUsersToStorage(next);
+    return { success: true, deletedCount: ids.length };
   };
 
   /**
