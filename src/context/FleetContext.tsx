@@ -326,7 +326,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const proximoNumero = String(cautelas.length + 1).padStart(4, '0');
     const newRecord: CautelaRecord = {
       ...cautelaData,
-      id: `caut-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: crypto.randomUUID(),
       numeroTermo: `CAUT-${anoAtual}-${proximoNumero}`,
       status: 'EM_PATRULHAMENTO',
     };
