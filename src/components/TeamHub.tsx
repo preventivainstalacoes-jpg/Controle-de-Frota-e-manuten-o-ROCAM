@@ -138,7 +138,7 @@ export const TeamHub: React.FC = () => {
     } else if (type === 'FROTA') {
       const operacionais = vehicles.filter((v) => v.status === 'OPERACIONAL');
       const baixadas = vehicles.filter((v) => v.status === 'BAIXADA' || v.status === 'EM_MANUTENCAO');
-      let txt = `*ROCAM - STATUS GERAL DA FROTA*\nData: ${new Date().toLocaleDateString('pt-BR')}\n\n`;
+      let txt = `*ROCAM - RIO GRANDE DO NORTE - STATUS GERAL DA FROTA*\nData: ${new Date().toLocaleDateString('pt-BR')}\n\n`;
       txt += `🟢 *Operacionais (${operacionais.length}):*\n`;
       operacionais.forEach((v) => {
         txt += `• ${v.prefixo} (${v.modelo}) - ${v.kmAtual.toLocaleString('pt-BR')} km\n`;
