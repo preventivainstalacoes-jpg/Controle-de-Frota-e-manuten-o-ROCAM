@@ -262,6 +262,36 @@ export const DailyReport: React.FC<DailyReportProps> = ({
         </div>
       </div>
 
+      {/* Resumo tabular das cautelas do dia */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-zinc-800">
+          <h3 className="text-sm font-bold text-zinc-100">Resumo diário de cautelas e devoluções</h3>
+          <p className="text-[11px] text-zinc-400">Dados resumidos por viatura, com horários, duração do serviço e alterações informadas.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-zinc-950 text-zinc-400 text-[10px] uppercase">
+              <tr><th className="p-2">Prefixo / Viatura</th><th className="p-2">Condutor</th><th className="p-2">Cautelada</th><th className="p-2">Descautelada</th><th className="p-2">Tempo em serviço</th><th className="p-2">Alterações (resumo)</th></tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800">
+              {cautelasDoDia.length === 0 ? <tr><td colSpan={6} className="p-4 text-center text-zinc-500">Nenhuma cautela registrada nesta data.</td></tr> : cautelasDoDia.map((c) => {
+                const minutos = c.dataHoraRetorno ? Math.max(0, Math.floor((new Date(c.dataHoraRetorno).getTime() - new Date(c.dataHoraSaida).getTime()) / 60000)) : null;
+                const tempo = minutos === null ? 'Em andamento' : `${Math.floor(minutos / 60)}h ${minutos % 60}min`;
+                const alteracao = c.houveAvaria ? [c.descricaoAvaria || 'Avaria registrada', c.viaturaBaixadaAposRetorno ? 'viatura baixada' : ''].filter(Boolean).join(' — ') : (c.observacoesRetorno || c.observacoesSaida || 'Sem alteração informada');
+                return <tr key={c.id} className="text-zinc-200 align-top">
+                  <td className="p-2"><strong>{c.prefixoViatura}</strong><div className="text-[10px] text-zinc-400">{c.modeloViatura} • {c.placaViatura}</div></td>
+                  <td className="p-2">{c.condutorGraduacao} {c.condutorNome}<div className="text-[10px] text-zinc-400">RE {c.condutorRE}</div></td>
+                  <td className="p-2 whitespace-nowrap">{c.dataHoraSaida.replace('T', ' ')}</td>
+                  <td className="p-2 whitespace-nowrap">{c.dataHoraRetorno ? c.dataHoraRetorno.replace('T', ' ') : 'Ainda em serviço'}</td>
+                  <td className="p-2 whitespace-nowrap">{tempo}</td>
+                  <td className="p-2 min-w-[160px]">{alteracao}</td>
+                </tr>;
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* 1. REGISTRO DE MOVIMENTAÇÕES E CAUTELAS DE VIATURAS DO TURNO OPERACIONAL */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-sm">
         <div className="px-5 py-3.5 bg-zinc-950 border-b border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
