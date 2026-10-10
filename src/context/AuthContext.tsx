@@ -465,7 +465,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }, { onConflict: 'id' });
 
       if (profileError) {
-        console.warn('Erro ao salvar profile no Supabase, prosseguindo com dados locais:', profileError);
+        console.error('Falha ao salvar perfil no Supabase:', profileError);
+        await supabase.auth.signOut();
+        return {
+          success: false,
+          error: 'A conta de autenticação foi criada, mas o perfil não pôde ser salvo. Não tente cadastrar novamente com outro e-mail. Solicite a recuperação do cadastro ao Administrador. Detalhe: ' + profileError.message,
+        };
       }
 
       const salt = generateSalt();
