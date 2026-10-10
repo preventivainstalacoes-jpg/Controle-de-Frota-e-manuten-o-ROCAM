@@ -245,7 +245,7 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            {/* Descautelar (Fim de Serviço) Button */}
+            {/* Devolução de Viatura (Fim de Serviço) Button */}
             {onOpenDescautelar && (
               <button
                 id="btn-header-descautelar"
@@ -255,10 +255,10 @@ export const Header: React.FC<HeaderProps> = ({
                     ? 'bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow-md shadow-amber-500/20 font-bold'
                     : 'bg-zinc-800 hover:bg-zinc-750 text-zinc-300 border border-zinc-700'
                 }`}
-                title="Descautelar viatura ao final do serviço policial"
+                title="Registrar devolução da viatura ao final do serviço policial"
               >
                 <RotateCcw className="w-4 h-4" />
-                <span className="hidden sm:inline">Descautelar</span>
+                <span className="hidden sm:inline">Devolução</span>
                 {activeCautelasCount > 0 && <span className="font-bold">({activeCautelasCount})</span>}
               </button>
             )}
