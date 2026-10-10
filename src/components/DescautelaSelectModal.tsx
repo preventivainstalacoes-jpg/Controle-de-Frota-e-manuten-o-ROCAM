@@ -42,7 +42,7 @@ export const DescautelaSelectModal: React.FC<DescautelaSelectModalProps> = ({
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-black text-zinc-100 flex items-center gap-2">
-                Descautelar Viatura (Final do Serviço)
+                Devolução de Viatura — Final do Serviço
               </h2>
               <p className="text-xs text-zinc-400">
                 Selecione a viatura que retornou à base para conferência de checklist, KM e encerramento do turno
@@ -68,7 +68,7 @@ export const DescautelaSelectModal: React.FC<DescautelaSelectModalProps> = ({
                 Nenhuma viatura em patrulhamento no momento
               </h3>
               <p className="text-xs text-zinc-400 max-w-md mx-auto">
-                Todas as viaturas operacionais estão aquarteladas na base ou em manutenção.
+                Todas as viaturas disponíveis estão na base ou em manutenção.
               </p>
               {onOpenNewCautela && (
                 <div className="pt-2">
@@ -155,7 +155,7 @@ export const DescautelaSelectModal: React.FC<DescautelaSelectModalProps> = ({
                       className="w-full sm:w-auto flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs shadow-md shadow-amber-500/20 transition active:scale-95 cursor-pointer"
                     >
                       <RotateCcw className="w-4 h-4" />
-                      <span>Descautelar Esta Viatura</span>
+                      <span>Registrar Devolução desta Viatura</span>
                     </button>
                   </div>
                 </div>
