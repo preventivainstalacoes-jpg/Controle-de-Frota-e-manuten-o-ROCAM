@@ -355,7 +355,18 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Cautela Actions
   const addCautela = async (cautelaData: Omit<CautelaRecord, 'id' | 'numeroTermo' | 'status'>): Promise<boolean> => {
-    // Bloqueio local rápido para UX; a regra definitiva está no índice único do Supabase.
+    // Impede que a mesma pessoa mantenha mais de uma viatura em cautela ativa.
+    const normalizedRE = (cautelaData.condutorRE || '').trim().toUpperCase();
+    const userActiveCautela = cautelas.some(
+      (c) => c.status === 'EM_PATRULHAMENTO' &&
+        (c.condutorRE || '').trim().toUpperCase() === normalizedRE
+    );
+    if (userActiveCautela) {
+      console.warn(`Cautela bloqueada: RE ${normalizedRE} já possui uma viatura em cautela ativa.`);
+      return false;
+    }
+
+    // Bloqueio local rápido para UX: não permite cautelar novamente a mesma viatura.
     const activeCautelaExists = cautelas.some(
       (c) => c.viaturaId === cautelaData.viaturaId && c.status === 'EM_PATRULHAMENTO'
     );
