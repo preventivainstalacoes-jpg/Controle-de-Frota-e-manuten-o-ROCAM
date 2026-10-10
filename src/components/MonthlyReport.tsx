@@ -279,6 +279,36 @@ export const MonthlyReport: React.FC = () => {
         </div>
       )}
 
+      {/* Resumo tabular mensal de cautelas e devoluções */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-zinc-800">
+          <h3 className="text-sm font-bold text-zinc-100">Resumo mensal de cautelas e devoluções — {nomeMesExtenso}</h3>
+          <p className="text-[11px] text-zinc-400">Tabela consolidada de prefixo, condutor, horários, tempo em serviço e alterações.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-zinc-950 text-zinc-400 text-[10px] uppercase">
+              <tr><th className="p-2">Prefixo / Viatura</th><th className="p-2">Condutor</th><th className="p-2">Cautelada</th><th className="p-2">Descautelada</th><th className="p-2">Tempo em serviço</th><th className="p-2">Alterações (resumo)</th></tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800">
+              {monthCautelas.length === 0 ? <tr><td colSpan={6} className="p-4 text-center text-zinc-500">Nenhuma cautela registrada neste mês.</td></tr> : monthCautelas.map((item) => {
+                const minutos = item.dataHoraRetorno ? Math.max(0, Math.floor((new Date(item.dataHoraRetorno).getTime() - new Date(item.dataHoraSaida).getTime()) / 60000)) : null;
+                const tempo = minutos === null ? 'Em andamento' : `${Math.floor(minutos / 60)}h ${minutos % 60}min`;
+                const alteracao = item.houveAvaria ? [item.descricaoAvaria || 'Avaria registrada', item.viaturaBaixadaAposRetorno ? 'viatura baixada' : ''].filter(Boolean).join(' — ') : (item.observacoesRetorno || item.observacoesSaida || 'Sem alteração informada');
+                return <tr key={item.id} className="text-zinc-200 align-top">
+                  <td className="p-2"><strong>{item.prefixoViatura}</strong><div className="text-[10px] text-zinc-400">{item.modeloViatura} • {item.placaViatura}</div></td>
+                  <td className="p-2">{item.condutorGraduacao} {item.condutorNome}<div className="text-[10px] text-zinc-400">RE {item.condutorRE}</div></td>
+                  <td className="p-2 whitespace-nowrap">{item.dataHoraSaida.replace('T', ' ')}</td>
+                  <td className="p-2 whitespace-nowrap">{item.dataHoraRetorno ? item.dataHoraRetorno.replace('T', ' ') : 'Ainda em serviço'}</td>
+                  <td className="p-2 whitespace-nowrap">{tempo}</td>
+                  <td className="p-2 min-w-[160px]">{alteracao}</td>
+                </tr>;
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Main Operational KPI Cards for the Month */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 shadow-sm">
