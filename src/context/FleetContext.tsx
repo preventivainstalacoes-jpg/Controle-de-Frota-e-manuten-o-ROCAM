@@ -181,30 +181,56 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     else setCautelas((cr.data || []).map((c: any) => fromDbCautela(c, sharedVehicles)));
   };
 
-  // Initial load + realtime refresh. Every device reads the same Supabase state.
+  // Load shared state on startup, in realtime, when the app returns to foreground,
+  // and periodically as a fallback for phones with intermittent realtime connections.
   useEffect(() => {
     let alive = true;
-    void loadSharedFleet();
+    let refreshInFlight = false;
+
+    const refresh = async () => {
+      if (!alive || refreshInFlight || document.visibilityState === 'hidden') return;
+      refreshInFlight = true;
+      try {
+        await loadSharedFleet();
+      } catch (error) {
+        console.error('Falha ao atualizar dados compartilhados do ROCAM FROTA:', error);
+      } finally {
+        refreshInFlight = false;
+      }
+    };
+
+    void refresh();
 
     const channel = supabase
       .channel('rocam-frota-shared-data')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, () => {
-        if (alive) void loadSharedFleet();
+        void refresh();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance' }, () => {
-        if (alive) void loadSharedFleet();
+        void refresh();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cautelas' }, () => {
-        if (alive) void loadSharedFleet();
+        void refresh();
       })
       .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR') {
-          console.error('Falha no canal realtime do ROCAM FROTA.');
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('Canal realtime do ROCAM FROTA indisponível; a atualização periódica continuará ativa.');
         }
       });
 
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') void refresh();
+    };
+    const onFocus = () => void refresh();
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('focus', onFocus);
+    const refreshTimer = window.setInterval(() => void refresh(), 15000);
+
     return () => {
       alive = false;
+      window.clearInterval(refreshTimer);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('focus', onFocus);
       void supabase.removeChannel(channel);
     };
   }, []);
