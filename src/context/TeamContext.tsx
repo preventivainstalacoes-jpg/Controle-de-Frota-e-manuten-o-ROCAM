@@ -534,7 +534,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const cautelasAtivas = activeCautelas.filter((c) => c.status === 'EM_PATRULHAMENTO');
 
-      let txt = `*ROCAM - POLÍCIA MILITAR DO ESTADO DE SÃO PAULO*\n`;
+      let txt = `*ROCAM - POLÍCIA MILITAR DO ESTADO DO RIO GRANDE DO NORTE*\n`;
       txt += `*INFORMATIVO DE PASSAGEM DE SERVIÇO & FROTA*\n`;
       txt += `🗓️ Data/Hora: ${dataFormatada} às ${horaFormatada}\n`;
       txt += `👤 Oficial Responsável: ${currentUser?.graduacao || 'CAP PM'} ${currentUser?.name || 'Comando'} (RE ${currentUser?.re || '000.001-0'})\n`;
