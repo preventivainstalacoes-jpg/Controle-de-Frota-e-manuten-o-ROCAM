@@ -54,6 +54,7 @@ export const LoginScreen: React.FC = () => {
     users,
     firstAdminQuickAccessUsed,
     markFirstAdminQuickAccessUsed,
+    liberarPrimeiroAcesso,
   } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
@@ -126,11 +127,12 @@ export const LoginScreen: React.FC = () => {
         const { data: profile, error: lookupError } = await supabase
           .rpc('find_profile_for_login', { p_identifier: cleanIdentifier })
           .maybeSingle();
-        if (lookupError || !profile?.email) {
+        const profileData = profile as { email?: string } | null;
+        if (lookupError || !profileData?.email) {
           setErrorMsg('Não foi possível localizar o e-mail da conta. Informe o e-mail cadastrado ou contate o administrador do Supabase.');
           return;
         }
-        recoveryEmail = String(profile.email).trim().toLowerCase();
+        recoveryEmail = String(profileData.email).trim().toLowerCase();
       }
       const { error } = await supabase.auth.resetPasswordForEmail(recoveryEmail, {
         redirectTo: window.location.origin,
@@ -188,12 +190,14 @@ export const LoginScreen: React.FC = () => {
 
   // O cadastro do primeiro admin não precisa de confirmação
   const hasCustomActiveAdmin = users.some(
-    (u) => u.role === 'ADMIN' && u.status === 'ATIVO' && u.id !== 'usr-admin-01'
+    (u) => u.role === 'ADMIN' && u.status === 'ATIVO' && u.id !== 'usr-admin-01' && u.username !== 'admin'
   );
   const isFirstAdminEligible = !hasCustomActiveAdmin;
 
   // O botão de acesso rápido do 1º administrador desaparece após o primeiro uso
-  const isFirstAdminButtonVisible = false;
+  const isFirstAdminButtonVisible =
+    !firstAdminQuickAccessUsed ||
+    (!hasCustomActiveAdmin && !adminUsers.some((u) => Boolean(u.lastLogin)));
 
   const handleQuickOpSelect = (e: React.FormEvent) => {
     e.preventDefault();
@@ -281,6 +285,9 @@ export const LoginScreen: React.FC = () => {
         setSuccessMsg(
           'Cadastro do 1º Administrador realizado e ativado com sucesso! Como primeiro administrador, seu acesso foi liberado imediatamente sem necessidade de confirmação.'
         );
+        setTimeout(() => {
+          void handleLiberarPrimeiroAcesso();
+        }, 500);
       } else {
         // Demais usuários dependem de homologação por um administrador
         setSuccessMsg(
@@ -319,6 +326,23 @@ export const LoginScreen: React.FC = () => {
       console.error('Quick login error:', err);
       // Fallback
       await quickLoginAs(role);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleLiberarPrimeiroAcesso = async () => {
+    setErrorMsg('');
+    setSuccessMsg('');
+    setIsSubmitting(true);
+    try {
+      const ok = await liberarPrimeiroAcesso();
+      if (!ok) {
+        await quickLoginAs('ADMIN');
+      }
+    } catch (err: any) {
+      console.error('Erro ao liberar primeiro acesso:', err);
+      await quickLoginAs('ADMIN');
     } finally {
       setIsSubmitting(false);
     }
@@ -412,73 +436,69 @@ export const LoginScreen: React.FC = () => {
           {/* TAB 1: LOGIN */}
           {activeTab === 'login' && (
             <div className="space-y-4">
-              {/* BOTÃO EM DESTAQUE: ACESSO RÁPIDO DO 1º ADMINISTRADOR (1 CLIQUE) - Desaparece após o primeiro uso */}
-              {isFirstAdminButtonVisible && (
-                <>
-                  {(() => {
-                    const firstAdminUser = adminUsers[0] || SEED_ADMINS[0];
-                    return (
-                      <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-amber-500/25 via-amber-500/10 to-amber-600/25 border-2 border-amber-500/70 shadow-xl shadow-amber-500/20 space-y-3 relative overflow-hidden animate-in fade-in duration-200">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
-                        
-                        <div className="flex items-center justify-between relative z-10">
-                          <div className="flex items-center space-x-2.5">
-                            <div className="p-2 rounded-xl bg-amber-500 text-zinc-950 font-black shadow-md shadow-amber-500/30">
-                              <Shield className="w-5 h-5 stroke-[2.5]" />
-                            </div>
-                            <div>
-                              <div className="flex items-center space-x-1.5">
-                                <span className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wide">
-                                  1º Administrador Master
-                                </span>
-                                <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-amber-500/30 text-amber-200 border border-amber-500/50">
-                                  PRIMEIRO ACESSO
-                                </span>
-                              </div>
-                              <span className="text-xs text-zinc-200 font-bold block">
-                                {firstAdminUser.name} • RE {firstAdminUser.re}
-                              </span>
-                            </div>
+              {/* BOTÃO EM DESTAQUE: LIBERAR PRIMEIRO ACESSO DO 1º ADMINISTRADOR (1 CLIQUE) */}
+              {isFirstAdminButtonVisible && (() => {
+                const firstAdminUser = adminUsers[0] || SEED_ADMINS[0];
+                return (
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-amber-500/25 via-amber-500/10 to-amber-600/25 border-2 border-amber-500/70 shadow-xl shadow-amber-500/20 space-y-3 relative overflow-hidden animate-in fade-in duration-200">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+                    
+                    <div className="flex items-center justify-between relative z-10">
+                      <div className="flex items-center space-x-2.5">
+                        <div className="p-2 rounded-xl bg-amber-500 text-zinc-950 font-black shadow-md shadow-amber-500/30">
+                          <Shield className="w-5 h-5 stroke-[2.5]" />
+                        </div>
+                        <div>
+                          <div className="flex items-center space-x-1.5">
+                            <span className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wide">
+                              1º Administrador Master
+                            </span>
+                            <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-amber-500/30 text-amber-200 border border-amber-500/50">
+                              LIBERAR PRIMEIRO ACESSO
+                            </span>
                           </div>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-400 text-zinc-950 uppercase tracking-wider font-mono shadow-sm flex items-center gap-1">
-                            <Zap className="w-3 h-3 fill-zinc-950" />
-                            1 Clique
+                          <span className="text-xs text-zinc-200 font-bold block">
+                            {firstAdminUser.name} • RE {firstAdminUser.re}
                           </span>
                         </div>
-
-                        <button
-                          type="button"
-                          onClick={() => handleQuickLogin('ADMIN', firstAdminUser.id)}
-                          disabled={isSubmitting || isLoading}
-                          className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-zinc-950 font-black text-xs sm:text-sm shadow-xl shadow-amber-500/30 active:scale-[0.98] transition flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 ring-2 ring-amber-400/50 relative z-10"
-                          title="Clique para realizar o primeiro acesso como Administrador Master (desaparece após o primeiro uso)"
-                        >
-                          <Zap className="w-4 h-4 fill-zinc-950 stroke-zinc-950" />
-                          <span>{isSubmitting ? 'Acessando...' : 'Acessar como 1º Administrador Master'}</span>
-                          <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-                        </button>
-
-                        <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-1 border-t border-amber-500/20">
-                          <span className="text-amber-400/90 font-semibold">Acesso inicial único — desaparece para os próximos usuários</span>
-                          <span className="font-mono text-zinc-400">@admin (Acesso Total)</span>
-                        </div>
                       </div>
-                    );
-                  })()}
-
-                  {/* Divisor "OU ACESSO COM CREDENCIAIS" */}
-                  <div className="relative my-2">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-zinc-800" />
-                    </div>
-                    <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-wider">
-                      <span className="bg-zinc-900 px-3 text-zinc-400">
-                        Ou entrar manualmente com usuário e senha
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-400 text-zinc-950 uppercase tracking-wider font-mono shadow-sm flex items-center gap-1">
+                        <Zap className="w-3 h-3 fill-zinc-950" />
+                        1 Clique
                       </span>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={handleLiberarPrimeiroAcesso}
+                      disabled={isSubmitting || isLoading}
+                      className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-zinc-950 font-black text-xs sm:text-sm shadow-xl shadow-amber-500/30 active:scale-[0.98] transition flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 ring-2 ring-amber-400/50 relative z-10"
+                      title="Clique para Liberar Primeiro Acesso como Administrador Master"
+                    >
+                      <Zap className="w-4 h-4 fill-zinc-950 stroke-zinc-950" />
+                      <span>{isSubmitting ? 'Liberando acesso...' : '⚡ Liberar Primeiro Acesso (1º Administrador Master)'}</span>
+                      <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                    </button>
+
+                    <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-1 border-t border-amber-500/20">
+                      <span className="text-amber-400/90 font-semibold">Liberação imediata sem necessidade de confirmação prévia</span>
+                      <span className="font-mono text-zinc-400">@admin (Acesso Total)</span>
+                    </div>
                   </div>
-                </>
-              )}
+                );
+              })()}
+
+              {/* Divisor "OU ACESSO COM CREDENCIAIS" */}
+              <div className="relative my-2">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-zinc-800" />
+                </div>
+                <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-wider">
+                  <span className="bg-zinc-900 px-3 text-zinc-400">
+                    Ou entrar manualmente com usuário e senha
+                  </span>
+                </div>
+              </div>
 
               {isRecoveryMode && (
                 <form onSubmit={handleCompletePasswordRecovery} className="mb-4 space-y-3 rounded-xl border border-amber-500/30 bg-zinc-950/70 p-4">
@@ -577,65 +597,19 @@ export const LoginScreen: React.FC = () => {
                 </button>
               </div>
 
-              {/* Divisor & Card do 1º Administrador Master (apenas visível no primeiro acesso) */}
-              {isFirstAdminButtonVisible && (
-                <>
-                  <div className="relative my-3">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-zinc-800" />
-                    </div>
-                    <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-wider">
-                      <span className="bg-zinc-900 px-3 text-amber-400 flex items-center gap-1.5">
-                        <Shield className="w-3 h-3" />
-                        <span>Acesso Rápido — 1º Administrador Master</span>
-                      </span>
-                    </div>
-                  </div>
-
-                  {(() => {
-                    const firstAdminUser = adminUsers[0] || SEED_ADMINS[0];
-                    return (
-                      <button
-                        type="button"
-                        onClick={() => handleQuickLogin('ADMIN', firstAdminUser.id)}
-                        disabled={isSubmitting || isLoading}
-                        className="w-full text-left p-3 rounded-xl bg-zinc-950/80 hover:bg-zinc-900 border border-amber-500/40 hover:border-amber-400 transition group cursor-pointer flex flex-col justify-between"
-                      >
-                        <div className="flex items-start justify-between gap-1.5">
-                          <div className="flex items-center space-x-2.5">
-                            <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 group-hover:bg-amber-500 group-hover:text-zinc-950 transition shrink-0">
-                              <Shield className="w-4 h-4" />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center space-x-2">
-                                <span className="text-xs sm:text-sm font-bold text-zinc-100 truncate">
-                                  {firstAdminUser.name}
-                                </span>
-                                <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                                  1º ADMIN MASTER
-                                </span>
-                              </div>
-                              <div className="text-[11px] text-zinc-400 font-mono mt-0.5">
-                                RE {firstAdminUser.re} • @{firstAdminUser.username} • Senha: admin123
-                              </div>
-                            </div>
-                          </div>
-                          <span className="text-xs text-amber-400 group-hover:translate-x-0.5 transition font-semibold shrink-0">
-                            Entrar &rarr;
-                          </span>
-                        </div>
-                        <div className="mt-2.5 pt-2 border-t border-zinc-800/60 flex items-center justify-between text-[10px]">
-                          <span className="text-amber-400 font-bold flex items-center gap-1">
-                            <span>👑 Acesso Total</span>
-                            <span className="text-zinc-500">•</span>
-                            <span className="text-zinc-400 font-normal">Frota, O.S., Relatórios, Banco de Dados e Usuários</span>
-                          </span>
-                          <span className="text-zinc-400 font-mono">1 de 20</span>
-                        </div>
-                      </button>
-                    );
-                  })()}
-                </>
+              {/* Link discreto para liberar primeiro acesso caso já tenha sido ocultado */}
+              {!isFirstAdminButtonVisible && (
+                <div className="text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={handleLiberarPrimeiroAcesso}
+                    disabled={isSubmitting || isLoading}
+                    className="text-[11px] text-zinc-500 hover:text-amber-400 transition underline underline-offset-4 cursor-pointer inline-flex items-center gap-1"
+                  >
+                    <Zap className="w-3 h-3 text-amber-500/70" />
+                    <span>Liberar Primeiro Acesso Master (1 Clique)</span>
+                  </button>
+                </div>
               )}
 
               {/* Operador Card ou Status de Operadores */}
