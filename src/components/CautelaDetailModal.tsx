@@ -56,7 +56,7 @@ export const CautelaDetailModal: React.FC<CautelaDetailModalProps> = ({
                 </span>
               </h2>
               <p className="text-xs text-zinc-400">
-                Polícia Militar do Estado de São Paulo • ROCAM
+                Polícia Militar do Estado do Rio Grande do Norte • ROCAM
               </p>
             </div>
           </div>
@@ -83,7 +83,7 @@ export const CautelaDetailModal: React.FC<CautelaDetailModalProps> = ({
           {/* Official Document Banner */}
           <div className="text-center pb-4 border-b-2 border-zinc-800 print:border-black space-y-1">
             <div className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 print:text-gray-700">
-              POLÍCIA MILITAR DO ESTADO DE SÃO PAULO
+              POLÍCIA MILITAR DO ESTADO DO RIO GRANDE DO NORTE
             </div>
             <div className="text-xs font-bold tracking-wider text-zinc-300 print:text-gray-800">
               COMANDO DE POLICIAMENTO DE CHOQUE • ROCAM
