@@ -145,11 +145,17 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
   const toDbVehicleType = (t: VehicleType) => t === 'QUATRO_RODAS' ? 'viatura_4_rodas' : 'moto';
   const toDbVehicleStatus = (s: VehicleStatus) => s === 'EM_MANUTENCAO' ? 'manutencao' : s === 'BAIXADA' ? 'indisponivel' : s === 'RESERVA' ? 'reserva' : 'disponivel';
-  const fromDbCautela = (c:any): CautelaRecord => ({
-    id:c.id,numeroTermo:c.numero_termo,viaturaId:c.vehicle_id,prefixoViatura:c.prefixo_viatura||'',tipoViatura:c.tipo_viatura==='viatura_4_rodas'?'QUATRO_RODAS':'MOTOCICLETA',modeloViatura:c.modelo_viatura||'',placaViatura:c.placa_viatura||'',pelotao:c.pelotao||'ROCAM',
-    dataHoraSaida:c.data_hora_saida,kmSaida:c.km_saida,combustivelSaida:c.combustivel_saida,condutorNome:c.condutor_nome,condutorRE:c.condutor_re,condutorGraduacao:c.condutor_graduacao,encarregadoVtr:c.encarregado_vtr,observacoesSaida:c.observacoes_saida,checklistSaida:c.checklist_saida||[],fotosAvariasSaida:c.fotos_saida||[],
-    status:c.status==='CONCLUIDA'?'CONCLUIDA':'EM_PATRULHAMENTO',dataHoraRetorno:c.data_hora_retorno,kmRetorno:c.km_retorno,kmPercorrido:c.km_percorrido,combustivelRetorno:c.combustivel_retorno,recebedorNome:c.recebedor_nome,recebedorRE:c.recebedor_re,observacoesRetorno:c.observacoes_retorno,checklistRetorno:c.checklist_retorno||[],houveAvaria:c.houve_avaria,descricaoAvaria:c.descricao_avaria,viaturaBaixadaAposRetorno:c.viatura_baixada,fotosAvariasRetorno:c.fotos_retorno||[]
-  });
+  const fromDbCautela = (c:any, fleetVehicles: Vehicle[] = vehicles): CautelaRecord => {
+    const vehicle = fleetVehicles.find((v) => v.id === c.vehicle_id);
+    return {
+      id:c.id,numeroTermo:c.numero_termo,viaturaId:c.vehicle_id,
+      prefixoViatura:c.prefixo_viatura||vehicle?.prefixo||'',
+      tipoViatura:c.tipo_viatura==='viatura_4_rodas'||vehicle?.tipo==='QUATRO_RODAS'?'QUATRO_RODAS':'MOTOCICLETA',
+      modeloViatura:c.modelo_viatura||vehicle?.modelo||'',placaViatura:c.placa_viatura||vehicle?.placa||'',pelotao:c.pelotao||vehicle?.pelotao||'ROCAM',
+      dataHoraSaida:c.data_hora_saida,kmSaida:c.km_saida,combustivelSaida:c.combustivel_saida,condutorNome:c.condutor_nome,condutorRE:c.condutor_re,condutorGraduacao:c.condutor_graduacao,encarregadoVtr:c.encarregado_vtr,observacoesSaida:c.observacoes_saida,checklistSaida:c.checklist_saida||[],fotosAvariasSaida:c.fotos_saida||[],
+      status:c.status==='CONCLUIDA'?'CONCLUIDA':'EM_PATRULHAMENTO',dataHoraRetorno:c.data_hora_retorno,kmRetorno:c.km_retorno,kmPercorrido:c.km_percorrido,combustivelRetorno:c.combustivel_retorno,recebedorNome:c.recebedor_nome,recebedorRE:c.recebedor_re,observacoesRetorno:c.observacoes_retorno,checklistRetorno:c.checklist_retorno||[],houveAvaria:c.houve_avaria,descricaoAvaria:c.descricao_avaria,viaturaBaixadaAposRetorno:c.viatura_baixada,fotosAvariasRetorno:c.fotos_retorno||[]
+    };
+  };
   const loadSharedFleet = async () => {
     const [vr, mr, cr] = await Promise.all([
       supabase.from('vehicles').select('*').order('prefix'),
@@ -157,8 +163,9 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       supabase.from('cautelas').select('*').order('data_hora_saida', { ascending: false }),
     ]);
 
+    const sharedVehicles = (vr.data || []).map(fromDbVehicle);
     if (vr.error) console.error('Erro ao carregar viaturas do Supabase:', vr.error);
-    else setVehicles((vr.data || []).map(fromDbVehicle));
+    else setVehicles(sharedVehicles);
 
     if (mr.error) console.error('Erro ao carregar manutenções do Supabase:', mr.error);
     else setMaintenanceRecords((mr.data || []).map((r: any) => ({
@@ -171,7 +178,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     })));
 
     if (cr.error) console.error('Erro ao carregar cautelas do Supabase:', cr.error);
-    else setCautelas((cr.data || []).map(fromDbCautela));
+    else setCautelas((cr.data || []).map((c: any) => fromDbCautela(c, sharedVehicles)));
   };
 
   // Initial load + realtime refresh. Every device reads the same Supabase state.
@@ -335,9 +342,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       id:newRecord.id,numero_termo:newRecord.numeroTermo,vehicle_id:newRecord.viaturaId,data_hora_saida:newRecord.dataHoraSaida,
       km_saida:newRecord.kmSaida,combustivel_saida:newRecord.combustivelSaida,condutor_nome:newRecord.condutorNome,condutor_re:newRecord.condutorRE,
       condutor_graduacao:newRecord.condutorGraduacao,encarregado_vtr:newRecord.encarregadoVtr,observacoes_saida:newRecord.observacoesSaida,
-      checklist_saida:newRecord.checklistSaida||[],fotos_saida:newRecord.fotosAvariasSaida||[],status:newRecord.status,
-      prefixo_viatura:newRecord.prefixoViatura,modelo_viatura:newRecord.modeloViatura,placa_viatura:newRecord.placaViatura,
-      tipo_viatura:newRecord.tipoViatura==='QUATRO_RODAS'?'viatura_4_rodas':'moto',pelotao:newRecord.pelotao
+      checklist_saida:newRecord.checklistSaida||[],fotos_saida:newRecord.fotosAvariasSaida||[],status:newRecord.status
     });
 
     if (error) {
