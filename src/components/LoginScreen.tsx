@@ -223,7 +223,7 @@ export const LoginScreen: React.FC = () => {
       setErrorMsg('Por favor, informe seu usuário ou RE funcional.');
       return;
     }
-    if (!password.trim()) {
+    if (password.length === 0) {
       setErrorMsg('Por favor, digite sua senha de acesso.');
       return;
     }
