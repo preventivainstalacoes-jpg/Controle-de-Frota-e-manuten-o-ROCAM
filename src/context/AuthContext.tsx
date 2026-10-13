@@ -266,6 +266,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (identifier: string, pass: string): Promise<{ success: boolean; error?: string }> => {
     const cleanId = identifier.trim().toLowerCase();
+    // O cadastro remove espaços nas extremidades da senha; aplicar a mesma regra no login.
+    const cleanPass = pass.trim();
 
     // Fonte compartilhada para autenticação: Supabase Auth + public.profiles.
     // Isso permite o mesmo usuário entrar em celulares diferentes.
@@ -275,7 +277,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (cleanId.includes('@')) {
         const { data: directAuth, error: directError } = await supabase.auth.signInWithPassword({
           email: cleanId,
-          password: pass,
+          password: cleanPass,
         });
         if (!directError && directAuth.user) {
           const { data: directProfile } = await supabase
@@ -317,7 +319,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (!lookupError && profileData?.email) {
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
           email: profileData.email,
-          password: pass,
+          password: cleanPass,
         });
 
         if (authError || !authData.user) {
