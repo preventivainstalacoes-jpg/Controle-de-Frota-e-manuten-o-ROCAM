@@ -267,7 +267,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async (identifier: string, pass: string): Promise<{ success: boolean; error?: string }> => {
     const cleanId = identifier.trim().toLowerCase();
     // O cadastro remove espaços nas extremidades da senha; aplicar a mesma regra no login.
-    const cleanPass = pass.trim();
+    const cleanPass = pass; // Não alterar a senha informada; espaços podem fazer parte da senha.
 
     // Fonte compartilhada para autenticação: Supabase Auth + public.profiles.
     // Isso permite o mesmo usuário entrar em celulares diferentes.
