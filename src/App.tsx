@@ -250,6 +250,18 @@ function AppContent() {
   };
 
   const handleOpenDescautela = (cautela: CautelaRecord) => {
+    // Operador comum só pode devolver a viatura vinculada ao próprio RE.
+    // Administrador pode regularizar devoluções excepcionais.
+    const operadorRE = (currentUser?.re || '').trim().toUpperCase();
+    const responsavelRE = (cautela.condutorRE || '').trim().toUpperCase();
+    if (!isAdmin && (!operadorRE || operadorRE !== responsavelRE)) {
+      showToast('Acesso negado: somente o responsável pela cautela pode devolver esta viatura. Procure o administrador para regularização.', 'error');
+      return;
+    }
+    if (cautela.status !== 'EM_PATRULHAMENTO') {
+      showToast('Esta cautela já foi encerrada ou não está ativa.', 'warning');
+      return;
+    }
     setSelectedCautelaForDescautela(cautela);
     setIsDescautelaModalOpen(true);
   };
