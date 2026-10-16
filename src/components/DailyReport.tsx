@@ -58,9 +58,10 @@ export const DailyReport: React.FC<DailyReportProps> = ({
   // Operational vehicles
   const operacionais = vehicles.filter((v) => v.status === 'OPERACIONAL' || v.status === 'RESERVA');
 
-  // Daily records movements (entered on selectedDate or concluded on selectedDate)
+  // Relatório por eventos registrados na data, não apenas pelo status atual do painel.
+  // startsWith aceita datas no formato YYYY-MM-DD e timestamps ISO com horário.
   const movimentacoesDoDia = maintenanceRecords.filter(
-    (r) => r.dataEntrada === selectedDate || r.dataConclusao === selectedDate
+    (r) => r.dataEntrada?.startsWith(selectedDate) || r.dataConclusao?.startsWith(selectedDate)
   );
 
   // Cautelas and Descautelas on selectedDate (or active cautelas if selectedDate is today)
@@ -153,7 +154,7 @@ export const DailyReport: React.FC<DailyReportProps> = ({
               Boletim Diário de Prontidão da Frota ROCAM
             </h2>
             <p className="text-xs text-zinc-400">
-              Controle de empenho operacional, cautelas de viaturas, baixadas e movimentação de oficina
+              Relatório por data: registra cada saída/cautela, devolução/descautela e movimentação de manutenção lançada no dia. Pode ser consultado e impresso a qualquer momento do turno; o quadro de status é apenas complementar.
             </p>
           </div>
         </div>
