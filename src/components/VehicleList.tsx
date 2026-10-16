@@ -9,6 +9,8 @@ import {
   Plus,
   Gauge,
   Wrench,
+  History,
+  X,
   Edit2,
   Trash2,
   AlertTriangle,
@@ -45,6 +47,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
   const {
     vehicles,
     deleteVehicle,
+    maintenanceRecords,
     cautelas,
     alerts,
     stats,
@@ -60,6 +63,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [vehicleToDelete, setVehicleToDelete] = useState<Vehicle | null>(null);
+  const [vehicleForHistory, setVehicleForHistory] = useState<Vehicle | null>(null);
   const [statusModal, setStatusModal] = useState<{
     vehicle: Vehicle;
     targetStatus: VehicleStatus;
@@ -575,7 +579,15 @@ export const VehicleList: React.FC<VehicleListProps> = ({
 
                 {/* Card Actions Footer */}
                 <div className="px-4 py-2.5 bg-zinc-950/80 border-t border-zinc-800 flex items-center justify-between gap-1">
-                  <div className="flex items-center space-x-1.5">
+                  <div className="flex items-center space-x-1.5 flex-wrap">
+                    <button
+                      onClick={() => setVehicleForHistory(vehicle)}
+                      className="flex items-center space-x-1 px-2 py-1 text-xs font-semibold text-sky-300 hover:text-sky-200 bg-sky-950/40 hover:bg-sky-900/50 border border-sky-800/60 rounded-lg transition cursor-pointer"
+                      title={`Consultar histórico da viatura ${vehicle.prefixo}`}
+                    >
+                      <History className="w-3.5 h-3.5" />
+                      <span>Histórico</span>
+                    </button>
                     {/* Descautelar Button if active cautela */}
                     {activeCautela && onOpenDescautelaForVehicle && (
                       <button
@@ -847,6 +859,117 @@ export const VehicleList: React.FC<VehicleListProps> = ({
       )}
 
       {/* In-App Status Toggle Modal (Baixar / Liberar) */}
+
+      {/* Histórico individual da viatura */}
+      {vehicleForHistory && (() => {
+        const vehicle = vehicleForHistory;
+        const vehicleMaintenance = maintenanceRecords
+          .filter((record) => record.viaturaId === vehicle.id)
+          .sort((a, b) => `${b.dataEntrada || ''}`.localeCompare(a.dataEntrada || ''));
+        const vehicleCautelas = cautelas
+          .filter((record) => record.viaturaId === vehicle.id)
+          .sort((a, b) => `${b.dataHoraSaida || ''}`.localeCompare(a.dataHoraSaida || ''));
+        const historyItems = [
+          ...vehicleMaintenance.map((record) => ({
+            id: `maintenance-${record.id}`,
+            date: record.dataEntrada || '',
+            kind: 'MANUTENÇÃO',
+            title: record.numeroOS || 'Ordem de serviço',
+            status: record.status.replace(/_/g, ' '),
+            details: record.descricaoProblema || 'Sem descrição do problema',
+            extra: [
+              record.tipoManutencao === 'PREVENTIVA' ? 'Preventiva' : 'Corretiva',
+              record.servicosExecutados ? `Serviços: ${record.servicosExecutados}` : '',
+              record.oficinaResponsavel ? `Oficina: ${record.oficinaResponsavel}` : '',
+              record.mecanicoResponsavel ? `Responsável: ${record.mecanicoResponsavel}` : '',
+              `KM: ${Number(record.kmEntrada || 0).toLocaleString('pt-BR')}`,
+              record.pecasSubstituidas?.length ? `Peças: ${record.pecasSubstituidas.map((part) => part.nome).join(', ')}` : '',
+            ].filter(Boolean).join(' • '),
+          })),
+          ...vehicleCautelas.map((record) => ({
+            id: `cautela-${record.id}`,
+            date: record.dataHoraSaida || '',
+            kind: 'CAUTELA / DEVOLUÇÃO',
+            title: record.numeroTermo || 'Registro de cautela',
+            status: record.status === 'EM_PATRULHAMENTO' ? 'EM SERVIÇO' : 'DEVOLVIDA',
+            details: `${record.condutorGraduacao || ''} ${record.condutorNome || 'Condutor'} (RE ${record.condutorRE || 'não informado'})`.trim(),
+            extra: [
+              `Saída: ${record.dataHoraSaida ? record.dataHoraSaida.replace('T', ' ') : '—'}`,
+              `KM saída: ${Number(record.kmSaida || 0).toLocaleString('pt-BR')}`,
+              record.dataHoraRetorno ? `Devolução: ${record.dataHoraRetorno.replace('T', ' ')}` : 'Ainda não devolvida',
+              record.kmRetorno !== undefined ? `KM retorno: ${Number(record.kmRetorno).toLocaleString('pt-BR')}` : '',
+              record.kmPercorrido !== undefined ? `Percorrido: ${Number(record.kmPercorrido).toLocaleString('pt-BR')} km` : '',
+              record.combustivelSaida ? `Combustível saída: ${record.combustivelSaida}` : '',
+              record.combustivelRetorno ? `Combustível retorno: ${record.combustivelRetorno}` : '',
+              record.observacoesSaida ? `Obs. saída: ${record.observacoesSaida}` : '',
+              record.observacoesRetorno ? `Obs. devolução: ${record.observacoesRetorno}` : '',
+              record.houveAvaria ? `AVARIA: ${record.descricaoAvaria || 'registrada no retorno'}` : '',
+              record.checklistSaida?.some((item) => !item.conforme) ? 'Checklist de saída contém itens não conformes' : '',
+              record.checklistRetorno?.some((item) => !item.conforme) ? 'Checklist de retorno contém itens não conformes' : '',
+              (record.fotosAvariasSaida?.length || 0) + (record.fotosAvariasRetorno?.length || 0) > 0
+                ? `Fotos de avarias: ${(record.fotosAvariasSaida?.length || 0) + (record.fotosAvariasRetorno?.length || 0)}`
+                : '',
+            ].filter(Boolean).join(' • '),
+          })),
+        ].sort((a, b) => b.date.localeCompare(a.date));
+
+        return (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={`Histórico da viatura ${vehicle.prefixo}`}>
+            <div className="w-full max-w-3xl max-h-[92vh] overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-950 shadow-2xl flex flex-col">
+              <div className="px-5 py-4 border-b border-zinc-800 flex items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 text-sky-300">
+                    <History className="w-5 h-5" />
+                    <h2 className="text-lg font-bold text-white">Histórico da Viatura {vehicle.prefixo}</h2>
+                  </div>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    {vehicle.tipo === 'QUATRO_RODAS' ? 'Viatura de 04 rodas' : 'Motocicleta'} • {vehicle.marca} {vehicle.modelo} • Placa {vehicle.placa || 'não informada'}
+                  </p>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    Situação: <span className="text-amber-300 font-semibold">{vehicle.status.replace(/_/g, ' ')}</span> • KM atual: <span className="text-white font-semibold">{Number(vehicle.kmAtual || 0).toLocaleString('pt-BR')}</span>
+                  </p>
+                </div>
+                <button onClick={() => setVehicleForHistory(null)} className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800" aria-label="Fechar histórico">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="px-5 py-3 border-b border-zinc-800 grid grid-cols-3 gap-2">
+                <div className="rounded-lg bg-zinc-900 p-3"><div className="text-[10px] uppercase text-zinc-500">Manutenções</div><div className="text-xl font-bold text-amber-300">{vehicleMaintenance.length}</div></div>
+                <div className="rounded-lg bg-zinc-900 p-3"><div className="text-[10px] uppercase text-zinc-500">Cautelas</div><div className="text-xl font-bold text-emerald-300">{vehicleCautelas.length}</div></div>
+                <div className="rounded-lg bg-zinc-900 p-3"><div className="text-[10px] uppercase text-zinc-500">KM atual</div><div className="text-xl font-bold text-white">{Number(vehicle.kmAtual || 0).toLocaleString('pt-BR')}</div></div>
+              </div>
+              <div className="overflow-y-auto p-5 space-y-3">
+                {historyItems.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-zinc-700 p-8 text-center">
+                    <History className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
+                    <p className="text-sm font-semibold text-zinc-300">Nenhum histórico registrado para esta viatura</p>
+                    <p className="text-xs text-zinc-500 mt-1">As próximas manutenções, cautelas e devoluções vinculadas a esta viatura aparecerão aqui.</p>
+                  </div>
+                ) : historyItems.map((item) => (
+                  <article key={item.id} className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <span className={`inline-block rounded px-2 py-1 text-[10px] font-bold tracking-wide ${item.kind === 'MANUTENÇÃO' ? 'bg-amber-950 text-amber-300' : 'bg-emerald-950 text-emerald-300'}`}>{item.kind}</span>
+                        <h3 className="mt-2 text-sm font-bold text-white">{item.title}</h3>
+                        <p className="text-xs text-zinc-300 mt-1">{item.details}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-zinc-400">{item.date ? item.date.replace('T', ' ') : 'Data não informada'}</div>
+                        <div className="mt-1 text-[10px] font-bold uppercase text-sky-300">{item.status}</div>
+                      </div>
+                    </div>
+                    {item.extra && <p className="mt-3 pt-3 border-t border-zinc-800 text-xs leading-5 text-zinc-400 break-words">{item.extra}</p>}
+                  </article>
+                ))}
+              </div>
+              <div className="px-5 py-3 border-t border-zinc-800 flex justify-end">
+                <button onClick={() => setVehicleForHistory(null)} className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm font-semibold text-white">Fechar histórico</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {statusModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="relative w-full max-w-md bg-zinc-900 border border-zinc-750 rounded-2xl shadow-2xl p-5 space-y-4">
