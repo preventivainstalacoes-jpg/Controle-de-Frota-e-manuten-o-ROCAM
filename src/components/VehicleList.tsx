@@ -10,7 +10,6 @@ import {
   Gauge,
   Wrench,
   History,
-  X,
   Edit2,
   Trash2,
   AlertTriangle,
