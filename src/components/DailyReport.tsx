@@ -944,20 +944,6 @@ export const DailyReport: React.FC<DailyReportProps> = ({
               </table>
             </div>
 
-            {/* Campo de Assinaturas Oficiais */}
-            <div className="grid grid-cols-2 gap-8 pt-8 border-t border-zinc-400 text-center text-xs">
-              <div>
-                <div className="border-t border-zinc-800 w-48 mx-auto mb-1"></div>
-                <div className="font-bold">Oficial de Manutenção e Garagem</div>
-                <div className="text-[10px] text-zinc-600">Pelotão de Apoio Tático ROCAM</div>
-              </div>
-              <div>
-                <div className="border-t border-zinc-800 w-48 mx-auto mb-1"></div>
-                <div className="font-bold">Comandante de Força Patrulha (CFP)</div>
-                <div className="text-[10px] text-zinc-600">ROCAM</div>
-              </div>
-            </div>
-
             {/* Botões do Modal */}
             <div className="flex items-center justify-end space-x-3 pt-6 mt-6 border-t border-zinc-300 no-print">
               <button
