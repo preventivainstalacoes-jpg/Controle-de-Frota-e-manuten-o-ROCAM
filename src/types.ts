@@ -1,6 +1,6 @@
 export type VehicleType = 'MOTOCICLETA' | 'QUATRO_RODAS';
 
-export type VehicleStatus = 'OPERACIONAL' | 'BAIXADA' | 'EM_MANUTENCAO' | 'RESERVA';
+export type VehicleStatus = 'OPERACIONAL' | 'BAIXADA' | 'EM_MANUTENCAO' | 'MANUTENCAO_EXTERNA' | 'RESERVA';
 
 export type MaintenanceType = 'PREVENTIVA' | 'CORRETIVA';
 
@@ -68,7 +68,12 @@ export interface MaintenanceRecord {
   descricaoProblema: string;
   servicosExecutados: string;
   pecasSubstituidas: VehiclePartReplacement[];
-  tipoOficina?: WorkshopType; // 'INTERNA' (Mecânica ROCAM) ou 'EXTERNA' (Oficina Credenciada / Concessionária)
+  tipoOficina?: WorkshopType; // 'INTERNA' (Mecânica ROCAM) ou 'EXTERNA' (oficina particular fora do quartel)
+  dataHoraSaidaOficina?: string;
+  dataHoraRetornoOficina?: string;
+  aguardandoLiberacaoAdmin?: boolean;
+  liberadoPor?: string;
+  liberadoEm?: string;
   oficinaResponsavel: string; // Ex: Mecânica ROCAM, Concessionária BMW Motorrad, Oficina Credenciada
   cnpjOficina?: string; // CNPJ da oficina externa
   numeroContratoEmpenho?: string; // Número do empenho ou contrato público

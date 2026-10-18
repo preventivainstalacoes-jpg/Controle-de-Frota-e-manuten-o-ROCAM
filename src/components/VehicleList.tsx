@@ -419,7 +419,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                     ? 'border-emerald-600/70 shadow-emerald-950/20'
                     : hasCritical
                     ? 'border-rose-700/60 shadow-rose-950/20'
-                    : vehicle.status === 'BAIXADA'
+                    : vehicle.status === 'BAIXADA' || vehicle.status === 'MANUTENCAO_EXTERNA'
                     ? 'border-rose-800/40'
                     : 'border-zinc-800 hover:border-zinc-700'
                 }`}

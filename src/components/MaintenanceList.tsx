@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFleet } from '../context/FleetContext';
+import { useAuth } from '../context/AuthContext';
 import { MaintenanceRecord, MaintenanceType, MaintenanceStatus } from '../types';
 import {
   Wrench,
@@ -34,7 +35,8 @@ export const MaintenanceList: React.FC<MaintenanceListProps> = ({
   onEditMaintenance,
   onPrintOS,
 }) => {
-  const { maintenanceRecords, deleteMaintenanceRecord, vehicles } = useFleet();
+  const { maintenanceRecords, deleteMaintenanceRecord, updateMaintenanceRecord, vehicles } = useFleet();
+  const { currentUser, isAdmin } = useAuth();
 
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'TODOS' | MaintenanceType>('TODOS');
@@ -346,6 +348,29 @@ export const MaintenanceList: React.FC<MaintenanceListProps> = ({
                           <span className={`w-1.5 h-1.5 rounded-full ${statusInfo.dot}`} />
                           <span>{statusInfo.label}</span>
                         </span>
+                        {rec.tipoOficina === 'EXTERNA' && rec.aguardandoLiberacaoAdmin && rec.dataHoraRetornoOficina && isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const now = new Date();
+                              updateMaintenanceRecord(rec.id, {
+                                status: 'CONCLUIDA',
+                                dataConclusao: now.toISOString().slice(0, 10),
+                                aguardandoLiberacaoAdmin: false,
+                                liberadoPor: currentUser?.name || 'Administrador',
+                                liberadoEm: now.toISOString(),
+                              });
+                            }}
+                            className="mt-2 inline-flex items-center gap-1 rounded-md bg-emerald-600 hover:bg-emerald-500 px-2 py-1 text-[10px] font-bold text-white transition"
+                            title="Confirmar liberação administrativa da viatura"
+                          >
+                            <CheckCircle2 className="w-3 h-3" />
+                            Liberar viatura
+                          </button>
+                        )}
+                        {rec.tipoOficina === 'EXTERNA' && rec.liberadoEm && (
+                          <div className="mt-1 text-[9px] text-emerald-300">Liberada por {rec.liberadoPor || 'Administrador'}</div>
+                        )}
                       </td>
 
                       {/* Itens / Peças */}

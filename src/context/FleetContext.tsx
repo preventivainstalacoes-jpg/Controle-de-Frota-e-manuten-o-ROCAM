@@ -140,11 +140,11 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Shared Supabase data layer
   const fromDbVehicle = (v: any): Vehicle => ({
     id:v.id,prefixo:v.prefix,placa:v.plate||'',tipo:v.vehicle_type==='viatura_4_rodas'?'QUATRO_RODAS':'MOTOCICLETA',marca:v.brand||'',modelo:v.model||'',ano:v.year||new Date().getFullYear(),kmAtual:v.mileage||0,
-    status:v.status==='manutencao'?'EM_MANUTENCAO':v.status==='indisponivel'?'BAIXADA':v.status==='reserva'?'RESERVA':'OPERACIONAL',
+    status:v.status==='manutencao_externa'?'MANUTENCAO_EXTERNA':v.status==='manutencao'?'EM_MANUTENCAO':v.status==='indisponivel'?'BAIXADA':v.status==='reserva'?'RESERVA':'OPERACIONAL',
     pelotao:v.pelotao||'ROCAM',batalhao:v.batalhao||'ROCAM',motivoBaixa:v.motivo_baixa,condutorPadrao:v.condutor_padrao,dataUltimaAtualizacaoKm:v.updated_at?.split('T')[0]||new Date().toISOString().split('T')[0],observacoes:v.notes||''
   });
   const toDbVehicleType = (t: VehicleType) => t === 'QUATRO_RODAS' ? 'viatura_4_rodas' : 'moto';
-  const toDbVehicleStatus = (s: VehicleStatus) => s === 'EM_MANUTENCAO' ? 'manutencao' : s === 'BAIXADA' ? 'indisponivel' : s === 'RESERVA' ? 'reserva' : 'disponivel';
+  const toDbVehicleStatus = (s: VehicleStatus) => s === 'MANUTENCAO_EXTERNA' ? 'manutencao_externa' : s === 'EM_MANUTENCAO' ? 'manutencao' : s === 'BAIXADA' ? 'indisponivel' : s === 'RESERVA' ? 'reserva' : 'disponivel';
   const fromDbCautela = (c:any, fleetVehicles: Vehicle[] = vehicles): CautelaRecord => {
     const vehicle = fleetVehicles.find((v) => v.id === c.vehicle_id);
     return {
@@ -182,7 +182,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         status:r.status==='em_andamento'?'EM_EXECUCAO':r.status==='concluida'?'CONCLUIDA':r.status==='cancelada'?'CANCELADA':r.status==='aberta'?'AGENDADA':'AGENDADA',
         dataEntrada:r.opened_at?.split('T')[0] || '',dataConclusao:r.closed_at?.split('T')[0],kmEntrada:r.mileage||0,
         descricaoProblema:r.description||'',servicosExecutados:r.service_performed||'',pecasSubstituidas:parts,
-        oficinaResponsavel:'',mecanicoResponsavel:'',policialSolicitante:'',matriculaRE:'',urgencia:'MEDIA'
+        tipoOficina:r.workshop_type==='externa'?'EXTERNA':r.workshop_type==='interna'?'INTERNA':undefined,oficinaResponsavel:r.workshop_name||'',mecanicoResponsavel:'',policialSolicitante:'',matriculaRE:'',urgencia:'MEDIA',dataHoraSaidaOficina:r.external_exit_at||undefined,dataHoraRetornoOficina:r.external_return_at||undefined,aguardandoLiberacaoAdmin:!!r.admin_release_pending,liberadoPor:r.admin_released_by||undefined,liberadoEm:r.admin_released_at||undefined
       };
     }));
 
@@ -295,7 +295,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const newRecord: MaintenanceRecord = {
       ...recordData,
-      id: `os-${Date.now()}`,
+      id: crypto.randomUUID(),
       numeroOS,
     };
 
@@ -303,7 +303,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     supabase.auth.getUser().then(({data:{user}})=>{
       if(!user){console.error('Usuário não autenticado para salvar manutenção.');return;}
       const dbStatus = newRecord.status==='EM_EXECUCAO'||newRecord.status==='AGUARDANDO_PECAS'?'em_andamento':newRecord.status==='CONCLUIDA'?'concluida':newRecord.status==='CANCELADA'?'cancelada':'aberta';
-      supabase.from('maintenance').insert({id:newRecord.id,vehicle_id:newRecord.viaturaId,reported_by:user.id,maintenance_type:newRecord.tipoManutencao==='PREVENTIVA'?'preventiva':'corretiva',status:dbStatus,mileage:newRecord.kmEntrada,description:newRecord.descricaoProblema,service_performed:newRecord.servicosExecutados,parts:JSON.stringify(newRecord.pecasSubstituidas||[]),opened_at:newRecord.dataEntrada}).then(({error})=>{if(error)console.error('Erro ao salvar manutenção:',error)});
+      supabase.from('maintenance').insert({id:newRecord.id,vehicle_id:newRecord.viaturaId,reported_by:user.id,maintenance_type:newRecord.tipoManutencao==='PREVENTIVA'?'preventiva':'corretiva',status:dbStatus,mileage:newRecord.kmEntrada,description:newRecord.descricaoProblema,service_performed:newRecord.servicosExecutados,parts:JSON.stringify(newRecord.pecasSubstituidas||[]),opened_at:newRecord.dataEntrada,workshop_type:newRecord.tipoOficina==='EXTERNA'?'externa':'interna',workshop_name:newRecord.oficinaResponsavel,external_exit_at:newRecord.dataHoraSaidaOficina||null,external_return_at:newRecord.dataHoraRetornoOficina||null,admin_release_pending:!!newRecord.aguardandoLiberacaoAdmin,admin_released_by:newRecord.liberadoPor||null,admin_released_at:newRecord.liberadoEm||null}).then(({error})=>{if(error)console.error('Erro ao salvar manutenção:',error)});
     });
 
     // Also update vehicle status and km if relevant
@@ -311,9 +311,9 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (vehicle) {
       const updates: Partial<Vehicle> = {};
       if (recordData.status === 'EM_EXECUCAO' || recordData.status === 'AGUARDANDO_PECAS') {
-        updates.status = 'EM_MANUTENCAO';
+        updates.status = recordData.tipoOficina === 'EXTERNA' ? 'MANUTENCAO_EXTERNA' : 'EM_MANUTENCAO';
         updates.motivoBaixa = recordData.descricaoProblema;
-      } else if (recordData.status === 'CONCLUIDA' && vehicle.status === 'EM_MANUTENCAO') {
+      } else if (recordData.status === 'CONCLUIDA' && (vehicle.status === 'EM_MANUTENCAO' || vehicle.status === 'MANUTENCAO_EXTERNA')) {
         updates.status = 'OPERACIONAL';
         updates.motivoBaixa = undefined;
       }
@@ -328,7 +328,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const updateMaintenanceRecord = (id: string, updates: Partial<MaintenanceRecord>) => {
-    const db:any={}; if(updates.status!==undefined)db.status=updates.status==='EM_EXECUCAO'||updates.status==='AGUARDANDO_PECAS'?'em_andamento':updates.status==='CONCLUIDA'?'concluida':updates.status==='CANCELADA'?'cancelada':'aberta';if(updates.kmEntrada!==undefined)db.mileage=updates.kmEntrada;if(updates.descricaoProblema!==undefined)db.description=updates.descricaoProblema;if(updates.servicosExecutados!==undefined)db.service_performed=updates.servicosExecutados;if(updates.dataConclusao!==undefined)db.closed_at=updates.dataConclusao;
+    const db:any={}; if(updates.status!==undefined)db.status=updates.status==='EM_EXECUCAO'||updates.status==='AGUARDANDO_PECAS'?'em_andamento':updates.status==='CONCLUIDA'?'concluida':updates.status==='CANCELADA'?'cancelada':'aberta';if(updates.kmEntrada!==undefined)db.mileage=updates.kmEntrada;if(updates.descricaoProblema!==undefined)db.description=updates.descricaoProblema;if(updates.servicosExecutados!==undefined)db.service_performed=updates.servicosExecutados;if(updates.dataConclusao!==undefined)db.closed_at=updates.dataConclusao;if(updates.tipoOficina!==undefined)db.workshop_type=updates.tipoOficina==='EXTERNA'?'externa':'interna';if(updates.oficinaResponsavel!==undefined)db.workshop_name=updates.oficinaResponsavel;if(updates.dataHoraSaidaOficina!==undefined)db.external_exit_at=updates.dataHoraSaidaOficina||null;if(updates.dataHoraRetornoOficina!==undefined)db.external_return_at=updates.dataHoraRetornoOficina||null;if(updates.aguardandoLiberacaoAdmin!==undefined)db.admin_release_pending=updates.aguardandoLiberacaoAdmin;if(updates.liberadoPor!==undefined)db.admin_released_by=updates.liberadoPor||null;if(updates.liberadoEm!==undefined)db.admin_released_at=updates.liberadoEm||null;
     if(Object.keys(db).length)supabase.from('maintenance').update(db).eq('id',id).then(({error})=>{if(error)console.error(error)});
     setMaintenanceRecords((prev) =>
       prev.map((r) => {
@@ -337,7 +337,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           // If status completed and was in execution, check if we should return vehicle to OPERACIONAL
           if (updates.status === 'CONCLUIDA' && r.status !== 'CONCLUIDA') {
             const v = vehicles.find((veh) => veh.id === r.viaturaId);
-            if (v && v.status === 'EM_MANUTENCAO') {
+            if (v && (v.status === 'EM_MANUTENCAO' || v.status === 'MANUTENCAO_EXTERNA')) {
               updateVehicle(v.id, { status: 'OPERACIONAL', motivoBaixa: undefined });
             }
           }
@@ -694,7 +694,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const quatroRodas = vehicles.filter((v) => v.tipo === 'QUATRO_RODAS').length;
     const operacionais = vehicles.filter((v) => v.status === 'OPERACIONAL').length;
     const baixadas = vehicles.filter((v) => v.status === 'BAIXADA').length;
-    const emManutencao = vehicles.filter((v) => v.status === 'EM_MANUTENCAO').length;
+    const emManutencao = vehicles.filter((v) => v.status === 'EM_MANUTENCAO' || v.status === 'MANUTENCAO_EXTERNA').length;
     const reserva = vehicles.filter((v) => v.status === 'RESERVA').length;
     const taxaProntidao = total > 0 ? Math.round(((operacionais + reserva) / total) * 100) : 0;
 

@@ -52,7 +52,7 @@ export const DailyReport: React.FC<DailyReportProps> = ({
 
   // Vehicles out of service
   const baixadasOrMaintenance = vehicles.filter(
-    (v) => v.status === 'BAIXADA' || v.status === 'EM_MANUTENCAO'
+    (v) => v.status === 'BAIXADA' || v.status === 'EM_MANUTENCAO' || v.status === 'MANUTENCAO_EXTERNA'
   );
 
   // Operational vehicles
@@ -61,7 +61,7 @@ export const DailyReport: React.FC<DailyReportProps> = ({
   // Relatório por eventos registrados na data, não apenas pelo status atual do painel.
   // startsWith aceita datas no formato YYYY-MM-DD e timestamps ISO com horário.
   const movimentacoesDoDia = maintenanceRecords.filter(
-    (r) => r.dataEntrada?.startsWith(selectedDate) || r.dataConclusao?.startsWith(selectedDate)
+    (r) => r.dataEntrada?.startsWith(selectedDate) || r.dataConclusao?.startsWith(selectedDate) || r.dataHoraSaidaOficina?.startsWith(selectedDate) || r.dataHoraRetornoOficina?.startsWith(selectedDate) || r.liberadoEm?.startsWith(selectedDate)
   );
 
   // Cautelas and Descautelas on selectedDate (or active cautelas if selectedDate is today)
@@ -127,9 +127,9 @@ export const DailyReport: React.FC<DailyReportProps> = ({
     });
 
     csvContent += '\nMANUTENCOES E ORDENS DE SERVICO NA DATA\n';
-    csvContent += 'Nro OS;Data Entrada;Data Conclusao;Prefixo;Tipo Viatura;Tipo Manutencao;Categoria;Status;KM Entrada;Descricao;Servicos Executados;Oficina;Mecanico\n';
+    csvContent += 'Nro OS;Data Entrada;Data Conclusao;Prefixo;Tipo Viatura;Tipo Manutencao;Categoria;Status;KM Entrada;Descricao;Servicos Executados;Oficina;Mecanico;Saida Oficina Externa;Retorno Oficina Externa;Liberado Por;Data Liberacao\n';
     movimentacoesDoDia.forEach((item) => {
-      csvContent += '"' + item.numeroOS + '";' + item.dataEntrada + ';' + (item.dataConclusao || '-') + ';"' + item.prefixoViatura + '";"' + item.tipoViatura + '";"' + item.tipoManutencao + '";"' + item.categoria + '";"' + item.status + '";' + item.kmEntrada + ';"' + (item.descricaoProblema || '').replace(/"/g, '""') + '";"' + (item.servicosExecutados || '').replace(/"/g, '""') + '";"' + (item.oficinaResponsavel || '').replace(/"/g, '""') + '";"' + (item.mecanicoResponsavel || '').replace(/"/g, '""') + '"\n';
+      csvContent += '"' + item.numeroOS + '";' + item.dataEntrada + ';' + (item.dataConclusao || '-') + ';"' + item.prefixoViatura + '";"' + item.tipoViatura + '";"' + item.tipoManutencao + '";"' + item.categoria + '";"' + item.status + '";' + item.kmEntrada + ';"' + (item.descricaoProblema || '').replace(/"/g, '""') + '";"' + (item.servicosExecutados || '').replace(/"/g, '""') + '";"' + (item.oficinaResponsavel || '').replace(/"/g, '""') + '";"' + (item.mecanicoResponsavel || '').replace(/"/g, '""') + '";"' + (item.dataHoraSaidaOficina || '-') + '";"' + (item.dataHoraRetornoOficina || '-') + '";"' + (item.liberadoPor || '-') + '";"' + (item.liberadoEm || '-') + '"\n';
     });
 
     const encodedUri = encodeURI(csvContent);
