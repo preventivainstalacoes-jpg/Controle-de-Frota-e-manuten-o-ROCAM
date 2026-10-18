@@ -52,7 +52,7 @@ export const DailyReport: React.FC<DailyReportProps> = ({
 
   // Vehicles out of service
   const baixadasOrMaintenance = vehicles.filter(
-    (v) => v.status === 'BAIXADA' || v.status === 'EM_MANUTENCAO'
+    (v) => v.status === 'BAIXADA' || v.status === 'EM_MANUTENCAO' || v.status === 'MANUTENCAO_EXTERNA'
   );
 
   // Operational vehicles
