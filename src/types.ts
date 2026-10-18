@@ -1,6 +1,6 @@
 export type VehicleType = 'MOTOCICLETA' | 'QUATRO_RODAS';
 
-export type VehicleStatus = 'OPERACIONAL' | 'BAIXADA' | 'EM_MANUTENCAO' | 'RESERVA';
+export type VehicleStatus = 'OPERACIONAL' | 'BAIXADA' | 'EM_MANUTENCAO' | 'MANUTENCAO_EXTERNA' | 'RESERVA';
 
 export type MaintenanceType = 'PREVENTIVA' | 'CORRETIVA';
 
