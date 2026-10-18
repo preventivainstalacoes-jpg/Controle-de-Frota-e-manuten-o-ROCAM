@@ -140,11 +140,11 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Shared Supabase data layer
   const fromDbVehicle = (v: any): Vehicle => ({
     id:v.id,prefixo:v.prefix,placa:v.plate||'',tipo:v.vehicle_type==='viatura_4_rodas'?'QUATRO_RODAS':'MOTOCICLETA',marca:v.brand||'',modelo:v.model||'',ano:v.year||new Date().getFullYear(),kmAtual:v.mileage||0,
-    status:v.status==='manutencao'?'EM_MANUTENCAO':v.status==='indisponivel'?'BAIXADA':v.status==='reserva'?'RESERVA':'OPERACIONAL',
+    status:v.status==='manutencao_externa'?'MANUTENCAO_EXTERNA':v.status==='manutencao'?'EM_MANUTENCAO':v.status==='indisponivel'?'BAIXADA':v.status==='reserva'?'RESERVA':'OPERACIONAL',
     pelotao:v.pelotao||'ROCAM',batalhao:v.batalhao||'ROCAM',motivoBaixa:v.motivo_baixa,condutorPadrao:v.condutor_padrao,dataUltimaAtualizacaoKm:v.updated_at?.split('T')[0]||new Date().toISOString().split('T')[0],observacoes:v.notes||''
   });
   const toDbVehicleType = (t: VehicleType) => t === 'QUATRO_RODAS' ? 'viatura_4_rodas' : 'moto';
-  const toDbVehicleStatus = (s: VehicleStatus) => s === 'EM_MANUTENCAO' ? 'manutencao' : s === 'BAIXADA' ? 'indisponivel' : s === 'RESERVA' ? 'reserva' : 'disponivel';
+  const toDbVehicleStatus = (s: VehicleStatus) => s === 'MANUTENCAO_EXTERNA' ? 'manutencao_externa' : s === 'EM_MANUTENCAO' ? 'manutencao' : s === 'BAIXADA' ? 'indisponivel' : s === 'RESERVA' ? 'reserva' : 'disponivel';
   const fromDbCautela = (c:any, fleetVehicles: Vehicle[] = vehicles): CautelaRecord => {
     const vehicle = fleetVehicles.find((v) => v.id === c.vehicle_id);
     return {
@@ -311,9 +311,9 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (vehicle) {
       const updates: Partial<Vehicle> = {};
       if (recordData.status === 'EM_EXECUCAO' || recordData.status === 'AGUARDANDO_PECAS') {
-        updates.status = 'EM_MANUTENCAO';
+        updates.status = recordData.tipoOficina === 'EXTERNA' ? 'MANUTENCAO_EXTERNA' : 'EM_MANUTENCAO';
         updates.motivoBaixa = recordData.descricaoProblema;
-      } else if (recordData.status === 'CONCLUIDA' && vehicle.status === 'EM_MANUTENCAO') {
+      } else if (recordData.status === 'CONCLUIDA' && (vehicle.status === 'EM_MANUTENCAO' || vehicle.status === 'MANUTENCAO_EXTERNA')) {
         updates.status = 'OPERACIONAL';
         updates.motivoBaixa = undefined;
       }
@@ -337,7 +337,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           // If status completed and was in execution, check if we should return vehicle to OPERACIONAL
           if (updates.status === 'CONCLUIDA' && r.status !== 'CONCLUIDA') {
             const v = vehicles.find((veh) => veh.id === r.viaturaId);
-            if (v && v.status === 'EM_MANUTENCAO') {
+            if (v && (v.status === 'EM_MANUTENCAO' || v.status === 'MANUTENCAO_EXTERNA')) {
               updateVehicle(v.id, { status: 'OPERACIONAL', motivoBaixa: undefined });
             }
           }
