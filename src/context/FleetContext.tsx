@@ -295,7 +295,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const newRecord: MaintenanceRecord = {
       ...recordData,
-      id: `os-${Date.now()}`,
+      id: crypto.randomUUID(),
       numeroOS,
     };
 
