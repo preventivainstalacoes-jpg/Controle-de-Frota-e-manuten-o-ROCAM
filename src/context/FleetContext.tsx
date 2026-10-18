@@ -694,7 +694,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const quatroRodas = vehicles.filter((v) => v.tipo === 'QUATRO_RODAS').length;
     const operacionais = vehicles.filter((v) => v.status === 'OPERACIONAL').length;
     const baixadas = vehicles.filter((v) => v.status === 'BAIXADA').length;
-    const emManutencao = vehicles.filter((v) => v.status === 'EM_MANUTENCAO').length;
+    const emManutencao = vehicles.filter((v) => v.status === 'EM_MANUTENCAO' || v.status === 'MANUTENCAO_EXTERNA').length;
     const reserva = vehicles.filter((v) => v.status === 'RESERVA').length;
     const taxaProntidao = total > 0 ? Math.round(((operacionais + reserva) / total) * 100) : 0;
 
