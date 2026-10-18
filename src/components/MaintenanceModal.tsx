@@ -120,7 +120,9 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       setMatriculaRE('');
       setUrgencia('MEDIA');
     }
-  }, [recordToEdit, initialVehicleId, initialCategory, isOpen, vehicles]);
+  // Inicializa o formulário ao abrir/trocar o registro. Não depender de `vehicles` aqui:
+  // atualizações da frota durante a digitação não podem resetar os campos do formulário.
+  }, [recordToEdit, initialVehicleId, initialCategory, isOpen]);
 
   // When selected vehicle changes in creation mode, update km and default driver
   const handleVehicleChange = (vId: string) => {
