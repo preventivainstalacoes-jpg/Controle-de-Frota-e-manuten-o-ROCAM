@@ -182,7 +182,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         status:r.status==='em_andamento'?'EM_EXECUCAO':r.status==='concluida'?'CONCLUIDA':r.status==='cancelada'?'CANCELADA':r.status==='aberta'?'AGENDADA':'AGENDADA',
         dataEntrada:r.opened_at?.split('T')[0] || '',dataConclusao:r.closed_at?.split('T')[0],kmEntrada:r.mileage||0,
         descricaoProblema:r.description||'',servicosExecutados:r.service_performed||'',pecasSubstituidas:parts,
-        oficinaResponsavel:'',mecanicoResponsavel:'',policialSolicitante:'',matriculaRE:'',urgencia:'MEDIA'
+        tipoOficina:r.workshop_type==='externa'?'EXTERNA':r.workshop_type==='interna'?'INTERNA':undefined,oficinaResponsavel:r.workshop_name||'',mecanicoResponsavel:'',policialSolicitante:'',matriculaRE:'',urgencia:'MEDIA',dataHoraSaidaOficina:r.external_exit_at||undefined,dataHoraRetornoOficina:r.external_return_at||undefined,aguardandoLiberacaoAdmin:!!r.admin_release_pending,liberadoPor:r.admin_released_by||undefined,liberadoEm:r.admin_released_at||undefined
       };
     }));
 
@@ -303,7 +303,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     supabase.auth.getUser().then(({data:{user}})=>{
       if(!user){console.error('Usuário não autenticado para salvar manutenção.');return;}
       const dbStatus = newRecord.status==='EM_EXECUCAO'||newRecord.status==='AGUARDANDO_PECAS'?'em_andamento':newRecord.status==='CONCLUIDA'?'concluida':newRecord.status==='CANCELADA'?'cancelada':'aberta';
-      supabase.from('maintenance').insert({id:newRecord.id,vehicle_id:newRecord.viaturaId,reported_by:user.id,maintenance_type:newRecord.tipoManutencao==='PREVENTIVA'?'preventiva':'corretiva',status:dbStatus,mileage:newRecord.kmEntrada,description:newRecord.descricaoProblema,service_performed:newRecord.servicosExecutados,parts:JSON.stringify(newRecord.pecasSubstituidas||[]),opened_at:newRecord.dataEntrada}).then(({error})=>{if(error)console.error('Erro ao salvar manutenção:',error)});
+      supabase.from('maintenance').insert({id:newRecord.id,vehicle_id:newRecord.viaturaId,reported_by:user.id,maintenance_type:newRecord.tipoManutencao==='PREVENTIVA'?'preventiva':'corretiva',status:dbStatus,mileage:newRecord.kmEntrada,description:newRecord.descricaoProblema,service_performed:newRecord.servicosExecutados,parts:JSON.stringify(newRecord.pecasSubstituidas||[]),opened_at:newRecord.dataEntrada,workshop_type:newRecord.tipoOficina==='EXTERNA'?'externa':'interna',workshop_name:newRecord.oficinaResponsavel,external_exit_at:newRecord.dataHoraSaidaOficina||null,external_return_at:newRecord.dataHoraRetornoOficina||null,admin_release_pending:!!newRecord.aguardandoLiberacaoAdmin,admin_released_by:newRecord.liberadoPor||null,admin_released_at:newRecord.liberadoEm||null}).then(({error})=>{if(error)console.error('Erro ao salvar manutenção:',error)});
     });
 
     // Also update vehicle status and km if relevant
@@ -328,7 +328,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const updateMaintenanceRecord = (id: string, updates: Partial<MaintenanceRecord>) => {
-    const db:any={}; if(updates.status!==undefined)db.status=updates.status==='EM_EXECUCAO'||updates.status==='AGUARDANDO_PECAS'?'em_andamento':updates.status==='CONCLUIDA'?'concluida':updates.status==='CANCELADA'?'cancelada':'aberta';if(updates.kmEntrada!==undefined)db.mileage=updates.kmEntrada;if(updates.descricaoProblema!==undefined)db.description=updates.descricaoProblema;if(updates.servicosExecutados!==undefined)db.service_performed=updates.servicosExecutados;if(updates.dataConclusao!==undefined)db.closed_at=updates.dataConclusao;
+    const db:any={}; if(updates.status!==undefined)db.status=updates.status==='EM_EXECUCAO'||updates.status==='AGUARDANDO_PECAS'?'em_andamento':updates.status==='CONCLUIDA'?'concluida':updates.status==='CANCELADA'?'cancelada':'aberta';if(updates.kmEntrada!==undefined)db.mileage=updates.kmEntrada;if(updates.descricaoProblema!==undefined)db.description=updates.descricaoProblema;if(updates.servicosExecutados!==undefined)db.service_performed=updates.servicosExecutados;if(updates.dataConclusao!==undefined)db.closed_at=updates.dataConclusao;if(updates.tipoOficina!==undefined)db.workshop_type=updates.tipoOficina==='EXTERNA'?'externa':'interna';if(updates.oficinaResponsavel!==undefined)db.workshop_name=updates.oficinaResponsavel;if(updates.dataHoraSaidaOficina!==undefined)db.external_exit_at=updates.dataHoraSaidaOficina||null;if(updates.dataHoraRetornoOficina!==undefined)db.external_return_at=updates.dataHoraRetornoOficina||null;if(updates.aguardandoLiberacaoAdmin!==undefined)db.admin_release_pending=updates.aguardandoLiberacaoAdmin;if(updates.liberadoPor!==undefined)db.admin_released_by=updates.liberadoPor||null;if(updates.liberadoEm!==undefined)db.admin_released_at=updates.liberadoEm||null;
     if(Object.keys(db).length)supabase.from('maintenance').update(db).eq('id',id).then(({error})=>{if(error)console.error(error)});
     setMaintenanceRecords((prev) =>
       prev.map((r) => {
