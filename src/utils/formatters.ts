@@ -27,6 +27,12 @@ export function getStatusBadgeInfo(status: string) {
       };
     case 'EM_MANUTENCAO':
       return {
+        label: 'Em Manutenção',
+        bg: 'bg-amber-950/60 text-amber-300 border-amber-700/50',
+        dot: 'bg-amber-500',
+      };
+    case 'MANUTENCAO_EXTERNA':
+      return {
         label: 'Manutenção em oficina externa',
         bg: 'bg-amber-950/60 text-amber-300 border-amber-700/50',
         dot: 'bg-amber-500',
