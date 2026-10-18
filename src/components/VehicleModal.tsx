@@ -87,7 +87,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       pelotao: pelotao.trim(),
       batalhao: batalhao.trim(),
       condutorPadrao: condutorPadrao.trim() || undefined,
-      motivoBaixa: status === 'BAIXADA' || status === 'EM_MANUTENCAO' ? (motivoBaixa.trim() || 'Constatada falha operacional / em manutenção') : undefined,
+      motivoBaixa: status === 'BAIXADA' || status === 'EM_MANUTENCAO' || status === 'MANUTENCAO_EXTERNA' ? (motivoBaixa.trim() || 'Constatada falha operacional / em manutenção') : undefined,
       observacoes: observacoes.trim() || undefined,
     });
     onClose();
@@ -280,14 +280,15 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               >
                 <option value="OPERACIONAL">OPERACIONAL (Pronta para patrulhamento)</option>
                 <option value="BAIXADA">BAIXADA (Com falha mecânica / avaria / fora de serviço)</option>
-                <option value="EM_MANUTENCAO">EM MANUTENÇÃO (Na mecânica / oficina)</option>
+                <option value="EM_MANUTENCAO">EM MANUTENÇÃO (Oficina interna)</option>
+                <option value="MANUTENCAO_EXTERNA">MANUTENÇÃO EM OFICINA EXTERNA (Fora do quartel)</option>
                 <option value="RESERVA">RESERVA TÁTICA (Disponível)</option>
               </select>
             </div>
           </div>
 
           {/* Se baixada ou em manutenção: motivo */}
-          {(status === 'BAIXADA' || status === 'EM_MANUTENCAO') && (
+          {(status === 'BAIXADA' || status === 'EM_MANUTENCAO' || status === 'MANUTENCAO_EXTERNA') && (
             <div className="p-3 bg-rose-950/40 border border-rose-800/60 rounded-xl space-y-1">
               <label className="flex items-center space-x-1.5 text-xs font-bold text-rose-300 uppercase">
                 <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
