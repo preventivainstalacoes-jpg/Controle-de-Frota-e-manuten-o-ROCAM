@@ -48,6 +48,8 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   const [status, setStatus] = useState<MaintenanceStatus>('EM_EXECUCAO');
   const [dataEntrada, setDataEntrada] = useState(new Date().toISOString().split('T')[0]);
   const [dataConclusao, setDataConclusao] = useState('');
+  const [dataHoraSaidaOficina, setDataHoraSaidaOficina] = useState('');
+  const [dataHoraRetornoOficina, setDataHoraRetornoOficina] = useState('');
   const [kmEntrada, setKmEntrada] = useState<number>(0);
   const [descricaoProblema, setDescricaoProblema] = useState('');
   const [servicosExecutados, setServicosExecutados] = useState('');
@@ -75,6 +77,8 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       setStatus(recordToEdit.status);
       setDataEntrada(recordToEdit.dataEntrada);
       setDataConclusao(recordToEdit.dataConclusao || '');
+      setDataHoraSaidaOficina(recordToEdit.dataHoraSaidaOficina || '');
+      setDataHoraRetornoOficina(recordToEdit.dataHoraRetornoOficina || '');
       setKmEntrada(recordToEdit.kmEntrada);
       setDescricaoProblema(recordToEdit.descricaoProblema);
       setServicosExecutados(recordToEdit.servicosExecutados);
@@ -103,6 +107,8 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       setStatus('EM_EXECUCAO');
       setDataEntrada(new Date().toISOString().split('T')[0]);
       setDataConclusao('');
+      setDataHoraSaidaOficina('');
+      setDataHoraRetornoOficina('');
       setDescricaoProblema('');
       setServicosExecutados('');
       setPecasSubstituidas([]);
@@ -168,7 +174,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       tipoViatura: selectedVehicle.tipo,
       tipoManutencao,
       categoria,
-      status,
+      status: tipoOficina === 'EXTERNA' && dataHoraRetornoOficina && !recordToEdit?.liberadoEm ? 'EM_EXECUCAO' : status,
       dataEntrada,
       dataConclusao: status === 'CONCLUIDA' ? (dataConclusao || dataEntrada) : undefined,
       kmEntrada: Number(kmEntrada),
@@ -176,6 +182,11 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       servicosExecutados: servicosExecutados.trim(),
       pecasSubstituidas,
       tipoOficina,
+      dataHoraSaidaOficina: tipoOficina === 'EXTERNA' ? dataHoraSaidaOficina || undefined : undefined,
+      dataHoraRetornoOficina: tipoOficina === 'EXTERNA' ? dataHoraRetornoOficina || undefined : undefined,
+      aguardandoLiberacaoAdmin: tipoOficina === 'EXTERNA' && !!dataHoraRetornoOficina && !recordToEdit?.liberadoEm,
+      liberadoPor: recordToEdit?.liberadoPor,
+      liberadoEm: recordToEdit?.liberadoEm,
       oficinaResponsavel: oficinaResponsavel.trim(),
       cnpjOficina: tipoOficina === 'EXTERNA' ? cnpjOficina.trim() || undefined : undefined,
       numeroContratoEmpenho: tipoOficina === 'EXTERNA' ? numeroContratoEmpenho.trim() || undefined : undefined,
@@ -591,6 +602,24 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 />
               </div>
             </div>
+
+            {tipoOficina === 'EXTERNA' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-zinc-800">
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-300 mb-1">Data e hora de saída do quartel</label>
+                  <input type="datetime-local" value={dataHoraSaidaOficina} onChange={(e) => setDataHoraSaidaOficina(e.target.value)} className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-300 mb-1">Data e hora de retorno ao quartel</label>
+                  <input type="datetime-local" value={dataHoraRetornoOficina} onChange={(e) => setDataHoraRetornoOficina(e.target.value)} className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500" />
+                </div>
+                {dataHoraRetornoOficina && !recordToEdit?.liberadoEm && (
+                  <div className="sm:col-span-2 rounded-lg border border-amber-700/60 bg-amber-950/30 p-3 text-xs text-amber-200">
+                    Retorno informado. A viatura continuará indisponível até a liberação explícita do administrador na lista de manutenções.
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Campos adicionais para oficina externa */}
             {tipoOficina === 'EXTERNA' && (
