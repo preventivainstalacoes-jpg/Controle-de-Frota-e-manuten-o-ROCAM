@@ -129,7 +129,7 @@ export const DailyReport: React.FC<DailyReportProps> = ({
     csvContent += '\nMANUTENCOES E ORDENS DE SERVICO NA DATA\n';
     csvContent += 'Nro OS;Data Entrada;Data Conclusao;Prefixo;Tipo Viatura;Tipo Manutencao;Categoria;Status;KM Entrada;Descricao;Servicos Executados;Oficina;Mecanico;Saida Oficina Externa;Retorno Oficina Externa;Liberado Por;Data Liberacao\n';
     movimentacoesDoDia.forEach((item) => {
-      csvContent += '"' + item.numeroOS + '";' + item.dataEntrada + ';' + (item.dataConclusao || '-') + ';"' + item.prefixoViatura + '";"' + item.tipoViatura + '";"' + item.tipoManutencao + '";"' + item.categoria + '";"' + item.status + '";' + item.kmEntrada + ';"' + (item.descricaoProblema || '').replace(/"/g, '""') + '";"' + (item.servicosExecutados || '').replace(/"/g, '""') + '";"' + (item.oficinaResponsavel || '').replace(/"/g, '""') + '";"' + (item.mecanicoResponsavel || '').replace(/"/g, '""') + '"\n';
+      csvContent += '"' + item.numeroOS + '";' + item.dataEntrada + ';' + (item.dataConclusao || '-') + ';"' + item.prefixoViatura + '";"' + item.tipoViatura + '";"' + item.tipoManutencao + '";"' + item.categoria + '";"' + item.status + '";' + item.kmEntrada + ';"' + (item.descricaoProblema || '').replace(/"/g, '""') + '";"' + (item.servicosExecutados || '').replace(/"/g, '""') + '";"' + (item.oficinaResponsavel || '').replace(/"/g, '""') + '";"' + (item.mecanicoResponsavel || '').replace(/"/g, '""') + '";"' + (item.dataHoraSaidaOficina || '-') + '";"' + (item.dataHoraRetornoOficina || '-') + '";"' + (item.liberadoPor || '-') + '";"' + (item.liberadoEm || '-') + '"\n';
     });
 
     const encodedUri = encodeURI(csvContent);
