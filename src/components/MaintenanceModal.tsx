@@ -174,7 +174,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       tipoViatura: selectedVehicle.tipo,
       tipoManutencao,
       categoria,
-      status: tipoOficina === 'EXTERNA' && dataHoraRetornoOficina && !recordToEdit?.liberadoEm ? 'EM_EXECUCAO' : status,
+      status: tipoOficina === 'EXTERNA' && !recordToEdit?.liberadoEm ? 'EM_EXECUCAO' : status,
       dataEntrada,
       dataConclusao: status === 'CONCLUIDA' ? (dataConclusao || dataEntrada) : undefined,
       kmEntrada: Number(kmEntrada),
