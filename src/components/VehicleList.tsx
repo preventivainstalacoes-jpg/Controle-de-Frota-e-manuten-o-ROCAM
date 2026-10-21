@@ -107,10 +107,13 @@ export const VehicleList: React.FC<VehicleListProps> = ({
     });
   };
 
-  const motorcyclesForDischarge = vehicles.filter(
-    (v) => v.tipo === 'MOTOCICLETA' && v.status === 'BAIXADA' &&
+  // Descargas por inservibilidade abrangem motocicletas e viaturas de 04 rodas.
+  const vehiclesForDischarge = vehicles.filter(
+    (v) => v.status === 'BAIXADA' &&
       (v.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade')
   );
+  const motorcyclesForDischarge = vehiclesForDischarge.filter((v) => v.tipo === 'MOTOCICLETA');
+  const fourWheelVehiclesForDischarge = vehiclesForDischarge.filter((v) => v.tipo === 'QUATRO_RODAS');
 
   const handleConfirmStatusChange = (e: React.FormEvent) => {
     e.preventDefault();
@@ -192,20 +195,36 @@ export const VehicleList: React.FC<VehicleListProps> = ({
         </div>
       </div>
 
-      {/* Indicador de motocicletas selecionadas para descarga */}
-      <section className="rounded-xl border border-orange-800/60 bg-orange-950/25 p-4 flex items-center justify-between gap-3">
+      {/* Indicadores de veículos selecionados para descarga — todos os tipos */}
+      <section className="rounded-xl border border-orange-800/60 bg-orange-950/25 p-4 space-y-3">
         <div className="flex items-center gap-3">
           <div className="rounded-lg bg-orange-500/15 p-2 text-orange-300">
-            <Bike className="w-5 h-5" />
+            <AlertTriangle className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-orange-100">Motocicletas para descarga</h2>
-            <p className="text-xs text-orange-200/70">Selecionadas pelo administrador por inservibilidade.</p>
+            <h2 className="text-sm font-bold text-orange-100">Veículos para descarga por inservibilidade</h2>
+            <p className="text-xs text-orange-200/70">Contabiliza motocicletas e viaturas de 04 rodas, independentemente da categoria ou prefixo.</p>
+          </div>
+          <div className="ml-auto text-right">
+            <div className="text-2xl font-black font-mono text-orange-300">{vehiclesForDischarge.length}</div>
+            <div className="text-[10px] uppercase tracking-wide text-orange-200/70">total pendente</div>
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-2xl font-black font-mono text-orange-300">{motorcyclesForDischarge.length}</div>
-          <div className="text-[10px] uppercase tracking-wide text-orange-200/70">aguardando descarga</div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex items-center justify-between rounded-lg border border-orange-800/40 bg-zinc-950/50 p-3">
+            <div className="flex items-center gap-2 text-orange-200">
+              <Bike className="w-4 h-4" />
+              <span className="text-xs font-semibold">Motocicletas</span>
+            </div>
+            <span className="text-lg font-black font-mono text-orange-300">{motorcyclesForDischarge.length}</span>
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-orange-800/40 bg-zinc-950/50 p-3">
+            <div className="flex items-center gap-2 text-orange-200">
+              <Car className="w-4 h-4" />
+              <span className="text-xs font-semibold">04 rodas</span>
+            </div>
+            <span className="text-lg font-black font-mono text-orange-300">{fourWheelVehiclesForDischarge.length}</span>
+          </div>
         </div>
       </section>
 
