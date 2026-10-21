@@ -1030,20 +1030,38 @@ export const VehicleList: React.FC<VehicleListProps> = ({
 
               {(statusModal.targetStatus === 'BAIXADA' || statusModal.targetStatus === 'EM_MANUTENCAO') ? (
                 <div>
-                  <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                    Motivo da Baixa / Falha Operacional
-                  </label>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                    <label className="block text-xs font-medium text-zinc-300">
+                      Motivo da Baixa / Falha Operacional
+                    </label>
+                    {isAdmin && statusModal.targetStatus === 'BAIXADA' && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setStatusModal({
+                            ...statusModal,
+                            reason: statusModal.reason.startsWith('DESCARGA POR INSERVIBILIDADE —')
+                              ? statusModal.reason
+                              : `DESCARGA POR INSERVIBILIDADE — ${statusModal.reason.trim()}`.trim(),
+                          })
+                        }
+                        className="px-2.5 py-1 rounded-md border border-rose-700/70 bg-rose-950/40 text-rose-200 hover:bg-rose-900/60 text-[10px] font-bold transition"
+                      >
+                        Registrar descarga por inservibilidade
+                      </button>
+                    )}
+                  </div>
                   <textarea
                     rows={3}
                     value={statusModal.reason}
                     onChange={(e) =>
                       setStatusModal({ ...statusModal, reason: e.target.value })
                     }
-                    placeholder="Ex: Falha mecânica no motor, embreagem patinando, pneu furado, avaria..."
+                    placeholder="Informe o defeito ou, para descarga, registre a inservibilidade e a justificativa..."
                     className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-rose-500"
                   />
                   <p className="text-[11px] text-zinc-500 mt-1">
-                    A viatura não poderá ser cautelada até que seu status seja alterado para Operacional ou Reserva.
+                    A viatura não poderá ser cautelada enquanto estiver baixada. Para registrar uma descarga por inservibilidade, use a opção acima e descreva a justificativa no campo.
                   </p>
                 </div>
               ) : (
