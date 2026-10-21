@@ -677,16 +677,18 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                   {isAdmin && (
                     <div className="flex items-center space-x-1">
                       <button
+                        type="button"
                         onClick={() => handleOpenDischargeModal(vehicle)}
                         title={`Enviar ${vehicle.tipo === 'MOTOCICLETA' ? 'motocicleta' : 'viatura de 04 rodas'} para descarga por inservibilidade`}
                         aria-label={`Enviar ${vehicle.prefixo} para descarga por inservibilidade`}
-                        className={`p-1.5 rounded border transition cursor-pointer ${
+                        className={`inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${
                           (vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade')
-                            ? 'bg-orange-500/20 border-orange-600/60 text-orange-300'
-                            : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-orange-300 hover:border-orange-600/60'
+                            ? 'bg-orange-500/20 border-orange-500/70 text-orange-200'
+                            : 'bg-orange-950/50 border-orange-700/60 text-orange-300 hover:bg-orange-900/70 hover:border-orange-500'
                         }`}
                       >
-                        {vehicle.tipo === 'MOTOCICLETA' ? <Bike className="w-4 h-4" /> : <Car className="w-4 h-4" />}
+                        <AlertTriangle className="w-4 h-4" />
+                        <span>Enviar para descarga</span>
                       </button>
                       <button
                         onClick={() => handleOpenStatusModal(vehicle)}
@@ -836,6 +838,16 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                                 className="p-1 rounded bg-zinc-800 hover:bg-zinc-750 text-amber-400 transition"
                               >
                                 <Wrench className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDischargeModal(vehicle)}
+                                title={`Enviar ${vehicle.tipo === 'MOTOCICLETA' ? 'motocicleta' : 'viatura de 04 rodas'} para descarga por inservibilidade`}
+                                aria-label={`Enviar ${vehicle.prefixo} para descarga por inservibilidade`}
+                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-orange-950/60 hover:bg-orange-900/80 text-orange-300 border border-orange-700/60 font-bold transition"
+                              >
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                                <span>Descarga</span>
                               </button>
                               <button
                                 onClick={() => onEditVehicle(vehicle)}
