@@ -61,6 +61,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
   const { isAdmin, isOperator } = useAuth();
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [vehicleToDischargeId, setVehicleToDischargeId] = useState('');
   const [vehicleToDelete, setVehicleToDelete] = useState<Vehicle | null>(null);
   const [vehicleForHistory, setVehicleForHistory] = useState<Vehicle | null>(null);
   const [statusModal, setStatusModal] = useState<{
@@ -230,6 +231,45 @@ export const VehicleList: React.FC<VehicleListProps> = ({
           </div>
         </div>
       </section>
+
+      {/* Ação principal de descarga — sempre visível para o administrador, independentemente do formato da lista */}
+      {isAdmin && (
+        <section className="rounded-xl border-2 border-orange-500 bg-orange-950/40 p-4 shadow-lg space-y-3">
+          <div className="flex items-center gap-2 text-orange-100">
+            <AlertTriangle className="w-5 h-5 text-orange-400" />
+            <div>
+              <h2 className="text-sm font-black">ENCAMINHAR VIATURA PARA DESCARGA</h2>
+              <p className="text-xs text-orange-200/80">Selecione a motocicleta ou viatura de 04 rodas inservível.</p>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <select
+              aria-label="Selecionar viatura para descarga"
+              value={vehicleToDischargeId}
+              onChange={(e) => setVehicleToDischargeId(e.target.value)}
+              className="min-w-0 flex-1 rounded-lg border border-orange-700 bg-zinc-950 px-3 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+            >
+              <option value="">Selecione o prefixo da viatura...</option>
+              {vehicles.filter((v) => !(v.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade')).map((v) => (
+                <option key={v.id} value={v.id}>{v.prefixo} — {v.tipo === 'MOTOCICLETA' ? 'Motocicleta' : '04 rodas'} — {v.marca} {v.modelo}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={!vehicleToDischargeId}
+              onClick={() => {
+                const selectedVehicle = vehicles.find((v) => v.id === vehicleToDischargeId);
+                if (selectedVehicle) handleOpenDischargeModal(selectedVehicle);
+              }}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-orange-300 bg-orange-500 px-4 py-3 text-sm font-black text-zinc-950 shadow hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <AlertTriangle className="w-5 h-5" />
+              ENVIAR PARA DESCARGA
+            </button>
+          </div>
+          <p className="text-[11px] text-orange-200/70">As viaturas já encaminhadas para descarga não aparecem nesta seleção e permanecem ocultas para operadores.</p>
+        </section>
+      )}
 
       {/* Filter and Control Bar */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 shadow-sm space-y-3">
