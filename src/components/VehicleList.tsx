@@ -80,8 +80,11 @@ export const VehicleList: React.FC<VehicleListProps> = ({
 
     const matchType = typeFilter === 'TODAS' || v.tipo === typeFilter;
     const matchStatus = statusFilter === 'TODOS' || v.status === statusFilter;
+    // Veículos formalmente selecionados para descarga ficam ocultos aos operadores.
+    const isForDischarge = (v.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade');
+    const visibleToProfile = isAdmin || !isForDischarge;
 
-    return matchQuery && matchType && matchStatus;
+    return matchQuery && matchType && matchStatus && visibleToProfile;
   });
 
   const handleConfirmDelete = () => {
@@ -673,20 +676,18 @@ export const VehicleList: React.FC<VehicleListProps> = ({
 
                   {isAdmin && (
                     <div className="flex items-center space-x-1">
-                      {vehicle.tipo === 'MOTOCICLETA' && (
-                        <button
-                          onClick={() => handleOpenDischargeModal(vehicle)}
-                          title="Selecionar motocicleta para descarga por inservibilidade"
-                          aria-label={`Selecionar ${vehicle.prefixo} para descarga por inservibilidade`}
-                          className={`p-1.5 rounded border transition cursor-pointer ${
-                            (vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade')
-                              ? 'bg-orange-500/20 border-orange-600/60 text-orange-300'
-                              : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-orange-300 hover:border-orange-600/60'
-                          }`}
-                        >
-                          <Bike className="w-4 h-4" />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleOpenDischargeModal(vehicle)}
+                        title={`Enviar ${vehicle.tipo === 'MOTOCICLETA' ? 'motocicleta' : 'viatura de 04 rodas'} para descarga por inservibilidade`}
+                        aria-label={`Enviar ${vehicle.prefixo} para descarga por inservibilidade`}
+                        className={`p-1.5 rounded border transition cursor-pointer ${
+                          (vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade')
+                            ? 'bg-orange-500/20 border-orange-600/60 text-orange-300'
+                            : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-orange-300 hover:border-orange-600/60'
+                        }`}
+                      >
+                        {vehicle.tipo === 'MOTOCICLETA' ? <Bike className="w-4 h-4" /> : <Car className="w-4 h-4" />}
+                      </button>
                       <button
                         onClick={() => handleOpenStatusModal(vehicle)}
                         title={vehicle.status === 'OPERACIONAL' ? 'Baixar viatura' : 'Liberar como Operacional'}
