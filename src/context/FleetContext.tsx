@@ -186,8 +186,47 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       };
     }));
 
-    if (cr.error) console.error('Erro ao carregar cautelas do Supabase:', cr.error);
-    else setCautelas((cr.data || []).map((c: any) => fromDbCautela(c, sharedVehicles)));
+    if (cr.error) {
+      console.error('Erro ao carregar cautelas do Supabase:', cr.error);
+    } else {
+      // Migração segura de fotos antigas em Base64 para Storage: só substitui o JSON
+      // depois que o upload do arquivo foi confirmado. Se falhar, mantém a foto original.
+      const migratePhotoField = async (record: any, field: 'fotos_saida' | 'fotos_retorno', moment: 'saida' | 'retorno') => {
+        const currentPhotos = Array.isArray(record[field]) ? record[field] : [];
+        if (!currentPhotos.some((photo: any) => photo?.dataUrl?.startsWith('data:image/') && !photo.storagePath)) return;
+        const migrated: any[] = [];
+        for (const photo of currentPhotos) {
+          if (!photo?.dataUrl?.startsWith('data:image/') || photo.storagePath) {
+            migrated.push(photo);
+            continue;
+          }
+          try {
+            const blob = await (await fetch(photo.dataUrl)).blob();
+            const path = `legacy/${record.id}/${moment}/${photo.id || crypto.randomUUID()}.jpg`;
+            const { error: uploadError } = await supabase.storage.from('rocam-avarias').upload(path, blob, {
+              contentType: 'image/jpeg', upsert: true, cacheControl: '3600',
+            });
+            if (uploadError) throw uploadError;
+            const { dataUrl: _oldDataUrl, ...metadata } = photo;
+            migrated.push({ ...metadata, storagePath: path });
+          } catch (error) {
+            console.error('Foto antiga mantida no banco porque a migração falhou:', error);
+            migrated.push(photo);
+          }
+        }
+        // Nunca grava uma lista parcial: se qualquer foto antiga falhar, mantém o campo inteiro intacto.
+        if (migrated.some((photo, index) => photo?.dataUrl && !photo.storagePath && currentPhotos[index]?.dataUrl)) return;
+        const { error: updateError } = await supabase.from('cautelas').update({ [field]: migrated }).eq('id', record.id);
+        if (!updateError) record[field] = migrated;
+        else console.error('Não foi possível atualizar as referências das fotos migradas:', updateError);
+      };
+      const records = cr.data || [];
+      await Promise.all(records.map(async (record: any) => {
+        await migratePhotoField(record, 'fotos_saida', 'saida');
+        await migratePhotoField(record, 'fotos_retorno', 'retorno');
+      }));
+      setCautelas(records.map((c: any) => fromDbCautela(c, sharedVehicles)));
+    }
   };
 
   // Load shared state on startup, in realtime, when the app returns to foreground,
