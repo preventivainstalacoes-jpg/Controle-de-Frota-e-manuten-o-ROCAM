@@ -101,7 +101,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Filters & Pagination state
-  const [roleFilter, setRoleFilter] = useState<'ALL' | 'ADMIN' | 'OPERADOR' | 'PENDING' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [roleFilter, setRoleFilter] = useState<'ALL' | 'ADMIN' | 'OPERADOR' | 'ADJUNTO' | 'PENDING' | 'ACTIVE' | 'INACTIVE'>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
 
   if (!isOpen) return null;
@@ -270,7 +270,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     const res = await approveUser(userId, roleToGrant);
     setIsSubmitting(false);
     if (res.success) {
-      showToast(`Cadastro confirmado e concluído com sucesso! Perfil: ${roleToGrant === 'ADMIN' ? 'Administrador' : 'Operador'}.`, 'success');
+      showToast(`Cadastro confirmado e concluído com sucesso! Perfil: ${roleToGrant === 'ADMIN' ? 'Administrador' : roleToGrant === 'ADJUNTO' ? 'Adjunto' : 'Operador'}.`, 'success');
     } else {
       showToast(res.error || 'Erro ao aprovar policial.', 'error');
     }
@@ -791,7 +791,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                                   : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                               }`}
                             >
-                              {u.role === 'ADMIN' ? '👑 ADMIN' : '🛡️ OPERADOR'}
+                              {u.role === 'ADMIN' ? '👑 ADMIN' : u.role === 'ADJUNTO' ? '🛡️ ADJUNTO' : '🛡️ OPERADOR'}
                             </span>
 
                           {/* Toggle Active Status */}
@@ -967,6 +967,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                             >
                               <option value="OPERADOR" className="bg-zinc-900 text-white">Operador (Padrão)</option>
                               <option value="ADMIN" className="bg-zinc-900 text-amber-400">Administrador</option>
+                              <option value="ADJUNTO" className="bg-zinc-900 text-sky-300">Adjunto</option>
                             </select>
                           </div>
 
@@ -1185,6 +1186,32 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                       </p>
                     </div>
                   </label>
+
+                  <label
+                    className={`p-3 rounded-xl border flex items-start space-x-3 cursor-pointer transition ${
+                      formRole === 'ADJUNTO'
+                        ? 'bg-sky-500/15 border-sky-500 text-white'
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="role"
+                      value="ADJUNTO"
+                      checked={formRole === 'ADJUNTO'}
+                      onChange={() => setFormRole('ADJUNTO')}
+                      className="mt-1"
+                    />
+                    <div>
+                      <div className="font-bold text-xs text-sky-300 flex items-center gap-1.5">
+                        <ClipboardCheck className="w-3.5 h-3.5" />
+                        <span>Adjunto (Acesso Operacional)</span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 mt-1 leading-snug">
+                        Consulta frota, cautelas, devoluções, manutenções, relatórios e históricos; pode cautelar viaturas, sem administrar contas ou configurações restritas.
+                      </p>
+                    </div>
+                  </label>
                 </div>
               </div>
 
@@ -1237,7 +1264,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
               <div className="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1.5 text-xs font-mono">
                 <div className="text-sm font-bold text-white font-sans">{userToDelete.name}</div>
                 <div className="text-zinc-400">RE: <span className="text-zinc-200 font-bold">{userToDelete.re}</span> • Login: <span className="text-zinc-200">@{userToDelete.username}</span></div>
-                <div className="text-zinc-400">Perfil: <span className={userToDelete.role === 'ADMIN' ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>{userToDelete.role === 'ADMIN' ? '👑 ADMINISTRADOR' : '🛡️ OPERADOR'}</span></div>
+                <div className="text-zinc-400">Perfil: <span className={userToDelete.role === 'ADMIN' ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>{userToDelete.role === 'ADMIN' ? '👑 ADMINISTRADOR' : userToDelete.role === 'ADJUNTO' ? '🛡️ ADJUNTO' : '🛡️ OPERADOR'}</span></div>
                 <div className="text-zinc-400">Pelotão: <span className="text-zinc-200">{userToDelete.pelotao}</span></div>
               </div>
 
