@@ -147,12 +147,6 @@ export const CautelaDetailModal: React.FC<CautelaDetailModalProps> = ({
                   <span className="text-zinc-400 print:text-gray-600">RE do Condutor:</span>
                   <span className="font-mono text-zinc-300 print:text-black">{cautela.condutorRE}</span>
                 </div>
-                {cautela.encarregadoVtr && (
-                  <div className="flex justify-between">
-                    <span className="text-zinc-400 print:text-gray-600">Encarregado / Equipe:</span>
-                    <span className="text-zinc-300 print:text-black">{cautela.encarregadoVtr}</span>
-                  </div>
-                )}
                 <div className="flex justify-between pt-1 border-t border-zinc-850 print:border-gray-200">
                   <span className="text-zinc-400 print:text-gray-600">Odômetro de Saída:</span>
                   <span className="font-mono font-bold text-amber-400 print:text-black">
