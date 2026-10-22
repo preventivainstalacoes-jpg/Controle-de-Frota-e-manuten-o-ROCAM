@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
+import { persistDamagePhotos } from '../lib/damagePhotoStorage';
 import {
   Vehicle,
   MaintenanceRecord,
@@ -384,11 +385,20 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       status: 'EM_PATRULHAMENTO',
     };
 
+    let fotosSaidaPersistidas: DamagePhoto[];
+    try {
+      fotosSaidaPersistidas = await persistDamagePhotos(newRecord.fotosAvariasSaida, newRecord.id);
+    } catch (error) {
+      console.error('Erro ao armazenar fotos da saída; cautela não foi gravada:', error);
+      return false;
+    }
+    newRecord.fotosAvariasSaida = fotosSaidaPersistidas;
+
     const { error } = await supabase.from('cautelas').insert({
       id:newRecord.id,numero_termo:newRecord.numeroTermo,vehicle_id:newRecord.viaturaId,data_hora_saida:newRecord.dataHoraSaida,
       km_saida:newRecord.kmSaida,combustivel_saida:newRecord.combustivelSaida,condutor_nome:newRecord.condutorNome,condutor_re:newRecord.condutorRE,
       condutor_graduacao:newRecord.condutorGraduacao,encarregado_vtr:newRecord.encarregadoVtr,observacoes_saida:newRecord.observacoesSaida,
-      checklist_saida:newRecord.checklistSaida||[],fotos_saida:newRecord.fotosAvariasSaida||[],status:newRecord.status
+      checklist_saida:newRecord.checklistSaida||[],fotos_saida:fotosSaidaPersistidas,status:newRecord.status
     });
 
     if (error) {
@@ -427,6 +437,13 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       fotosAvariasRetorno?: DamagePhoto[];
     }
   ) => {
+    let fotosRetornoPersistidas: DamagePhoto[];
+    try {
+      fotosRetornoPersistidas = await persistDamagePhotos(descautelaData.fotosAvariasRetorno, id);
+    } catch (error) {
+      console.error('Erro ao armazenar fotos do retorno; devolução não foi gravada:', error);
+      return;
+    }
     setCautelas((prev) =>
       prev.map((c) => {
         if (c.id === id) {
@@ -445,7 +462,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             houveAvaria: descautelaData.houveAvaria,
             descricaoAvaria: descautelaData.descricaoAvaria,
             viaturaBaixadaAposRetorno: descautelaData.baixarViatura || false,
-            fotosAvariasRetorno: descautelaData.fotosAvariasRetorno,
+            fotosAvariasRetorno: fotosRetornoPersistidas,
           };
         }
         return c;
@@ -457,7 +474,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       km_percorrido:Math.max(0,descautelaData.kmRetorno-(cautelas.find(c=>c.id===id)?.kmSaida||0)),
       combustivel_retorno:descautelaData.combustivelRetorno,recebedor_nome:descautelaData.recebedorNome,recebedor_re:descautelaData.recebedorRE,
       observacoes_retorno:descautelaData.observacoesRetorno,checklist_retorno:descautelaData.checklistRetorno||[],houve_avaria:descautelaData.houveAvaria,
-      descricao_avaria:descautelaData.descricaoAvaria,viatura_baixada:descautelaData.baixarViatura||false,fotos_retorno:descautelaData.fotosAvariasRetorno||[]
+      descricao_avaria:descautelaData.descricaoAvaria,viatura_baixada:descautelaData.baixarViatura||false,fotos_retorno:fotosRetornoPersistidas
     };
     const { error: cautelaUpdateError } = await supabase.from('cautelas').update(dbUpdate).eq('id', id);
     if (cautelaUpdateError) {
