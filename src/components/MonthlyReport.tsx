@@ -39,6 +39,7 @@ export const MonthlyReport: React.FC = () => {
   const [isBackingUp, setIsBackingUp] = useState(false);
 
   const handleGenerateMonthBackup = async () => {
+    if (!isAdmin) return;
     try {
       setIsBackingUp(true);
       const b = await generateMonthlyBackupNow(selectedMonth, 'MANUAL');
