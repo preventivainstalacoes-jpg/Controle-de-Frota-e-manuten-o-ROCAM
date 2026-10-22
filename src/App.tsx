@@ -449,7 +449,7 @@ function AppContent() {
         )}
 
         {activeTab === 'relatorio-mensal' && (
-          isAdmin ? (
+          (isAdmin || currentUser?.role === 'ADJUNTO') ? (
             <MonthlyReport />
           ) : (
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center max-w-lg mx-auto my-12 space-y-4">
