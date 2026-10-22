@@ -19,7 +19,8 @@ import {
   CheckSquare,
   Square,
   Mail,
-  Clock
+  Clock,
+  Wrench
 } from 'lucide-react';
 
 interface UserManagementModalProps {
