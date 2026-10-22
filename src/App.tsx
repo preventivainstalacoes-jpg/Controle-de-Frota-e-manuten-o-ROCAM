@@ -407,7 +407,7 @@ function AppContent() {
         )}
 
         {activeTab === 'manutencao' && (
-          isAdmin ? (
+          (isAdmin || currentUser?.role === 'ADJUNTO') ? (
             <MaintenanceList
               onOpenNewMaintenance={handleOpenNewMaintenance}
               onEditMaintenance={handleEditMaintenance}
