@@ -243,7 +243,7 @@ export interface BackupScheduleConfig {
   notificarNovoBackup: boolean;
 }
 
-export type UserRole = 'ADMIN' | 'OPERADOR' | 'ADJUNTO';
+export type UserRole = 'ADMIN' | 'OPERADOR' | 'ADJUNTO' | 'MECANICO';
 export type UserAccountStatus = 'ATIVO' | 'PENDENTE' | 'INATIVO' | 'REJEITADO';
 
 export interface UserProfile {
