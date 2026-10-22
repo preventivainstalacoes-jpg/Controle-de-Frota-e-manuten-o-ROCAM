@@ -655,9 +655,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!currentUser || currentUser.role !== 'ADMIN') return { success: false, error: 'Somente Administrador pode aprovar usuários.' };
     const { data: target, error: readError } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
     if (readError || !target) return { success: false, error: readError?.message || 'Usuário não localizado no banco compartilhado.' };
-    const finalRole = targetRole || (target.role === 'admin' ? 'ADMIN' : 'OPERADOR');
+    const finalRole = targetRole || (target.role === 'admin' ? 'ADMIN' : target.role === 'adjunto' ? 'ADJUNTO' : 'OPERADOR');
     const { data: saved, error } = await supabase.from('profiles').update({
-      role: finalRole === 'ADMIN' ? 'admin' : 'operador', active: true, approval_status: 'ATIVO', updated_at: new Date().toISOString()
+      role: finalRole === 'ADMIN' ? 'admin' : finalRole === 'ADJUNTO' ? 'adjunto' : 'operador', active: true, approval_status: 'ATIVO', updated_at: new Date().toISOString()
     }).eq('id', userId).select('*').maybeSingle();
     if (error || !saved) return { success: false, error: error?.message || 'Não foi possível salvar a aprovação no Supabase.' };
     const updated: UserProfile = {
