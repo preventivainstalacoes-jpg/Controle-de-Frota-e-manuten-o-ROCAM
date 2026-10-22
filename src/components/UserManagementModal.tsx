@@ -301,6 +301,8 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const filteredUsers = users.filter((u) => {
     if (roleFilter === 'ADMIN' && u.role !== 'ADMIN') return false;
     if (roleFilter === 'OPERADOR' && u.role !== 'OPERADOR') return false;
+    if (roleFilter === 'ADJUNTO' && u.role !== 'ADJUNTO') return false;
+    if (roleFilter === 'MECANICO' && u.role !== 'MECANICO') return false;
     if (roleFilter === 'PENDING' && u.status !== 'PENDENTE') return false;
     if (roleFilter === 'ACTIVE' && (!u.isActive || u.status !== 'ATIVO')) return false;
     if (roleFilter === 'INACTIVE' && (u.isActive && u.status === 'ATIVO')) return false;
@@ -489,6 +491,10 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                 >
                   <ClipboardCheck className="w-3.5 h-3.5" />
                   <span>🛡️ Operadores ({operatorCount})</span>
+                </button>
+
+                <button type="button" onClick={() => { setRoleFilter('MECANICO'); setCurrentPage(1); }} className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${roleFilter === 'MECANICO' ? 'bg-orange-500 text-zinc-950 font-bold' : 'bg-orange-500/15 text-orange-300 border border-orange-500/30 hover:bg-orange-500/25'}`}>
+                  <Wrench className="w-3.5 h-3.5 inline mr-1" /><span>Mecânicos ({users.filter((u) => u.role === 'MECANICO').length})</span>
                 </button>
 
                 <button
@@ -969,6 +975,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                               <option value="OPERADOR" className="bg-zinc-900 text-white">Operador (Padrão)</option>
                               <option value="ADMIN" className="bg-zinc-900 text-amber-400">Administrador</option>
                               <option value="ADJUNTO" className="bg-zinc-900 text-sky-300">Adjunto</option>
+                              <option value="MECANICO" className="bg-zinc-900 text-orange-300">Mecânico</option>
                               <option value="MECANICO" className="bg-zinc-900 text-orange-300">Mecânico</option>
                             </select>
                           </div>
