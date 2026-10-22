@@ -43,6 +43,8 @@ interface FleetContextType {
   cautelas: CautelaRecord[];
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  activeUnit: 'batalhao_rocam_natal' | '3_cpm_rocam_mossoro';
+  setActiveUnit: (unit: 'batalhao_rocam_natal' | '3_cpm_rocam_mossoro') => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   typeFilter: 'TODAS' | VehicleType;
@@ -128,6 +130,10 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [cautelas, setCautelas] = useState<CautelaRecord[]>([]);
 
   const [activeTab, setActiveTab] = useState<string>('frota');
+  const [activeUnit, setActiveUnit] = useState<'batalhao_rocam_natal' | '3_cpm_rocam_mossoro'>(() => {
+    try { return localStorage.getItem('rocam_active_unit') === '3_cpm_rocam_mossoro' ? '3_cpm_rocam_mossoro' : 'batalhao_rocam_natal'; } catch { return 'batalhao_rocam_natal'; }
+  });
+  useEffect(() => { try { localStorage.setItem('rocam_active_unit', activeUnit); } catch {} }, [activeUnit]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<'TODAS' | VehicleType>('TODAS');
   const [statusFilter, setStatusFilter] = useState<'TODOS' | VehicleStatus>('TODOS');
@@ -726,15 +732,21 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return cautelas.filter((c) => c.status === 'EM_PATRULHAMENTO').length;
   }, [cautelas]);
 
+  const unitVehicles = useMemo(() => vehicles.filter(v => activeUnit === '3_cpm_rocam_mossoro' ? v.batalhao?.toLowerCase().includes('mossor') : !v.batalhao?.toLowerCase().includes('mossor')), [vehicles, activeUnit]);
+  const unitVehicleIds = useMemo(() => new Set(unitVehicles.map(v => v.id)), [unitVehicles]);
+  const unitCautelas = useMemo(() => cautelas.filter(c => unitVehicleIds.has(c.viaturaId)), [cautelas, unitVehicleIds]);
+  const unitMaintenanceRecords = useMemo(() => maintenanceRecords.filter(m => unitVehicleIds.has(m.viaturaId)), [maintenanceRecords, unitVehicleIds]);
+  const unitAlerts = useMemo(() => alerts.filter(a => unitVehicleIds.has(a.viaturaId)), [alerts, unitVehicleIds]);
+
   // Stats
   const stats = useMemo(() => {
-    const total = vehicles.length;
-    const motos = vehicles.filter((v) => v.tipo === 'MOTOCICLETA').length;
-    const quatroRodas = vehicles.filter((v) => v.tipo === 'QUATRO_RODAS').length;
-    const operacionais = vehicles.filter((v) => v.status === 'OPERACIONAL').length;
-    const baixadas = vehicles.filter((v) => v.status === 'BAIXADA').length;
-    const emManutencao = vehicles.filter((v) => v.status === 'EM_MANUTENCAO' || v.status === 'MANUTENCAO_EXTERNA').length;
-    const reserva = vehicles.filter((v) => v.status === 'RESERVA').length;
+    const total = unitVehicles.length;
+    const motos = unitVehicles.filter((v) => v.tipo === 'MOTOCICLETA').length;
+    const quatroRodas = unitVehicles.filter((v) => v.tipo === 'QUATRO_RODAS').length;
+    const operacionais = unitVehicles.filter((v) => v.status === 'OPERACIONAL').length;
+    const baixadas = unitVehicles.filter((v) => v.status === 'BAIXADA').length;
+    const emManutencao = unitVehicles.filter((v) => v.status === 'EM_MANUTENCAO' || v.status === 'MANUTENCAO_EXTERNA').length;
+    const reserva = unitVehicles.filter((v) => v.status === 'RESERVA').length;
     const taxaProntidao = total > 0 ? Math.round(((operacionais + reserva) / total) * 100) : 0;
 
     return {
@@ -747,17 +759,19 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       reserva,
       taxaProntidao,
     };
-  }, [vehicles]);
+  }, [unitVehicles]);
 
   return (
     <FleetContext.Provider
       value={{
-        vehicles,
-        maintenanceRecords,
+        vehicles: unitVehicles,
+        maintenanceRecords: unitMaintenanceRecords,
         rules,
-        cautelas,
+        cautelas: unitCautelas,
         activeTab,
         setActiveTab,
+        activeUnit,
+        setActiveUnit,
         searchQuery,
         setSearchQuery,
         typeFilter,
@@ -789,10 +803,10 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateBackupConfig,
         downloadBackupFile,
         downloadBackupSQL,
-        alerts,
-        criticalAlertCount,
-        warningAlertCount,
-        activeCautelasCount,
+        alerts: unitAlerts,
+        criticalAlertCount: unitAlerts.filter(a => a.severidade === 'CRITICO').length,
+        warningAlertCount: unitAlerts.filter(a => a.severidade === 'ATENCAO').length,
+        activeCautelasCount: unitCautelas.filter(c => c.status === 'EM_PATRULHAMENTO').length,
         stats,
       }}
     >
