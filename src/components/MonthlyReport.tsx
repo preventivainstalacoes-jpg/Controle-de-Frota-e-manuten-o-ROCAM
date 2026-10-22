@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useFleet } from '../context/FleetContext';
+import { useAuth } from '../context/AuthContext';
 import { MaintenanceCategory, VehicleType } from '../types';
 import {
   Calendar,
@@ -20,6 +21,7 @@ import {
 import { formatKm, getCategoryLabel, formatDate } from '../utils/formatters';
 
 export const MonthlyReport: React.FC = () => {
+  const { isAdmin } = useAuth();
   const {
     maintenanceRecords,
     cautelas,
@@ -250,15 +252,17 @@ export const MonthlyReport: React.FC = () => {
             <Download className="w-4 h-4" />
           </button>
 
-          <button
-            onClick={handleGenerateMonthBackup}
-            disabled={isBackingUp}
-            title="Gerar e Baixar Backup Completo do Banco deste Mês"
-            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-750 text-amber-400 border border-zinc-700 text-xs font-bold transition cursor-pointer disabled:opacity-50"
-          >
-            <Archive className="w-4 h-4 text-amber-400" />
-            <span className="hidden sm:inline">Backup Deste Mês</span>
-          </button>
+          {isAdmin && (
+            <button
+              onClick={handleGenerateMonthBackup}
+              disabled={isBackingUp}
+              title="Gerar e Baixar Backup Completo do Banco deste Mês"
+              className="flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-750 text-amber-400 border border-zinc-700 text-xs font-bold transition cursor-pointer disabled:opacity-50"
+            >
+              <Archive className="w-4 h-4 text-amber-400" />
+              <span className="hidden sm:inline">Backup Deste Mês</span>
+            </button>
+          )}
 
           <button
             id="btn-imprimir-relatorio-mensal"
