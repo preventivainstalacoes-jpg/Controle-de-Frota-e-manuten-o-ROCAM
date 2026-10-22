@@ -42,6 +42,7 @@ function AppContent() {
   } = useFleet();
 
   const { isAuthenticated, isLoading, isAdmin, isOperator, currentUser } = useAuth();
+  const isMechanic = currentUser?.role === 'MECANICO';
   const { logActivity } = useTeam();
 
   // Modals state - Vehicles & Maintenance
@@ -146,7 +147,7 @@ function AppContent() {
 
   // Handlers - Maintenance (Admin only)
   const handleOpenNewMaintenance = () => {
-    if (!isAdmin) return;
+    if (!isAdmin && !isMechanic) return;
     setRecordToEdit(null);
     setInitialVehicleId(undefined);
     setInitialCategory(undefined);
@@ -154,7 +155,7 @@ function AppContent() {
   };
 
   const handleOpenMaintenanceForVehicle = (vehicle: Vehicle) => {
-    if (!isAdmin) return;
+    if (!isAdmin && !isMechanic) return;
     setRecordToEdit(null);
     setInitialVehicleId(vehicle.id);
     setInitialCategory(undefined);
@@ -162,7 +163,7 @@ function AppContent() {
   };
 
   const handleEditMaintenance = (record: MaintenanceRecord) => {
-    if (!isAdmin) return;
+    if (!isAdmin && !isMechanic) return;
     setRecordToEdit(record);
     setInitialVehicleId(record.viaturaId);
     setInitialCategory(record.categoria);
@@ -170,7 +171,7 @@ function AppContent() {
   };
 
   const handleScheduleFromAlert = (viaturaId: string, categoria: MaintenanceCategory) => {
-    if (!isAdmin) return;
+    if (!isAdmin && !isMechanic) return;
     setRecordToEdit(null);
     setInitialVehicleId(viaturaId);
     setInitialCategory(categoria);
@@ -178,7 +179,7 @@ function AppContent() {
   };
 
   const handleSaveMaintenance = (data: Omit<MaintenanceRecord, 'id' | 'numeroOS'>) => {
-    if (!isAdmin) return;
+    if (!isAdmin && !isMechanic) return;
     if (recordToEdit) {
       updateMaintenanceRecord(recordToEdit.id, data);
       logActivity({
@@ -254,7 +255,7 @@ function AppContent() {
     // Administrador pode regularizar devoluções excepcionais.
     const operadorRE = (currentUser?.re || '').trim().toUpperCase();
     const responsavelRE = (cautela.condutorRE || '').trim().toUpperCase();
-    if (!isAdmin && (!operadorRE || operadorRE !== responsavelRE)) {
+    if (!isAdmin && !isMechanic && (!operadorRE || operadorRE !== responsavelRE)) {
       showToast('Acesso negado: somente o responsável pela cautela pode devolver esta viatura. Procure o administrador para regularização.', 'error');
       return;
     }
@@ -407,7 +408,7 @@ function AppContent() {
         )}
 
         {activeTab === 'manutencao' && (
-          (isAdmin || currentUser?.role === 'ADJUNTO') ? (
+          (isAdmin || isMechanic || currentUser?.role === 'ADJUNTO') ? (
             <MaintenanceList
               onOpenNewMaintenance={handleOpenNewMaintenance}
               onEditMaintenance={handleEditMaintenance}
