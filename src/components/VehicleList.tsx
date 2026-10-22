@@ -58,7 +58,9 @@ export const VehicleList: React.FC<VehicleListProps> = ({
     setStatusFilter,
     updateVehicle,
   } = useFleet();
-  const { isAdmin, isOperator } = useAuth();
+  const { isAdmin, isOperator, currentUser } = useAuth();
+  const isMechanic = currentUser?.role === 'MECANICO';
+  const canSendToDischarge = isAdmin || isMechanic;
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [vehicleToDischargeId, setVehicleToDischargeId] = useState('');
@@ -83,7 +85,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
     const matchStatus = statusFilter === 'TODOS' || v.status === statusFilter;
     // Veículos formalmente selecionados para descarga ficam ocultos aos operadores.
     const isForDischarge = (v.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade');
-    const visibleToProfile = isAdmin || !isForDischarge;
+    const visibleToProfile = (isAdmin || isMechanic) || !isForDischarge;
 
     return matchQuery && matchType && matchStatus && visibleToProfile;
   });
@@ -153,7 +155,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
           </div>
         </div>
 
-        {isAdmin && (
+        {canSendToDischarge && (
           <div className="bg-orange-950/30 border border-orange-800/60 rounded-xl p-3.5 shadow-sm">
             <div className="flex items-center justify-between text-orange-300 text-xs font-semibold uppercase gap-2">
               <span>Para descarga</span>
@@ -246,7 +248,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
       </section>
 
       {/* Ação principal de descarga — sempre visível para o administrador, independentemente do formato da lista */}
-      {isAdmin && (
+      {canSendToDischarge && (
         <section className="rounded-xl border-2 border-orange-500 bg-orange-950/40 p-4 shadow-lg space-y-3">
           <div className="flex items-center gap-2 text-orange-100">
             <AlertTriangle className="w-5 h-5 text-orange-400" />
@@ -727,7 +729,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                     )}
                   </div>
 
-                  {isAdmin && (
+                  {canSendToDischarge && (
                     <div className="flex items-center space-x-1">
                       <button
                         type="button"
@@ -743,7 +745,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                         <AlertTriangle className="w-4 h-4" />
                         <span>Enviar para descarga</span>
                       </button>
-                      <button
+                      {!isMechanic && <button
                         onClick={() => handleOpenStatusModal(vehicle)}
                         title={vehicle.status === 'OPERACIONAL' ? 'Baixar viatura' : 'Liberar como Operacional'}
                         className={`px-2 py-1 rounded text-[11px] font-semibold transition cursor-pointer ${
@@ -753,15 +755,15 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                         }`}
                       >
                         {vehicle.status === 'OPERACIONAL' ? 'Baixar' : 'Pronta'}
-                      </button>
+                      </button>}
 
-                      <button
+                      {!isMechanic && <button
                         onClick={() => onEditVehicle(vehicle)}
                         title="Editar viatura"
                         className="p-1.5 rounded text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition cursor-pointer"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
-                      </button>
+                      </button>}
 
                       <button
                         onClick={() => setVehicleToDelete(vehicle)}
