@@ -101,7 +101,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Filters & Pagination state
-  const [roleFilter, setRoleFilter] = useState<'ALL' | 'ADMIN' | 'OPERADOR' | 'ADJUNTO' | 'PENDING' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [roleFilter, setRoleFilter] = useState<'ALL' | 'ADMIN' | 'OPERADOR' | 'ADJUNTO' | 'MECANICO' | 'PENDING' | 'ACTIVE' | 'INACTIVE'>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
 
   if (!isOpen) return null;
@@ -270,7 +270,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     const res = await approveUser(userId, roleToGrant);
     setIsSubmitting(false);
     if (res.success) {
-      showToast(`Cadastro confirmado e concluído com sucesso! Perfil: ${roleToGrant === 'ADMIN' ? 'Administrador' : roleToGrant === 'ADJUNTO' ? 'Adjunto' : 'Operador'}.`, 'success');
+      showToast(`Cadastro confirmado e concluído com sucesso! Perfil: ${roleToGrant === 'ADMIN' ? 'Administrador' : roleToGrant === 'ADJUNTO' ? 'Adjunto' : roleToGrant === 'MECANICO' ? 'Mecânico' : 'Operador'}.`, 'success');
     } else {
       showToast(res.error || 'Erro ao aprovar policial.', 'error');
     }
@@ -791,7 +791,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                                   : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                               }`}
                             >
-                              {u.role === 'ADMIN' ? '👑 ADMIN' : u.role === 'ADJUNTO' ? '🛡️ ADJUNTO' : '🛡️ OPERADOR'}
+                              {u.role === 'ADMIN' ? '👑 ADMIN' : u.role === 'ADJUNTO' ? '🛡️ ADJUNTO' : u.role === 'MECANICO' ? '🔧 MECÂNICO' : '🛡️ OPERADOR'}
                             </span>
 
                           {/* Toggle Active Status */}
@@ -968,6 +968,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                               <option value="OPERADOR" className="bg-zinc-900 text-white">Operador (Padrão)</option>
                               <option value="ADMIN" className="bg-zinc-900 text-amber-400">Administrador</option>
                               <option value="ADJUNTO" className="bg-zinc-900 text-sky-300">Adjunto</option>
+                              <option value="MECANICO" className="bg-zinc-900 text-orange-300">Mecânico</option>
                             </select>
                           </div>
 
@@ -1189,7 +1190,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
 
                   <label
                     className={`p-3 rounded-xl border flex items-start space-x-3 cursor-pointer transition ${
-                      formRole === 'ADJUNTO'
+                      formRole === 'ADJUNTO' || formRole === 'MECANICO'
                         ? 'bg-sky-500/15 border-sky-500 text-white'
                         : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'
                     }`}
@@ -1264,7 +1265,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
               <div className="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1.5 text-xs font-mono">
                 <div className="text-sm font-bold text-white font-sans">{userToDelete.name}</div>
                 <div className="text-zinc-400">RE: <span className="text-zinc-200 font-bold">{userToDelete.re}</span> • Login: <span className="text-zinc-200">@{userToDelete.username}</span></div>
-                <div className="text-zinc-400">Perfil: <span className={userToDelete.role === 'ADMIN' ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>{userToDelete.role === 'ADMIN' ? '👑 ADMINISTRADOR' : userToDelete.role === 'ADJUNTO' ? '🛡️ ADJUNTO' : '🛡️ OPERADOR'}</span></div>
+                <div className="text-zinc-400">Perfil: <span className={userToDelete.role === 'ADMIN' ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>{userToDelete.role === 'ADMIN' ? '👑 ADMINISTRADOR' : userToDelete.role === 'ADJUNTO' ? '🛡️ ADJUNTO' : userToDelete.role === 'MECANICO' ? '🔧 MECÂNICO' : '🛡️ OPERADOR'}</span></div>
                 <div className="text-zinc-400">Pelotão: <span className="text-zinc-200">{userToDelete.pelotao}</span></div>
               </div>
 
