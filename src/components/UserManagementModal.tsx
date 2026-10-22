@@ -1190,7 +1190,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
 
                   <label
                     className={`p-3 rounded-xl border flex items-start space-x-3 cursor-pointer transition ${
-                      formRole === 'ADJUNTO' || formRole === 'MECANICO'
+                      formRole === 'ADJUNTO'
                         ? 'bg-sky-500/15 border-sky-500 text-white'
                         : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'
                     }`}
@@ -1211,6 +1211,13 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                       <p className="text-[11px] text-zinc-400 mt-1 leading-snug">
                         Consulta frota, cautelas, devoluções, manutenções, relatórios e históricos; pode cautelar viaturas, sem administrar contas ou configurações restritas.
                       </p>
+                    </div>
+                  </label>
+                  <label className={`p-3 rounded-xl border flex items-start space-x-3 cursor-pointer transition ${formRole === 'MECANICO' ? 'bg-orange-500/15 border-orange-500 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'}`}>
+                    <input type="radio" name="role" value="MECANICO" checked={formRole === 'MECANICO'} onChange={() => setFormRole('MECANICO')} className="mt-1" />
+                    <div>
+                      <div className="font-bold text-xs text-orange-300 flex items-center gap-1.5"><Wrench className="w-3.5 h-3.5" /><span>Mecânico (Manutenção)</span></div>
+                      <p className="text-[11px] text-zinc-400 mt-1 leading-snug">Registra e finaliza manutenções, encaminha viaturas para descarga e pode registrar a liberação de cautelas conforme as permissões do sistema. Sem administrar usuários.</p>
                     </div>
                   </label>
                 </div>
