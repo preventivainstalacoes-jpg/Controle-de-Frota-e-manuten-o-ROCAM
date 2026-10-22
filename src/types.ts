@@ -155,7 +155,8 @@ export type CautelaStatus = 'EM_PATRULHAMENTO' | 'CONCLUIDA';
 
 export interface DamagePhoto {
   id: string;
-  dataUrl: string; // Base64 data URL compactado da foto
+  dataUrl?: string; // Base64 legado ou imagem recém-selecionada antes do upload
+  storagePath?: string; // Caminho no bucket privado damage-photos
   legenda?: string; // Descrição da avaria observada (ex: "Arranhão profundo no para-lama dianteiro")
   momento: 'SAIDA' | 'RETORNO'; // Registrado na saída ou no retorno
   dataHora: string; // YYYY-MM-DDTHH:mm:ss
