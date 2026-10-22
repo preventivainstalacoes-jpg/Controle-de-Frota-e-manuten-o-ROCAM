@@ -141,7 +141,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const fromDbVehicle = (v: any): Vehicle => ({
     id:v.id,prefixo:v.prefix,placa:v.plate||'',tipo:v.vehicle_type==='viatura_4_rodas'?'QUATRO_RODAS':'MOTOCICLETA',marca:v.brand||'',modelo:v.model||'',ano:v.year||new Date().getFullYear(),kmAtual:v.mileage||0,
     status:v.status==='manutencao_externa'?'MANUTENCAO_EXTERNA':v.status==='manutencao'?'EM_MANUTENCAO':v.status==='indisponivel'?'BAIXADA':v.status==='reserva'?'RESERVA':'OPERACIONAL',
-    pelotao:v.pelotao||'ROCAM',batalhao:v.batalhao||'ROCAM',motivoBaixa:v.motivo_baixa,condutorPadrao:v.condutor_padrao,dataUltimaAtualizacaoKm:v.updated_at?.split('T')[0]||new Date().toISOString().split('T')[0],observacoes:v.notes||''
+    pelotao:v.pelotao||'ROCAM',batalhao:v.unit_id==='3_cpm_rocam_mossoro'?'3ª CPM ROCAM Mossoró':'Batalhão ROCAM Natal',motivoBaixa:v.motivo_baixa,condutorPadrao:v.condutor_padrao,dataUltimaAtualizacaoKm:v.updated_at?.split('T')[0]||new Date().toISOString().split('T')[0],observacoes:v.notes||''
   });
   const toDbVehicleType = (t: VehicleType) => t === 'QUATRO_RODAS' ? 'viatura_4_rodas' : 'moto';
   const toDbVehicleStatus = (s: VehicleStatus) => s === 'MANUTENCAO_EXTERNA' ? 'manutencao_externa' : s === 'EM_MANUTENCAO' ? 'manutencao' : s === 'BAIXADA' ? 'indisponivel' : s === 'RESERVA' ? 'reserva' : 'disponivel';
@@ -292,12 +292,12 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       dataUltimaAtualizacaoKm: today,
     };
     setVehicles((prev) => [newVehicle, ...prev]);
-    supabase.from('vehicles').insert({id:newVehicle.id,vehicle_type:toDbVehicleType(newVehicle.tipo),prefix:newVehicle.prefixo,plate:newVehicle.placa,brand:newVehicle.marca,model:newVehicle.modelo,year:newVehicle.ano,mileage:newVehicle.kmAtual,status:toDbVehicleStatus(newVehicle.status),notes:newVehicle.observacoes||''}).then(({error})=>{if(error)console.error('Erro ao salvar viatura:',error)});
+    supabase.from('vehicles').insert({id:newVehicle.id,unit_id:newVehicle.batalhao?.toLowerCase().includes('mossor')?'3_cpm_rocam_mossoro':'batalhao_rocam_natal',vehicle_type:toDbVehicleType(newVehicle.tipo),prefix:newVehicle.prefixo,plate:newVehicle.placa,brand:newVehicle.marca,model:newVehicle.modelo,year:newVehicle.ano,mileage:newVehicle.kmAtual,status:toDbVehicleStatus(newVehicle.status),notes:newVehicle.observacoes||''}).then(({error})=>{if(error)console.error('Erro ao salvar viatura:',error)});
   };
 
   const updateVehicle = (id: string, updates: Partial<Vehicle>) => {
     setVehicles((prev) => prev.map((v) => (v.id === id ? { ...v, ...updates } : v)));
-    const db:any={}; if(updates.prefixo!==undefined)db.prefix=updates.prefixo;if(updates.placa!==undefined)db.plate=updates.placa;if(updates.marca!==undefined)db.brand=updates.marca;if(updates.modelo!==undefined)db.model=updates.modelo;if(updates.ano!==undefined)db.year=updates.ano;if(updates.kmAtual!==undefined)db.mileage=updates.kmAtual;if(updates.status!==undefined)db.status=toDbVehicleStatus(updates.status);if(updates.motivoBaixa!==undefined)db.motivo_baixa=updates.motivoBaixa;if(updates.observacoes!==undefined)db.notes=updates.observacoes;
+    const db:any={}; if(updates.prefixo!==undefined)db.prefix=updates.prefixo;if(updates.placa!==undefined)db.plate=updates.placa;if(updates.marca!==undefined)db.brand=updates.marca;if(updates.modelo!==undefined)db.model=updates.modelo;if(updates.ano!==undefined)db.year=updates.ano;if(updates.kmAtual!==undefined)db.mileage=updates.kmAtual;if(updates.status!==undefined)db.status=toDbVehicleStatus(updates.status);if(updates.motivoBaixa!==undefined)db.motivo_baixa=updates.motivoBaixa;if(updates.observacoes!==undefined)db.notes=updates.observacoes;if(updates.batalhao!==undefined)db.unit_id=updates.batalhao.toLowerCase().includes('mossor')?'3_cpm_rocam_mossoro':'batalhao_rocam_natal';
     if(Object.keys(db).length)supabase.from('vehicles').update(db).eq('id',id).then(({error})=>{if(error)console.error('Erro ao atualizar viatura:',error)});
   };
 
