@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { getDamagePhotoUrl } from '../lib/damagePhotoStorage';
 import { DamagePhoto } from '../types';
 import { compressImageFile } from '../utils/imageCompressor';
 import {
@@ -34,6 +35,16 @@ export const DamagePhotoManager: React.FC<DamagePhotoManagerProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<DamagePhoto | null>(null);
   const [photoError, setPhotoError] = useState('');
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let active = true;
+    Promise.all((photos || []).map(async (photo) => {
+      try { return [photo.id, await getDamagePhotoUrl(photo)] as const; }
+      catch (error) { console.error('Falha ao abrir foto de avaria:', error); return [photo.id, ''] as const; }
+    })).then((entries) => { if (active) setPhotoUrls(Object.fromEntries(entries)); });
+    return () => { active = false; };
+  }, [photos]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -213,7 +224,7 @@ export const DamagePhotoManager: React.FC<DamagePhotoManagerProps> = ({
               {/* Thumbnail Container */}
               <div className="relative aspect-video bg-zinc-900 overflow-hidden">
                 <img
-                  src={photo.dataUrl}
+                  src={photoUrls[photo.id] || photo.dataUrl || ''}
                   alt={photo.legenda || `Foto de avaria ${index + 1}`}
                   className="w-full h-full object-cover cursor-pointer transition group-hover:scale-105 duration-200"
                   onClick={() => setPreviewPhoto(photo)}
@@ -311,7 +322,7 @@ export const DamagePhotoManager: React.FC<DamagePhotoManagerProps> = ({
             {/* High Res Image */}
             <div className="p-3 bg-black flex items-center justify-center max-h-[70vh] overflow-hidden">
               <img
-                src={previewPhoto.dataUrl}
+                src={photoUrls[previewPhoto.id] || previewPhoto.dataUrl || ''}
                 alt={previewPhoto.legenda || 'Avaria da viatura'}
                 className="max-h-[68vh] w-auto max-w-full object-contain rounded-lg shadow-md"
               />
@@ -330,7 +341,7 @@ export const DamagePhotoManager: React.FC<DamagePhotoManagerProps> = ({
 
               <div className="flex items-center space-x-2">
                 <a
-                  href={previewPhoto.dataUrl}
+                  href={photoUrls[previewPhoto.id] || previewPhoto.dataUrl || ''}
                   download={`avaria_rocam_${previewPhoto.id}.jpg`}
                   className="px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition"
                 >
