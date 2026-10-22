@@ -222,7 +222,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           name: profile.full_name || profile.username || profile.email || 'Usuário sem nome',
           graduacao: profile.graduacao || '',
           re: profile.re || '',
-          role: profile.role === 'admin' ? 'ADMIN' : profile.role === 'adjunto' ? 'ADJUNTO' : 'OPERADOR',
+          role: profile.role === 'admin' ? 'ADMIN' : profile.role === 'adjunto' ? 'ADJUNTO' : profile.role === 'mecanico' ? 'MECANICO' : 'OPERADOR',
           pelotao: profile.pelotao || 'ROCAM',
           passwordHash: '',
           salt: '',
