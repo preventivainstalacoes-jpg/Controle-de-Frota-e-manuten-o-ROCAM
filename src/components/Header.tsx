@@ -144,7 +144,7 @@ export const Header: React.FC<HeaderProps> = ({
       label: 'Relatório Mensal',
       icon: Calendar,
       badge: undefined,
-      allowedRoles: ['ADMIN', 'ADJUNTO'], // Adjunto consulta; Admin administra
+      allowedRoles: ['ADMIN', 'ADJUNTO', 'MECANICO'], // Mecânico consulta relatórios de manutenção
     },
   ];
 
