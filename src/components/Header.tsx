@@ -98,7 +98,7 @@ export const Header: React.FC<HeaderProps> = ({
       icon: Bike,
       badge: `${stats.total}`,
       badgeColor: 'bg-zinc-800 text-zinc-300',
-      allowedRoles: ['ADMIN', 'OPERADOR', 'ADJUNTO'],
+      allowedRoles: ['ADMIN', 'OPERADOR', 'ADJUNTO', 'MECANICO'],
     },
     {
       id: 'cautelas',
@@ -113,7 +113,7 @@ export const Header: React.FC<HeaderProps> = ({
       label: 'Manutenções',
       icon: Wrench,
       badge: undefined,
-      allowedRoles: ['ADMIN', 'ADJUNTO'], // Adjunto consulta; Admin administra
+      allowedRoles: ['ADMIN', 'ADJUNTO', 'MECANICO'], // Mecânico trabalha nas manutenções; Adjunto consulta
     },
     {
       id: 'alertas',
@@ -160,7 +160,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div>
               <div className="flex items-center space-x-2">
                 <span className="text-zinc-400 text-xs font-mono hidden sm:inline">
-                  {isOperator ? 'Módulo Operador • Cautelas & Avarias' : currentUser?.role === 'ADJUNTO' ? 'Módulo Adjunto • Frota & Operações' : 'Comando & Logística ROCAM'}
+                  {isOperator ? 'Módulo Operador • Cautelas & Avarias' : currentUser?.role === 'ADJUNTO' ? 'Módulo Adjunto • Frota & Operações' : currentUser?.role === 'MECANICO' ? 'Módulo Mecânico • Manutenção & Frota' : 'Comando & Logística ROCAM'}
                 </span>
                 <span className="hidden md:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-zinc-900 text-amber-400 border border-zinc-800">
                   rocammecanizacao.com.br
