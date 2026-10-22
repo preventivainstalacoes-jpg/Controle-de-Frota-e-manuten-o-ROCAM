@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { DamagePhoto } from '../types';
 import { compressImageFile } from '../utils/imageCompressor';
 import {
@@ -34,6 +35,20 @@ export const DamagePhotoManager: React.FC<DamagePhotoManagerProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<DamagePhoto | null>(null);
   const [photoError, setPhotoError] = useState('');
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadSignedUrls = async () => {
+      const entries = await Promise.all((photos || []).filter((photo) => photo.storagePath && !photo.dataUrl).map(async (photo) => {
+        const { data, error } = await supabase.storage.from('rocam-avarias').createSignedUrl(photo.storagePath!, 3600);
+        return !error && data?.signedUrl ? [photo.id, data.signedUrl] as const : null;
+      }));
+      if (!cancelled) setSignedUrls((current) => ({ ...current, ...Object.fromEntries(entries.filter(Boolean) as [string, string][]) }));
+    };
+    void loadSignedUrls();
+    return () => { cancelled = true; };
+  }, [photos]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -48,10 +63,17 @@ export const DamagePhotoManager: React.FC<DamagePhotoManagerProps> = ({
         const file = files[i];
         if (!file.type.startsWith('image/')) continue;
 
-        const compressedDataUrl = await compressImageFile(file, 1200, 1200, 0.75);
+        const compressedDataUrl = await compressImageFile(file, 1200, 1200, 0.72);
+        const photoId = `photo-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        const imageBlob = await (await fetch(compressedDataUrl)).blob();
+        const storagePath = `${momento.toLowerCase()}/${photoId}.jpg`;
+        const { error: uploadError } = await supabase.storage.from('rocam-avarias').upload(storagePath, imageBlob, {
+          contentType: 'image/jpeg', upsert: false, cacheControl: '3600',
+        });
+        if (uploadError) throw uploadError;
         newPhotos.push({
-          id: `photo-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-          dataUrl: compressedDataUrl,
+          id: photoId,
+          storagePath,
           legenda: '',
           momento,
           dataHora: new Date().toISOString(),
@@ -213,7 +235,7 @@ export const DamagePhotoManager: React.FC<DamagePhotoManagerProps> = ({
               {/* Thumbnail Container */}
               <div className="relative aspect-video bg-zinc-900 overflow-hidden">
                 <img
-                  src={photo.dataUrl}
+                  src={photo.dataUrl || signedUrls[photo.id] || ''}
                   alt={photo.legenda || `Foto de avaria ${index + 1}`}
                   className="w-full h-full object-cover cursor-pointer transition group-hover:scale-105 duration-200"
                   onClick={() => setPreviewPhoto(photo)}
@@ -311,7 +333,7 @@ export const DamagePhotoManager: React.FC<DamagePhotoManagerProps> = ({
             {/* High Res Image */}
             <div className="p-3 bg-black flex items-center justify-center max-h-[70vh] overflow-hidden">
               <img
-                src={previewPhoto.dataUrl}
+                src={previewPhoto.dataUrl || signedUrls[previewPhoto.id] || ''}
                 alt={previewPhoto.legenda || 'Avaria da viatura'}
                 className="max-h-[68vh] w-auto max-w-full object-contain rounded-lg shadow-md"
               />
@@ -330,7 +352,7 @@ export const DamagePhotoManager: React.FC<DamagePhotoManagerProps> = ({
 
               <div className="flex items-center space-x-2">
                 <a
-                  href={previewPhoto.dataUrl}
+                  href={previewPhoto.dataUrl || signedUrls[previewPhoto.id] || '#'}
                   download={`avaria_rocam_${previewPhoto.id}.jpg`}
                   className="px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition"
                 >
