@@ -44,7 +44,7 @@ export interface Vehicle {
   horimetro?: number;
   status: VehicleStatus;
   pelotao: string; // Ex: 1º Pelotão ROCAM, 2º Pelotão ROCAM, Apoio Tático
-  batalhao: string; // Ex: ROCAM
+  batalhao: string; // Unidade responsável: Batalhão ROCAM Natal ou 3ª CPM ROCAM Mossoró
   motivoBaixa?: string;
   condutorPadrao?: string; // Nome de guerra e RE do PM responsável ou equipe
   dataUltimaAtualizacaoKm: string;
