@@ -7,6 +7,7 @@ export const STANDARD_CHECKLIST_ITEMS: Omit<ChecklistItem, 'id' | 'conforme' | '
   { item: 'Transmissão e Relação (tensão e lubrificação de corrente / cardã)', categoria: 'MECANICA' },
   { item: 'Sistema de Iluminação Padrão do Veículo', categoria: 'ELETRICA' },
   { item: 'Giroflex / Strobo de Emergência Operante e Sirene', categoria: 'ELETRICA' },
+  { item: 'Verificar retrovisores, manetes e carenagens', categoria: 'MECANICA' },
 ];
 
 export function generateDefaultChecklist(): ChecklistItem[] {
