@@ -201,7 +201,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
 
         <button type="button" onClick={() => applyDashboardFilter('BAIXADA')} aria-label="Mostrar viaturas baixadas" className={`text-left w-full bg-zinc-900 border rounded-xl p-3.5 shadow-sm transition hover:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-400 ${dashboardFilter === 'BAIXADA' ? 'border-rose-500 ring-1 ring-rose-500/50' : 'border-rose-900/40'}`}>
           <div className="flex items-center justify-between text-rose-400 text-xs font-semibold uppercase"><span>Baixadas</span><AlertTriangle className="w-4 h-4 text-rose-500" /></div>
-          <div className="mt-2 text-2xl font-black font-mono text-rose-400">{stats.baixadas}</div>
+          <div className="mt-2 text-2xl font-black font-mono text-rose-400">{vehicles.filter((v) => v.status === 'BAIXADA' && !(v.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade')).length}</div>
           <div className="text-[11px] text-rose-400/80 mt-0.5">Aguardando reparo</div>
           <div className="text-[10px] text-rose-400 mt-1">Toque para ver a relação</div>
         </button>
