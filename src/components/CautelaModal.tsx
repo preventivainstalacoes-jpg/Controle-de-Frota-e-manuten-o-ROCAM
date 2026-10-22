@@ -46,7 +46,6 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
   const [condutorGraduacao, setCondutorGraduacao] = useState<string>('CB PM');
   const [condutorNome, setCondutorNome] = useState<string>('');
   const [condutorRE, setCondutorRE] = useState<string>('');
-  const [encarregadoVtr, setEncarregadoVtr] = useState<string>('');
   const [observacoesSaida, setObservacoesSaida] = useState<string>('');
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [fotosAvariasSaida, setFotosAvariasSaida] = useState<DamagePhoto[]>([]);
@@ -238,7 +237,6 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
       condutorGraduacao,
       condutorNome: condutorNome.trim().toUpperCase(),
       condutorRE: condutorRE.trim().toUpperCase(),
-      encarregadoVtr: encarregadoVtr.trim() || undefined,
       observacoesSaida: observacoesSaida.trim() || undefined,
       checklistSaida: checklist,
       fotosAvariasSaida: fotosAvariasSaida.length > 0 ? fotosAvariasSaida : undefined,
@@ -497,18 +495,6 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
               </div>
             </div>
 
-            <div>
-              <label className="block text-[11px] font-medium text-zinc-400 mb-1">
-                Encarregado / Comandante da Equipe (Opcional)
-              </label>
-              <input
-                type="text"
-                value={encarregadoVtr}
-                onChange={(e) => setEncarregadoVtr(e.target.value)}
-                placeholder="Ex: 1º SGT PM Prado (RE 122.901-4) ou Equipe ROCAM Alpha"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-xs text-zinc-100 focus:outline-none focus:border-amber-500"
-              />
-            </div>
           </div>
 
           {/* Checklist de Cautela (Saída) */}
