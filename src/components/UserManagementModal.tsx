@@ -976,7 +976,6 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                               <option value="ADMIN" className="bg-zinc-900 text-amber-400">Administrador</option>
                               <option value="ADJUNTO" className="bg-zinc-900 text-sky-300">Adjunto</option>
                               <option value="MECANICO" className="bg-zinc-900 text-orange-300">Mecânico</option>
-                              <option value="MECANICO" className="bg-zinc-900 text-orange-300">Mecânico</option>
                             </select>
                           </div>
 
