@@ -6,7 +6,7 @@ export const STANDARD_CHECKLIST_ITEMS: Omit<ChecklistItem, 'id' | 'conforme' | '
   { item: 'Nível de Óleo do Motor e Arrefecimento (ausência de vazamentos)', categoria: 'MECANICA' },
   { item: 'Transmissão e Relação (tensão e lubrificação de corrente / cardã)', categoria: 'MECANICA' },
   { item: 'Farol Dianteiro (luz alta e baixa) e Lanterna Traseira', categoria: 'ELETRICA' },
-  { item: 'Giroflex / Strobo de Emergência Operante', categoria: 'ELETRICA' },
+  { item: 'Giroflex / Strobo de Emergência Operante e Sirene', categoria: 'ELETRICA' },
 ];
 
 export function generateDefaultChecklist(): ChecklistItem[] {
