@@ -62,6 +62,15 @@ export const VehicleList: React.FC<VehicleListProps> = ({
   const isMechanic = currentUser?.role === 'MECANICO';
   const canSendToDischarge = isAdmin || isMechanic;
 
+  type DashboardFilter = 'TODOS' | 'MOTOCICLETA' | 'QUATRO_RODAS' | 'BAIXADA' | 'DESCARGA' | 'EM_MANUTENCAO' | 'CAUTELADAS';
+  const [dashboardFilter, setDashboardFilter] = useState<DashboardFilter>('TODOS');
+  const applyDashboardFilter = (filter: DashboardFilter) => {
+    setDashboardFilter(filter);
+    setSearchQuery('');
+    setTypeFilter('TODAS');
+    setStatusFilter('TODOS');
+  };
+
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [vehicleToDischargeId, setVehicleToDischargeId] = useState('');
   const [vehicleToDelete, setVehicleToDelete] = useState<Vehicle | null>(null);
@@ -83,11 +92,20 @@ export const VehicleList: React.FC<VehicleListProps> = ({
 
     const matchType = typeFilter === 'TODAS' || v.tipo === typeFilter;
     const matchStatus = statusFilter === 'TODOS' || v.status === statusFilter;
-    // Veículos formalmente selecionados para descarga ficam ocultos aos operadores.
     const isForDischarge = (v.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade');
+    const activeCautelaVehicleIds = new Set(cautelas.filter((c) => c.status === 'EM_PATRULHAMENTO').map((c) => c.viaturaId));
+    const matchDashboardFilter =
+      dashboardFilter === 'TODOS' ||
+      (dashboardFilter === 'MOTOCICLETA' && v.tipo === 'MOTOCICLETA') ||
+      (dashboardFilter === 'QUATRO_RODAS' && v.tipo === 'QUATRO_RODAS') ||
+      (dashboardFilter === 'BAIXADA' && v.status === 'BAIXADA' && !isForDischarge) ||
+      (dashboardFilter === 'DESCARGA' && isForDischarge) ||
+      (dashboardFilter === 'EM_MANUTENCAO' && (v.status === 'EM_MANUTENCAO' || v.status === 'MANUTENCAO_EXTERNA')) ||
+      (dashboardFilter === 'CAUTELADAS' && activeCautelaVehicleIds.has(v.id));
+    // Viaturas formalmente selecionadas para descarga continuam ocultas aos operadores.
     const visibleToProfile = (isAdmin || isMechanic) || !isForDischarge;
 
-    return matchQuery && matchType && matchStatus && visibleToProfile;
+    return matchQuery && matchType && matchStatus && matchDashboardFilter && visibleToProfile;
   });
 
   const handleConfirmDelete = () => {
@@ -142,76 +160,58 @@ export const VehicleList: React.FC<VehicleListProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* KPI Cards Strip */}
+      {/* KPI Cards Strip — cards clicáveis para filtrar a frota */}
       <div className={`grid grid-cols-2 sm:grid-cols-3 ${isAdmin ? 'lg:grid-cols-7' : 'lg:grid-cols-6'} gap-3`}>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5 shadow-sm">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold uppercase">
-            <span>Frota Total</span>
-            <Shield className="w-4 h-4 text-zinc-500" />
-          </div>
+        <button type="button" onClick={() => applyDashboardFilter('TODOS')} aria-label="Mostrar frota completa" className={`text-left w-full bg-zinc-900 border rounded-xl p-3.5 shadow-sm transition hover:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-400 ${dashboardFilter === 'TODOS' ? 'border-amber-500 ring-1 ring-amber-500/50' : 'border-zinc-800'}`}>
+          <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold uppercase"><span>Frota Total</span><Shield className="w-4 h-4 text-zinc-500" /></div>
           <div className="mt-2 text-2xl font-black font-mono text-zinc-100">{stats.total}</div>
-          <div className="text-[11px] text-zinc-500 mt-0.5">
-            {stats.motos} Motos • {stats.quatroRodas} 04 Rodas
-          </div>
-        </div>
+          <div className="text-[11px] text-zinc-500 mt-0.5">{stats.motos} Motos • {stats.quatroRodas} 04 Rodas</div>
+          <div className="text-[10px] text-amber-400 mt-1">Toque para ver todas</div>
+        </button>
 
         {canSendToDischarge && (
-          <div className="bg-orange-950/30 border border-orange-800/60 rounded-xl p-3.5 shadow-sm">
-            <div className="flex items-center justify-between text-orange-300 text-xs font-semibold uppercase gap-2">
-              <span>Para descarga</span>
-              <AlertTriangle className="w-4 h-4 text-orange-400 shrink-0" />
-            </div>
+          <button type="button" onClick={() => applyDashboardFilter('DESCARGA')} aria-label="Mostrar viaturas destinadas à descarga" className={`text-left w-full bg-orange-950/30 border rounded-xl p-3.5 shadow-sm transition hover:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400 ${dashboardFilter === 'DESCARGA' ? 'border-orange-400 ring-1 ring-orange-400/50' : 'border-orange-800/60'}`}>
+            <div className="flex items-center justify-between text-orange-300 text-xs font-semibold uppercase gap-2"><span>Para descarga</span><AlertTriangle className="w-4 h-4 text-orange-400 shrink-0" /></div>
             <div className="mt-2 text-2xl font-black font-mono text-orange-300">{vehiclesForDischarge.length}</div>
-            <div className="text-[11px] text-orange-200/70 mt-0.5">
-              {motorcyclesForDischarge.length} motos • {fourWheelVehiclesForDischarge.length} 04 rodas
-            </div>
-          </div>
+            <div className="text-[11px] text-orange-200/70 mt-0.5">{motorcyclesForDischarge.length} motos • {fourWheelVehiclesForDischarge.length} 04 rodas</div>
+            <div className="text-[10px] text-orange-300 mt-1">Toque para ver a relação</div>
+          </button>
         )}
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5 shadow-sm">
-          <div className="flex items-center justify-between text-amber-400 text-xs font-semibold uppercase">
-            <span>Motocicletas</span>
-            <Bike className="w-4 h-4 text-amber-500" />
-          </div>
+        <button type="button" onClick={() => applyDashboardFilter('MOTOCICLETA')} aria-label="Mostrar somente motocicletas" className={`text-left w-full bg-zinc-900 border rounded-xl p-3.5 shadow-sm transition hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 ${dashboardFilter === 'MOTOCICLETA' ? 'border-amber-500 ring-1 ring-amber-500/50' : 'border-zinc-800'}`}>
+          <div className="flex items-center justify-between text-amber-400 text-xs font-semibold uppercase"><span>Motocicletas</span><Bike className="w-4 h-4 text-amber-500" /></div>
           <div className="mt-2 text-2xl font-black font-mono text-amber-400">{stats.motos}</div>
           <div className="text-[11px] text-zinc-400 mt-0.5">Especialidade ROCAM</div>
-        </div>
+          <div className="text-[10px] text-amber-400 mt-1">Toque para filtrar</div>
+        </button>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5 shadow-sm">
-          <div className="flex items-center justify-between text-blue-400 text-xs font-semibold uppercase">
-            <span>04 Rodas</span>
-            <Car className="w-4 h-4 text-blue-400" />
-          </div>
+        <button type="button" onClick={() => applyDashboardFilter('QUATRO_RODAS')} aria-label="Mostrar somente viaturas de quatro rodas" className={`text-left w-full bg-zinc-900 border rounded-xl p-3.5 shadow-sm transition hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 ${dashboardFilter === 'QUATRO_RODAS' ? 'border-blue-500 ring-1 ring-blue-500/50' : 'border-zinc-800'}`}>
+          <div className="flex items-center justify-between text-blue-400 text-xs font-semibold uppercase"><span>04 Rodas</span><Car className="w-4 h-4 text-blue-400" /></div>
           <div className="mt-2 text-2xl font-black font-mono text-blue-400">{stats.quatroRodas}</div>
           <div className="text-[11px] text-zinc-400 mt-0.5">Apoio Tático & CFP</div>
-        </div>
+          <div className="text-[10px] text-blue-400 mt-1">Toque para filtrar</div>
+        </button>
 
-        <div className="bg-zinc-900 border border-emerald-900/40 rounded-xl p-3.5 shadow-sm">
-          <div className="flex items-center justify-between text-emerald-400 text-xs font-semibold uppercase">
-            <span>Cauteladas / Em Patrulhamento</span>
-            <Shield className="w-4 h-4 text-emerald-500" />
-          </div>
+        <button type="button" onClick={() => applyDashboardFilter('CAUTELADAS')} aria-label="Mostrar viaturas cauteladas em patrulhamento" className={`text-left w-full bg-zinc-900 border rounded-xl p-3.5 shadow-sm transition hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 ${dashboardFilter === 'CAUTELADAS' ? 'border-emerald-500 ring-1 ring-emerald-500/50' : 'border-emerald-900/40'}`}>
+          <div className="flex items-center justify-between text-emerald-400 text-xs font-semibold uppercase"><span>Cauteladas / Em Patrulhamento</span><Shield className="w-4 h-4 text-emerald-500" /></div>
           <div className="mt-2 text-2xl font-black font-mono text-emerald-400">{cautelas.filter((c) => c.status === 'EM_PATRULHAMENTO').length}</div>
           <div className="text-[11px] text-emerald-500/80 mt-0.5">Saídas registradas e ainda não devolvidas</div>
-        </div>
+          <div className="text-[10px] text-emerald-400 mt-1">Toque para ver as cauteladas</div>
+        </button>
 
-        <div className="bg-zinc-900 border border-rose-900/40 rounded-xl p-3.5 shadow-sm">
-          <div className="flex items-center justify-between text-rose-400 text-xs font-semibold uppercase">
-            <span>Baixadas</span>
-            <AlertTriangle className="w-4 h-4 text-rose-500" />
-          </div>
+        <button type="button" onClick={() => applyDashboardFilter('BAIXADA')} aria-label="Mostrar viaturas baixadas" className={`text-left w-full bg-zinc-900 border rounded-xl p-3.5 shadow-sm transition hover:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-400 ${dashboardFilter === 'BAIXADA' ? 'border-rose-500 ring-1 ring-rose-500/50' : 'border-rose-900/40'}`}>
+          <div className="flex items-center justify-between text-rose-400 text-xs font-semibold uppercase"><span>Baixadas</span><AlertTriangle className="w-4 h-4 text-rose-500" /></div>
           <div className="mt-2 text-2xl font-black font-mono text-rose-400">{stats.baixadas}</div>
           <div className="text-[11px] text-rose-400/80 mt-0.5">Aguardando reparo</div>
-        </div>
+          <div className="text-[10px] text-rose-400 mt-1">Toque para ver a relação</div>
+        </button>
 
-        <div className="bg-zinc-900 border border-amber-900/40 rounded-xl p-3.5 shadow-sm">
-          <div className="flex items-center justify-between text-amber-300 text-xs font-semibold uppercase">
-            <span>Em Manutenção</span>
-            <Wrench className="w-4 h-4 text-amber-400" />
-          </div>
+        <button type="button" onClick={() => applyDashboardFilter('EM_MANUTENCAO')} aria-label="Mostrar viaturas em manutenção" className={`text-left w-full bg-zinc-900 border rounded-xl p-3.5 shadow-sm transition hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 ${dashboardFilter === 'EM_MANUTENCAO' ? 'border-amber-500 ring-1 ring-amber-500/50' : 'border-amber-900/40'}`}>
+          <div className="flex items-center justify-between text-amber-300 text-xs font-semibold uppercase"><span>Em Manutenção</span><Wrench className="w-4 h-4 text-amber-400" /></div>
           <div className="mt-2 text-2xl font-black font-mono text-amber-300">{stats.emManutencao}</div>
           <div className="text-[11px] text-zinc-400 mt-0.5">Na oficina / garagem</div>
-        </div>
+          <div className="text-[10px] text-amber-300 mt-1">Toque para ver a relação</div>
+        </button>
       </div>
 
       {/* Indicadores de veículos selecionados para descarga — todos os tipos */}
