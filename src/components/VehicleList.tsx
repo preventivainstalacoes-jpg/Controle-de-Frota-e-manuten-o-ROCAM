@@ -141,7 +141,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
   return (
     <div className="space-y-6">
       {/* KPI Cards Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className={`grid grid-cols-2 sm:grid-cols-3 ${isAdmin ? 'lg:grid-cols-7' : 'lg:grid-cols-6'} gap-3`}>
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5 shadow-sm">
           <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold uppercase">
             <span>Frota Total</span>
@@ -152,6 +152,19 @@ export const VehicleList: React.FC<VehicleListProps> = ({
             {stats.motos} Motos • {stats.quatroRodas} 04 Rodas
           </div>
         </div>
+
+        {isAdmin && (
+          <div className="bg-orange-950/30 border border-orange-800/60 rounded-xl p-3.5 shadow-sm">
+            <div className="flex items-center justify-between text-orange-300 text-xs font-semibold uppercase gap-2">
+              <span>Para descarga</span>
+              <AlertTriangle className="w-4 h-4 text-orange-400 shrink-0" />
+            </div>
+            <div className="mt-2 text-2xl font-black font-mono text-orange-300">{vehiclesForDischarge.length}</div>
+            <div className="text-[11px] text-orange-200/70 mt-0.5">
+              {motorcyclesForDischarge.length} motos • {fourWheelVehiclesForDischarge.length} 04 rodas
+            </div>
+          </div>
+        )}
 
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5 shadow-sm">
           <div className="flex items-center justify-between text-amber-400 text-xs font-semibold uppercase">
