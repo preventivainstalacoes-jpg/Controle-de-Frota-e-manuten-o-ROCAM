@@ -11,7 +11,6 @@ import {
   AlertTriangle,
   Bike,
   Car,
-  Fuel,
   Gauge,
   Shield,
   Clock,
@@ -277,23 +276,7 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-zinc-300 mb-1.5 flex items-center gap-1.5">
-                <Fuel className="w-3.5 h-3.5 text-blue-400" />
-                Nível de Combustível no Retorno *
-              </label>
-              <select
-                value={combustivelRetorno}
-                onChange={(e) => setCombustivelRetorno(e.target.value as any)}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
-              >
-                <option value="CHEIO">Tanque Cheio (100%)</option>
-                <option value="3/4">3/4 Tanque</option>
-                <option value="1/2">1/2 Tanque (Meio)</option>
-                <option value="1/4">1/4 Tanque</option>
-                <option value="RESERVA">Na Reserva</option>
-              </select>
-            </div>
+            
 
             <div>
               <label className="block text-xs font-semibold text-zinc-300 mb-1.5 flex items-center gap-1.5">
