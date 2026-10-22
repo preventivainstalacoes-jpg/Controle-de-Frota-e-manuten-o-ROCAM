@@ -26,7 +26,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
   const [kmAtual, setKmAtual] = useState<number>(0);
   const [status, setStatus] = useState<VehicleStatus>('OPERACIONAL');
   const [pelotao, setPelotao] = useState('1º Pelotão ROCAM - Alpha');
-  const [batalhao, setBatalhao] = useState('ROCAM');
+  const [batalhao, setBatalhao] = useState('Batalhão ROCAM Natal');
   const [condutorPadrao, setCondutorPadrao] = useState('');
   const [motivoBaixa, setMotivoBaixa] = useState('');
   const [observacoes, setObservacoes] = useState('');
@@ -59,7 +59,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       setKmAtual(0);
       setStatus('OPERACIONAL');
       setPelotao('1º Pelotão ROCAM - Alpha');
-      setBatalhao('ROCAM');
+      setBatalhao('Batalhão ROCAM Natal');
       setCondutorPadrao('');
       setMotivoBaixa('');
       setObservacoes('');
@@ -305,7 +305,17 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Pelotão */}
+            {/* Unidade responsável pela viatura */}
+          <div>
+            <label className="block text-xs font-medium text-zinc-300 mb-1">Unidade responsável pela viatura</label>
+            <select value={batalhao} onChange={(e) => setBatalhao(e.target.value)} className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500">
+              <option value="Batalhão ROCAM Natal">Batalhão ROCAM Natal</option>
+              <option value="3ª CPM ROCAM Mossoró">3ª CPM ROCAM Mossoró</option>
+            </select>
+            <p className="text-[11px] text-zinc-500 mt-1">A viatura e seu histórico operacional ficarão vinculados somente a esta unidade.</p>
+          </div>
+
+          {/* Pelotão */}
             <div>
               <label className="block text-xs font-medium text-zinc-300 mb-1">
                 Pelotão / Fração
