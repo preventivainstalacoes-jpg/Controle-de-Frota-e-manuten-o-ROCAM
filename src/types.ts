@@ -155,7 +155,8 @@ export type CautelaStatus = 'EM_PATRULHAMENTO' | 'CONCLUIDA';
 
 export interface DamagePhoto {
   id: string;
-  dataUrl: string; // Base64 data URL compactado da foto
+  dataUrl?: string; // Compatibilidade com fotos antigas armazenadas no banco
+  storagePath?: string; // Caminho privado da foto no Supabase Storage
   legenda?: string; // Descrição da avaria observada (ex: "Arranhão profundo no para-lama dianteiro")
   momento: 'SAIDA' | 'RETORNO'; // Registrado na saída ou no retorno
   dataHora: string; // YYYY-MM-DDTHH:mm:ss
