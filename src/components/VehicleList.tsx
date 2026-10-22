@@ -64,11 +64,31 @@ export const VehicleList: React.FC<VehicleListProps> = ({
 
   type DashboardFilter = 'TODOS' | 'MOTOCICLETA' | 'QUATRO_RODAS' | 'BAIXADA' | 'DESCARGA' | 'EM_MANUTENCAO' | 'CAUTELADAS';
   const [dashboardFilter, setDashboardFilter] = useState<DashboardFilter>('TODOS');
+  const dashboardFilterLabels: Record<DashboardFilter, string> = {
+    TODOS: 'Frota Total',
+    MOTOCICLETA: 'Motocicletas',
+    QUATRO_RODAS: 'Viaturas de 04 Rodas',
+    BAIXADA: 'Viaturas Baixadas (exceto as destinadas à descarga)',
+    DESCARGA: 'Viaturas Destinadas à Descarga',
+    EM_MANUTENCAO: 'Viaturas em Manutenção',
+    CAUTELADAS: 'Viaturas Cauteladas / em Patrulhamento',
+  };
+
   const applyDashboardFilter = (filter: DashboardFilter) => {
+    // O cartão selecionado é o filtro principal; limpar todos os filtros
+    // anteriores evita que uma busca/tipo/status antigo esconda viaturas.
     setDashboardFilter(filter);
     setSearchQuery('');
     setTypeFilter('TODAS');
     setStatusFilter('TODOS');
+
+    // Levar o usuário diretamente à área da relação de viaturas.
+    window.setTimeout(() => {
+      document.getElementById('lista-viaturas')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }, 0);
   };
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
@@ -286,8 +306,22 @@ export const VehicleList: React.FC<VehicleListProps> = ({
         </section>
       )}
 
+      {/* Relação filtrada: o cartão leva diretamente à lista correspondente */}
+      <section className="rounded-xl border border-amber-500/40 bg-amber-950/20 px-4 py-3 flex flex-wrap items-center justify-between gap-3" aria-live="polite">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400">Relação de viaturas</div>
+          <h2 className="text-sm font-bold text-zinc-100">{dashboardFilterLabels[dashboardFilter]}</h2>
+          <p className="text-xs text-zinc-400 mt-0.5">{filteredVehicles.length} viatura(s) encontrada(s). Use o filtro de tipo para ver somente motocicletas ou somente 04 rodas.</p>
+        </div>
+        {dashboardFilter !== 'TODOS' && (
+          <button type="button" onClick={() => applyDashboardFilter('TODOS')} className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-semibold text-zinc-200 hover:border-amber-400">
+            Mostrar frota total
+          </button>
+        )}
+      </section>
+
       {/* Filter and Control Bar */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 shadow-sm space-y-3">
+      <div id="lista-viaturas" className="scroll-mt-28 bg-zinc-900 border border-zinc-800 rounded-xl p-4 shadow-sm space-y-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           {/* Search Box */}
           <div className="relative flex-1">
