@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useFleet } from '../context/FleetContext';
 import { useAuth } from '../context/AuthContext';
-import { useTeam } from '../context/TeamContext';
 import { UserManagementModal } from './UserManagementModal';
 import { UserProfileModal } from './UserProfileModal';
 import {
@@ -63,7 +62,6 @@ export const Header: React.FC<HeaderProps> = ({
   } = useFleet();
 
   const { currentUser, isAdmin, isOperator, logout, users, pendingApprovalsCount } = useAuth();
-  const { unreadNoticesCount, isOnlineSync } = useTeam();
 
   const [showConfigMenu, setShowConfigMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -100,14 +98,6 @@ export const Header: React.FC<HeaderProps> = ({
       icon: Bike,
       badge: `${stats.total}`,
       badgeColor: 'bg-zinc-800 text-zinc-300',
-      allowedRoles: ['ADMIN', 'OPERADOR'],
-    },
-    {
-      id: 'equipe',
-      label: 'Equipe & Comunicação',
-      icon: Users,
-      badge: unreadNoticesCount > 0 ? `${unreadNoticesCount} Novo${unreadNoticesCount > 1 ? 's' : ''}` : undefined,
-      badgeColor: 'bg-amber-500 text-zinc-950 font-bold',
       allowedRoles: ['ADMIN', 'OPERADOR'],
     },
     {
@@ -211,26 +201,6 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}
               />
             </div>
-
-            {/* Indicador de Equipe Sincronizada */}
-            <button
-              onClick={() => setActiveTab('equipe')}
-              className="hidden md:flex items-center space-x-2 px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 transition cursor-pointer"
-              title="Rede de Trabalho em Equipe ROCAM. Clique para acessar o Mural e Mensagens."
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <div className="text-left">
-                <div className="text-[9px] font-mono text-zinc-400 font-bold uppercase tracking-wider">Rede ROCAM</div>
-                <div className="text-[11px] text-emerald-400 font-bold leading-none flex items-center gap-1">
-                  <span>Equipe Online</span>
-                  {unreadNoticesCount > 0 && (
-                    <span className="px-1 py-0.2 rounded-full text-[9px] font-extrabold bg-amber-500 text-zinc-950">
-                      {unreadNoticesCount}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </button>
 
             {/* Nova Cautela Button - Em destaque para ambos, especialmente o Operador */}
             {onOpenNewCautela && (
