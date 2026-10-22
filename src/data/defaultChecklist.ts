@@ -5,7 +5,7 @@ export const STANDARD_CHECKLIST_ITEMS: Omit<ChecklistItem, 'id' | 'conforme' | '
   { item: 'Sistema de Freios (pastilhas, disco, nível de fluido e manete/pedal)', categoria: 'MECANICA' },
   { item: 'Nível de Óleo do Motor e Arrefecimento (ausência de vazamentos)', categoria: 'MECANICA' },
   { item: 'Transmissão e Relação (tensão e lubrificação de corrente / cardã)', categoria: 'MECANICA' },
-  { item: 'Sistema de Iluminação Padrão do Veículo', categoria: 'ELETRICA' },
+  { item: 'Sistema de Iluminação Padrão da Motocicleta', categoria: 'ELETRICA' },
   { item: 'Giroflex / Strobo de Emergência Operante e Sirene', categoria: 'ELETRICA' },
 ];
 
