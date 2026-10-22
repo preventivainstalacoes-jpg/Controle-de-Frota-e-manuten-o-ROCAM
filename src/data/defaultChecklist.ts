@@ -8,12 +8,6 @@ export const STANDARD_CHECKLIST_ITEMS: Omit<ChecklistItem, 'id' | 'conforme' | '
   { item: 'Farol Dianteiro (luz alta e baixa) e Lanterna Traseira', categoria: 'ELETRICA' },
   { item: 'Luzes de Freio e Luzes Indicadoras de Direção (Setas)', categoria: 'ELETRICA' },
   { item: 'Giroflex / Strobo de Emergência Operante', categoria: 'ELETRICA' },
-  { item: 'Sirene Bitonal / Eletrônica e Buzina', categoria: 'ELETRICA' },
-  { item: 'Carenagens, Lataria, Pintura e Grafismo (sem novas avarias)', categoria: 'ESTRUTURA' },
-  { item: 'Retrovisores, Manetes, Pedaleiras e Guidão Alinhados', categoria: 'ESTRUTURA' },
-  { item: 'Equipamentos (suporte de armamento, baús laterais)', categoria: 'ESTRUTURA' },
-  { item: 'Documento da Viatura (CRLV) e Kit de Ferramentas / Estepe', categoria: 'DOCUMENTOS' },
-  { item: 'Limpeza e Higienização Geral da Viatura', categoria: 'ESTRUTURA' },
 ];
 
 export function generateDefaultChecklist(): ChecklistItem[] {
