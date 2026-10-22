@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useFleet } from '../context/FleetContext';
 import { useAuth } from '../context/AuthContext';
 import { UserManagementModal } from './UserManagementModal';
@@ -72,6 +72,12 @@ export const Header: React.FC<HeaderProps> = ({
   const [userModalInitialTab, setUserModalInitialTab] = useState<'list' | 'pending' | 'create'>('list');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setActiveUnit(currentUser?.pelotao?.toLowerCase().includes('mossor') ? '3_cpm_rocam_mossoro' : 'batalhao_rocam_natal');
+    }
+  }, [isAdmin, currentUser?.pelotao, setActiveUnit]);
 
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
