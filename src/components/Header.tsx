@@ -98,7 +98,7 @@ export const Header: React.FC<HeaderProps> = ({
       icon: Bike,
       badge: `${stats.total}`,
       badgeColor: 'bg-zinc-800 text-zinc-300',
-      allowedRoles: ['ADMIN', 'OPERADOR'],
+      allowedRoles: ['ADMIN', 'OPERADOR', 'ADJUNTO'],
     },
     {
       id: 'cautelas',
@@ -106,14 +106,14 @@ export const Header: React.FC<HeaderProps> = ({
       icon: ClipboardCheck,
       badge: activeCautelasCount > 0 ? `${activeCautelasCount} em serviço` : undefined,
       badgeColor: 'bg-emerald-500 text-zinc-950 font-bold',
-      allowedRoles: ['ADMIN', 'OPERADOR'],
+      allowedRoles: ['ADMIN', 'OPERADOR', 'ADJUNTO'],
     },
     {
       id: 'manutencao',
       label: 'Manutenções',
       icon: Wrench,
       badge: undefined,
-      allowedRoles: ['ADMIN'], // Restrito a Admin
+      allowedRoles: ['ADMIN', 'ADJUNTO'], // Adjunto consulta; Admin administra
     },
     {
       id: 'alertas',
@@ -129,7 +129,7 @@ export const Header: React.FC<HeaderProps> = ({
         criticalAlertCount > 0
           ? 'bg-rose-500 text-white animate-pulse'
           : 'bg-amber-500 text-black font-semibold',
-      allowedRoles: ['ADMIN', 'OPERADOR'],
+      allowedRoles: ['ADMIN', 'OPERADOR', 'ADJUNTO'],
     },
     {
       id: 'relatorio-diario',
@@ -137,14 +137,14 @@ export const Header: React.FC<HeaderProps> = ({
       icon: FileText,
       badge: stats.baixadas > 0 ? `${stats.baixadas} Baixada${stats.baixadas > 1 ? 's' : ''}` : undefined,
       badgeColor: 'bg-rose-900/80 text-rose-200 border border-rose-700/60',
-      allowedRoles: ['ADMIN', 'OPERADOR'],
+      allowedRoles: ['ADMIN', 'OPERADOR', 'ADJUNTO'],
     },
     {
       id: 'relatorio-mensal',
       label: 'Relatório Mensal',
       icon: Calendar,
       badge: undefined,
-      allowedRoles: ['ADMIN'], // Restrito a Admin
+      allowedRoles: ['ADMIN', 'ADJUNTO'], // Adjunto consulta; Admin administra
     },
   ];
 
@@ -160,7 +160,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div>
               <div className="flex items-center space-x-2">
                 <span className="text-zinc-400 text-xs font-mono hidden sm:inline">
-                  {isOperator ? 'Módulo Operador • Cautelas & Avarias' : 'Comando & Logística ROCAM'}
+                  {isOperator ? 'Módulo Operador • Cautelas & Avarias' : currentUser?.role === 'ADJUNTO' ? 'Módulo Adjunto • Frota & Operações' : 'Comando & Logística ROCAM'}
                 </span>
                 <span className="hidden md:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-zinc-900 text-amber-400 border border-zinc-800">
                   rocammecanizacao.com.br
@@ -399,7 +399,7 @@ export const Header: React.FC<HeaderProps> = ({
                         isAdmin ? 'text-amber-400' : 'text-emerald-400'
                       }`}
                     >
-                      {isAdmin ? 'ADMIN' : 'OPERADOR'}
+                      {isAdmin ? 'ADMIN' : currentUser?.role === 'ADJUNTO' ? 'ADJUNTO' : 'OPERADOR'}
                     </span>
                     <span>•</span>
                     <span>{currentUser?.re || ''}</span>
@@ -440,7 +440,7 @@ export const Header: React.FC<HeaderProps> = ({
                             : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                         }`}
                       >
-                        {isAdmin ? '👑 ADMIN (Total)' : '🛡️ OPERADOR (Limitado)'}
+                        {isAdmin ? '👑 ADMIN (Total)' : currentUser?.role === 'ADJUNTO' ? '🛡️ ADJUNTO (Operacional)' : '🛡️ OPERADOR (Limitado)'}
                       </span>
                     </div>
                   </div>
