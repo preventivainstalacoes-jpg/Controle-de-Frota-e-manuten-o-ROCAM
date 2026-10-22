@@ -376,7 +376,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           // If status completed and was in execution, check if we should return vehicle to OPERACIONAL
           if (updates.status === 'CONCLUIDA' && r.status !== 'CONCLUIDA') {
             const v = vehicles.find((veh) => veh.id === r.viaturaId);
-            if (v && (v.status === 'EM_MANUTENCAO' || v.status === 'MANUTENCAO_EXTERNA')) {
+            if (v && (v.status === 'EM_MANUTENCAO' || v.status === 'MANUTENCAO_EXTERNA') && !(v.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade')) {
               updateVehicle(v.id, { status: 'OPERACIONAL', motivoBaixa: undefined });
             }
           }
