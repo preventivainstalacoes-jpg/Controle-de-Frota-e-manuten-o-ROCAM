@@ -62,7 +62,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
   const isMechanic = currentUser?.role === 'MECANICO';
   const canSendToDischarge = isAdmin || isMechanic;
 
-  type DashboardFilter = 'TODOS' | 'MOTOCICLETA' | 'QUATRO_RODAS' | 'BAIXADA' | 'DESCARGA' | 'EM_MANUTENCAO' | 'CAUTELADAS';
+  type DashboardFilter = 'TODOS' | 'MOTOCICLETA' | 'QUATRO_RODAS' | 'BAIXADA' | 'DESCARGA' | 'EM_MANUTENCAO' | 'MANUTENCAO_EXTERNA' | 'CAUTELADAS';
   const [dashboardFilter, setDashboardFilter] = useState<DashboardFilter>('TODOS');
   const dashboardFilterLabels: Record<DashboardFilter, string> = {
     TODOS: 'Frota Total',
@@ -70,7 +70,8 @@ export const VehicleList: React.FC<VehicleListProps> = ({
     QUATRO_RODAS: 'Viaturas de 04 Rodas',
     BAIXADA: 'Viaturas Baixadas (exceto as destinadas à descarga)',
     DESCARGA: 'Viaturas Destinadas à Descarga',
-    EM_MANUTENCAO: 'Viaturas em Manutenção',
+    EM_MANUTENCAO: 'Viaturas em Manutenção Interna',
+    MANUTENCAO_EXTERNA: 'Viaturas em Manutenção Externa',
     CAUTELADAS: 'Viaturas Cauteladas / em Patrulhamento',
   };
 
@@ -120,7 +121,8 @@ export const VehicleList: React.FC<VehicleListProps> = ({
       (dashboardFilter === 'QUATRO_RODAS' && v.tipo === 'QUATRO_RODAS') ||
       (dashboardFilter === 'BAIXADA' && v.status === 'BAIXADA' && !isForDischarge) ||
       (dashboardFilter === 'DESCARGA' && isForDischarge) ||
-      (dashboardFilter === 'EM_MANUTENCAO' && (v.status === 'EM_MANUTENCAO' || v.status === 'MANUTENCAO_EXTERNA')) ||
+      (dashboardFilter === 'EM_MANUTENCAO' && v.status === 'EM_MANUTENCAO') ||
+      (dashboardFilter === 'MANUTENCAO_EXTERNA' && v.status === 'MANUTENCAO_EXTERNA') ||
       (dashboardFilter === 'CAUTELADAS' && activeCautelaVehicleIds.has(v.id));
     // Viaturas formalmente selecionadas para descarga continuam ocultas aos operadores.
     const visibleToProfile = (isAdmin || isMechanic) || !isForDischarge;
@@ -163,10 +165,10 @@ export const VehicleList: React.FC<VehicleListProps> = ({
     e.preventDefault();
     if (!statusModal) return;
 
-    if (statusModal.targetStatus === 'BAIXADA' || statusModal.targetStatus === 'EM_MANUTENCAO') {
+    if (statusModal.targetStatus === 'BAIXADA' || statusModal.targetStatus === 'EM_MANUTENCAO' || statusModal.targetStatus === 'MANUTENCAO_EXTERNA') {
       updateVehicle(statusModal.vehicle.id, {
         status: statusModal.targetStatus,
-        motivoBaixa: statusModal.reason.trim() || (statusModal.targetStatus === 'BAIXADA' ? 'Constatada falha operacional / avaria.' : 'Encaminhada para oficina / manutenção.'),
+        motivoBaixa: statusModal.reason.trim() || (statusModal.targetStatus === 'BAIXADA' ? 'Constatada falha operacional / avaria.' : statusModal.targetStatus === 'MANUTENCAO_EXTERNA' ? 'Oficina externa não informada — manutenção em andamento.' : 'Encaminhada para oficina interna / manutenção.'),
       });
     } else {
       updateVehicle(statusModal.vehicle.id, {
@@ -226,11 +228,18 @@ export const VehicleList: React.FC<VehicleListProps> = ({
           <div className="text-[10px] text-rose-400 mt-1">Toque para ver a relação</div>
         </button>
 
-        <button type="button" onClick={() => applyDashboardFilter('EM_MANUTENCAO')} aria-label="Mostrar viaturas em manutenção" className={`text-left w-full bg-zinc-900 border rounded-xl p-3.5 shadow-sm transition hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 ${dashboardFilter === 'EM_MANUTENCAO' ? 'border-amber-500 ring-1 ring-amber-500/50' : 'border-amber-900/40'}`}>
-          <div className="flex items-center justify-between text-amber-300 text-xs font-semibold uppercase"><span>Em Manutenção</span><Wrench className="w-4 h-4 text-amber-400" /></div>
-          <div className="mt-2 text-2xl font-black font-mono text-amber-300">{stats.emManutencao}</div>
-          <div className="text-[11px] text-zinc-400 mt-0.5">Na oficina / garagem</div>
-          <div className="text-[10px] text-amber-300 mt-1">Toque para ver a relação</div>
+        <button type="button" onClick={() => applyDashboardFilter('EM_MANUTENCAO')} aria-label="Mostrar viaturas em manutenção interna" className={`text-left w-full bg-zinc-900 border rounded-xl p-3.5 shadow-sm transition hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 ${dashboardFilter === 'EM_MANUTENCAO' ? 'border-amber-500 ring-1 ring-amber-500/50' : 'border-amber-900/40'}`}>
+          <div className="flex items-center justify-between text-amber-300 text-xs font-semibold uppercase"><span>Manutenção Interna</span><Wrench className="w-4 h-4 text-amber-400" /></div>
+          <div className="mt-2 text-2xl font-black font-mono text-amber-300">{vehicles.filter((v) => v.status === 'EM_MANUTENCAO').length}</div>
+          <div className="text-[11px] text-zinc-400 mt-0.5">Oficina interna da unidade</div>
+          <div className="text-[10px] text-amber-300 mt-1">Toque para ver as viaturas</div>
+        </button>
+
+        <button type="button" onClick={() => applyDashboardFilter('MANUTENCAO_EXTERNA')} aria-label="Mostrar viaturas em manutenção externa" className={`text-left w-full bg-sky-950/30 border rounded-xl p-3.5 shadow-sm transition hover:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400 ${dashboardFilter === 'MANUTENCAO_EXTERNA' ? 'border-sky-500 ring-1 ring-sky-500/50' : 'border-sky-900/40'}`}>
+          <div className="flex items-center justify-between text-sky-300 text-xs font-semibold uppercase"><span>Manutenção Externa</span><Wrench className="w-4 h-4 text-sky-400" /></div>
+          <div className="mt-2 text-2xl font-black font-mono text-sky-300">{vehicles.filter((v) => v.status === 'MANUTENCAO_EXTERNA').length}</div>
+          <div className="text-[11px] text-sky-200/80 mt-0.5">Em oficina externa / concessionária</div>
+          <div className="text-[10px] text-sky-300 mt-1">Toque para ver as viaturas</div>
         </button>
       </div>
 
@@ -670,12 +679,12 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                       </button>
                     </div>
 
-                    {/* Motivo se baixada */}
-                    {vehicle.status === 'BAIXADA' && vehicle.motivoBaixa && (
-                      <div className="p-2.5 bg-rose-950/40 border border-rose-800/60 rounded-lg text-xs text-rose-300 flex items-start space-x-2">
-                        <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                    {/* Motivo da baixa e identificação da oficina */}
+                    {(vehicle.status === 'BAIXADA' || vehicle.status === 'EM_MANUTENCAO' || vehicle.status === 'MANUTENCAO_EXTERNA') && vehicle.motivoBaixa && (
+                      <div className={`p-2.5 border rounded-lg text-xs flex items-start space-x-2 ${vehicle.status === 'MANUTENCAO_EXTERNA' ? 'bg-sky-950/40 border-sky-800/60 text-sky-200' : vehicle.status === 'EM_MANUTENCAO' ? 'bg-amber-950/40 border-amber-800/60 text-amber-200' : 'bg-rose-950/40 border-rose-800/60 text-rose-300'}`}>
+                        <AlertCircle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${vehicle.status === 'MANUTENCAO_EXTERNA' ? 'text-sky-400' : vehicle.status === 'EM_MANUTENCAO' ? 'text-amber-400' : 'text-rose-400'}`} />
                         <div>
-                          <span className="font-bold">Motivo da Baixa:</span> {vehicle.motivoBaixa}
+                          <span className="font-bold">{vehicle.status === 'MANUTENCAO_EXTERNA' ? 'Manutenção externa — oficina / observação:' : vehicle.status === 'EM_MANUTENCAO' ? 'Manutenção interna — observação:' : 'Motivo da Baixa:'}</span> {vehicle.motivoBaixa}
                         </div>
                       </div>
                     )}
@@ -1188,16 +1197,17 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                 >
                   <option value="OPERACIONAL">OPERACIONAL (Pronta para o serviço)</option>
                   <option value="BAIXADA">BAIXADA (Com falha / avaria mecânica / fora de serviço)</option>
-                  <option value="EM_MANUTENCAO">EM MANUTENÇÃO (Em reparo / oficina)</option>
+                  <option value="EM_MANUTENCAO">MANUTENÇÃO INTERNA (Oficina da unidade)</option>
+                  <option value="MANUTENCAO_EXTERNA">MANUTENÇÃO EXTERNA (Oficina particular / concessionária)</option>
                   <option value="RESERVA">RESERVA TÁTICA (Disponível no quartel)</option>
                 </select>
               </div>
 
-              {(statusModal.targetStatus === 'BAIXADA' || statusModal.targetStatus === 'EM_MANUTENCAO') ? (
+              {(statusModal.targetStatus === 'BAIXADA' || statusModal.targetStatus === 'EM_MANUTENCAO' || statusModal.targetStatus === 'MANUTENCAO_EXTERNA') ? (
                 <div>
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
                     <label className="block text-xs font-medium text-zinc-300">
-                      Motivo da Baixa / Falha Operacional
+                      Motivo da Baixa / Falha / Oficina
                     </label>
                     {isAdmin && statusModal.targetStatus === 'BAIXADA' && (
                       <button
@@ -1222,7 +1232,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                     onChange={(e) =>
                       setStatusModal({ ...statusModal, reason: e.target.value })
                     }
-                    placeholder="Informe o defeito ou, para descarga, registre a inservibilidade e a justificativa..."
+                    placeholder={statusModal.targetStatus === 'MANUTENCAO_EXTERNA' ? 'Informe o nome da oficina externa e o defeito. Ex.: Oficina X — reparo do motor.' : statusModal.targetStatus === 'EM_MANUTENCAO' ? 'Informe o defeito e os serviços da manutenção interna.' : 'Informe o defeito ou, para descarga, registre a inservibilidade e a justificativa...'}
                     className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-rose-500"
                   />
                   <p className="text-[11px] text-zinc-500 mt-1">
