@@ -788,6 +788,17 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                         <AlertTriangle className="w-4 h-4" />
                         <span>Enviar para descarga</span>
                       </button>
+                      {vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
+                        <button
+                          type="button"
+                          onClick={() => setStatusModal({ vehicle, targetStatus: 'MANUTENCAO_EXTERNA', reason: '' })}
+                          title={`Encaminhar ${vehicle.prefixo} para oficina externa`}
+                          className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-sky-700/70 bg-sky-950/60 text-sky-200 hover:bg-sky-900/70 text-[11px] font-bold transition cursor-pointer whitespace-nowrap"
+                        >
+                          <Wrench className="w-4 h-4" />
+                          <span>Enviar para oficina externa</span>
+                        </button>
+                      )}
                       {!isMechanic && <button
                         onClick={() => handleOpenStatusModal(vehicle)}
                         title={vehicle.status === 'OPERACIONAL' ? 'Baixar viatura' : 'Liberar como Operacional'}
@@ -800,6 +811,17 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                         {vehicle.status === 'OPERACIONAL' ? 'Baixar' : 'Pronta'}
                       </button>}
 
+                      {vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
+                        <button
+                          type="button"
+                          onClick={() => setStatusModal({ vehicle, targetStatus: 'MANUTENCAO_EXTERNA', reason: '' })}
+                          title={`Encaminhar ${vehicle.prefixo} para oficina externa`}
+                          className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-sky-700/70 bg-sky-950/60 text-sky-200 hover:bg-sky-900/70 text-[11px] font-bold transition cursor-pointer whitespace-nowrap"
+                        >
+                          <Wrench className="w-4 h-4" />
+                          <span>Enviar para oficina externa</span>
+                        </button>
+                      )}
                       {!isMechanic && <button
                         onClick={() => onEditVehicle(vehicle)}
                         title="Editar viatura"
@@ -1207,7 +1229,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                 <div>
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
                     <label className="block text-xs font-medium text-zinc-300">
-                      Motivo da Baixa / Falha / Oficina
+                      Nome da oficina externa / motivo da baixa / serviço
                     </label>
                     {isAdmin && statusModal.targetStatus === 'BAIXADA' && (
                       <button
@@ -1232,7 +1254,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                     onChange={(e) =>
                       setStatusModal({ ...statusModal, reason: e.target.value })
                     }
-                    placeholder={statusModal.targetStatus === 'MANUTENCAO_EXTERNA' ? 'Informe o nome da oficina externa e o defeito. Ex.: Oficina X — reparo do motor.' : statusModal.targetStatus === 'EM_MANUTENCAO' ? 'Informe o defeito e os serviços da manutenção interna.' : 'Informe o defeito ou, para descarga, registre a inservibilidade e a justificativa...'}
+                    placeholder={statusModal.targetStatus === 'MANUTENCAO_EXTERNA' ? 'Informe o NOME DA OFICINA EXTERNA e o serviço/defeito. Ex.: Oficina Central — reparo do motor.' : statusModal.targetStatus === 'EM_MANUTENCAO' ? 'Informe o defeito e os serviços da manutenção interna.' : 'Informe o defeito ou, para descarga, registre a inservibilidade e a justificativa...'}
                     className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-rose-500"
                   />
                   <p className="text-[11px] text-zinc-500 mt-1">
