@@ -183,7 +183,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
   return (
     <div className="space-y-6">
       {/* KPI Cards Strip — cards clicáveis para filtrar a frota */}
-      <div className={`grid grid-cols-2 sm:grid-cols-3 ${isAdmin ? 'lg:grid-cols-7' : 'lg:grid-cols-6'} gap-3`}>
+      <div className={`grid grid-cols-2 sm:grid-cols-3 ${isAdmin ? 'lg:grid-cols-8' : 'lg:grid-cols-7'} gap-3`}>
         <button type="button" onClick={() => applyDashboardFilter('TODOS')} aria-label="Mostrar frota completa" className={`text-left w-full bg-zinc-900 border rounded-xl p-3.5 shadow-sm transition hover:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-400 ${dashboardFilter === 'TODOS' ? 'border-amber-500 ring-1 ring-amber-500/50' : 'border-zinc-800'}`}>
           <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold uppercase"><span>Frota Total</span><Shield className="w-4 h-4 text-zinc-500" /></div>
           <div className="mt-2 text-2xl font-black font-mono text-zinc-100">{stats.total}</div>
