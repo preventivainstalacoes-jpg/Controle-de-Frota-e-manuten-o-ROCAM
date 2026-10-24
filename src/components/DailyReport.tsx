@@ -292,10 +292,20 @@ export const DailyReport: React.FC<DailyReportProps> = ({
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-5">
         <h3 className="text-sm font-bold text-zinc-100 mb-3">Movimentação diária de cautelas e devoluções</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
           <div><div className="text-xs text-zinc-400">Cautelas / saídas</div><div className="text-2xl font-black">{saidasDoDia.length}</div></div>
           <div><div className="text-xs text-zinc-400">Devoluções / retornos</div><div className="text-2xl font-black">{retornosDoDia.length}</div></div>
           <div><div className="text-xs text-zinc-400">Em serviço</div><div className="text-2xl font-black">{cautelasAtivasHoje.length}</div></div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs min-w-[1000px]">
+            <thead className="bg-zinc-950 text-zinc-400 uppercase text-[10px]"><tr><th className="p-2">Policial / RE</th><th className="p-2">Viatura</th><th className="p-2">Cautela (data/hora)</th><th className="p-2">KM saída</th><th className="p-2">Devolução (data/hora)</th><th className="p-2">KM retorno</th><th className="p-2">Área de patrulhamento</th></tr></thead>
+            <tbody className="divide-y divide-zinc-800">
+              {movimentacoesCautelaFiltradas.length === 0 ? <tr><td colSpan={7} className="p-4 text-center text-zinc-500">Nenhuma cautela ou devolução registrada para esta data.</td></tr> : movimentacoesCautelaFiltradas.map((item) => <tr key={item.id} className="text-zinc-200 align-top">
+                <td className="p-2">{item.condutorGraduacao} {item.condutorNome}<div className="text-[10px] text-zinc-400">RE {item.condutorRE}</div></td><td className="p-2"><strong>{item.prefixoViatura}</strong><div className="text-[10px] text-zinc-400">{item.modeloViatura}</div></td><td className="p-2 whitespace-nowrap">{item.dataHoraSaida.replace('T', ' ')}</td><td className="p-2">{formatKm(item.kmSaida)}</td><td className="p-2 whitespace-nowrap">{item.dataHoraRetorno ? item.dataHoraRetorno.replace('T', ' ') : 'Ainda em serviço'}</td><td className="p-2">{item.kmRetorno == null ? '-' : formatKm(item.kmRetorno)}</td><td className="p-2">{item.areaPatrulhamento || 'Área não informada'}</td>
+              </tr>)}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -449,6 +459,14 @@ export const DailyReport: React.FC<DailyReportProps> = ({
                   <tr><td colSpan={2} className="p-2 font-bold bg-zinc-100">MOVIMENTAÇÃO POR ÁREA DE PATRULHAMENTO</td></tr>
                   {resumoPorAreaPatrulhamento.map(([area, total]) => <tr key={area}><td className="p-2 border-r border-zinc-300">{area}</td><td className="p-2">{total}</td></tr>)}
                 </tbody>
+              </table>
+            </div>
+
+            <div className="mb-6">
+              <h4 className="text-xs font-black uppercase border-b border-zinc-800 pb-1 mb-2">DETALHAMENTO DE CAUTELAS E DEVOLUÇÕES</h4>
+              <table className="w-full text-left text-[10px] border border-zinc-400">
+                <thead className="bg-zinc-100 font-bold"><tr><th className="p-1">Policial / RE</th><th className="p-1">Viatura</th><th className="p-1">Cautela (data/hora)</th><th className="p-1">KM saída</th><th className="p-1">Devolução (data/hora)</th><th className="p-1">KM retorno</th><th className="p-1">Área de patrulhamento</th></tr></thead>
+                <tbody>{movimentacoesCautelaFiltradas.length === 0 ? <tr><td colSpan={7} className="p-2">Nenhuma movimentação de cautela ou devolução na data.</td></tr> : movimentacoesCautelaFiltradas.map((item) => <tr key={item.id}><td className="p-1 border-t">{item.condutorGraduacao} {item.condutorNome} (RE {item.condutorRE})</td><td className="p-1 border-t">{item.prefixoViatura}</td><td className="p-1 border-t">{item.dataHoraSaida.replace('T', ' ')}</td><td className="p-1 border-t">{formatKm(item.kmSaida)}</td><td className="p-1 border-t">{item.dataHoraRetorno ? item.dataHoraRetorno.replace('T', ' ') : 'Ainda em serviço'}</td><td className="p-1 border-t">{item.kmRetorno == null ? '-' : formatKm(item.kmRetorno)}</td><td className="p-1 border-t">{item.areaPatrulhamento || 'Área não informada'}</td></tr>)}</tbody>
               </table>
             </div>
 
