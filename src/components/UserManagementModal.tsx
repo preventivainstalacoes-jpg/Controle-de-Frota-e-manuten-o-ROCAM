@@ -1132,7 +1132,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
             </div>
           )}
 
-          {/* TAB: CADASTRAR NOVO USUÁRIO (DIRETO PELO ADMIN) */
+          {/* TAB: CADASTRAR NOVO USUÁRIO (DIRETO PELO ADMIN) */}
           {activeTab === 'create' && (
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 flex items-center space-x-2">
