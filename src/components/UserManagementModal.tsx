@@ -20,7 +20,9 @@ import {
   Square,
   Mail,
   Clock,
-  Wrench
+  Wrench,
+  Upload,
+  FileText
 } from 'lucide-react';
 
 interface UserManagementModalProps {
@@ -65,6 +67,9 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const [activeTab, setActiveTab] = useState<'list' | 'pending' | 'create' | 'bulk'>(initialTab);
   const [bulkRowsText, setBulkRowsText] = useState('');
   const [bulkResult, setBulkResult] = useState<string[]>([]);
+  const [bulkPdfName, setBulkPdfName] = useState('');
+  const [isParsingPdf, setIsParsingPdf] = useState(false);
+  const [bulkPdfError, setBulkPdfError] = useState('');
 
   useEffect(() => {
     if (isOpen && initialTab) {
@@ -153,6 +158,79 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
       setActiveTab('list');
     } else {
       showToast(res.error || 'Erro ao cadastrar usuário.', 'error');
+    }
+  };
+
+  const handlePdfUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      setBulkPdfError('Selecione um arquivo PDF.');
+      return;
+    }
+    setIsParsingPdf(true);
+    setBulkPdfError('');
+    setBulkPdfName(file.name);
+    try {
+      // Carrega o leitor de PDF no navegador; o arquivo não é enviado a um servidor externo.
+      const dynamicImport = new Function('url', 'return import(url)') as (url: string) => Promise<any>;
+      const pdfjs = await dynamicImport('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs');
+      pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs';
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const pdf = await pdfjs.getDocument({ data: bytes }).promise;
+      const textLines: string[] = [];
+      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+        const page = await pdf.getPage(pageNumber);
+        const content = await page.getTextContent();
+        const positioned = content.items
+          .filter((item: any) => typeof item.str === 'string' && item.str.trim())
+          .map((item: any) => ({ text: item.str.trim(), x: item.transform?.[4] || 0, y: item.transform?.[5] || 0 }))
+          .sort((a: any, b: any) => Math.abs(b.y - a.y) > 2.5 ? b.y - a.y : a.x - b.x);
+        const rows: Array<{ y: number; items: Array<{ text: string; x: number }> }> = [];
+        for (const item of positioned) {
+          let row = rows.find(candidate => Math.abs(candidate.y - item.y) <= 2.5);
+          if (!row) {
+            row = { y: item.y, items: [] };
+            rows.push(row);
+          }
+          row.items.push({ text: item.text, x: item.x });
+        }
+        for (const row of rows.sort((a, b) => b.y - a.y)) {
+          const line = row.items.sort((a, b) => a.x - b.x).map(item => item.text).join(' ').replace(/\s+/g, ' ').trim();
+          if (line) textLines.push(line);
+        }
+      }
+
+      const parsed: string[] = [];
+      const rankPattern = /^(TEN CEL PM|1º TEN PM|2º TEN PM|1º SGT PM|2º SGT PM|3º SGT PM|SUBTEN PM|SUB TEN PM|CEL PM|TC PM|MAJ PM|CAP PM|ST PM|CB PM|SD PM)\s+/i;
+      for (const line of textLines) {
+        const emailMatch = line.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+        const reMatch = line.match(/\b\d{3}\.?\d{3}-?\d\b|\b\d{6,7}\b/);
+        const rankMatch = line.match(rankPattern);
+        const roleMatch = line.match(/\b(ADMIN|OPERADOR|MEC[AÂ]NICO|ADJUNTO)\b/i);
+        if (!emailMatch || !reMatch || !rankMatch || !roleMatch) continue;
+        const re = reMatch[0];
+        const reStart = line.indexOf(re);
+        const name = line.slice(rankMatch[0].length, reStart).replace(/\s+/g, ' ').trim();
+        if (!name) continue;
+        const graduacao = rankMatch[1].toUpperCase().replace(/\s+/g, ' ');
+        const email = emailMatch[0].toLowerCase();
+        const username = email;
+        const password = re.replace(/\D/g, '');
+        const role = roleMatch[1].toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        parsed.push([graduacao, name, re, email, username, password, role, 'SEDE ROCAM'].join(';'));
+      }
+      if (!parsed.length) {
+        throw new Error('Não consegui reconhecer as linhas da tabela. Verifique se o PDF contém texto selecionável e tente novamente.');
+      }
+      setBulkRowsText(parsed.join('\n'));
+      setBulkResult([]);
+      showToast('PDF lido: ' + parsed.length + ' linhas preparadas para conferência. Nenhuma conta foi criada ainda.', 'success');
+    } catch (error: any) {
+      setBulkPdfError(error?.message || 'Não foi possível ler o PDF. Tente exportá-lo novamente ou use a colagem manual.');
+    } finally {
+      setIsParsingPdf(false);
     }
   };
 
@@ -1102,6 +1180,16 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                 <p className="font-mono text-[11px] break-words">Graduação;Nome;RE;E-mail;Login;Senha;Perfil;Pelotão</p>
                 <p>Exemplo: SD PM;João Silva;1234567;joao@email.com;joao.silva;senha123;OPERADOR;SEDE ROCAM</p>
                 <p className="text-amber-200">Contas que já existam por e-mail ou RE serão ignoradas sem alterar login, senha ou perfil. O resumo não exibe senhas.</p>
+              </div>
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-4 space-y-3">
+                <label className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-amber-500/50 px-4 py-4 text-sm font-bold text-amber-200 cursor-pointer hover:bg-amber-500/10">
+                  <Upload className="w-5 h-5" />
+                  {isParsingPdf ? 'Lendo PDF…' : 'Anexar PDF com os dados dos policiais'}
+                  <input type="file" accept="application/pdf,.pdf" onChange={handlePdfUpload} disabled={isParsingPdf || isSubmitting} className="sr-only" />
+                </label>
+                {bulkPdfName && <p className="flex items-center gap-2 text-[11px] text-zinc-300"><FileText className="w-4 h-4 text-emerald-400" />{bulkPdfName}</p>}
+                {bulkPdfError && <p className="text-xs text-rose-300">{bulkPdfError}</p>}
+                <p className="text-[11px] text-zinc-400">O PDF é lido no navegador. Os dados extraídos são colocados abaixo para conferência; o cadastro só ocorre quando você tocar em “Conferir e cadastrar lote”. Para novos usuários, o login será o e-mail e a senha inicial será a matrícula sem pontuação. Confira tudo antes de confirmar.</p>
               </div>
               <textarea
                 value={bulkRowsText}
