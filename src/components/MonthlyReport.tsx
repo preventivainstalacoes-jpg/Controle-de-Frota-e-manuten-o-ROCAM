@@ -293,10 +293,10 @@ export const MonthlyReport: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-zinc-950 text-zinc-400 text-[10px] uppercase">
-              <tr><th className="p-2">Prefixo / Viatura</th><th className="p-2">Condutor</th><th className="p-2">Área de Patrulhamento</th><th className="p-2">Cautelada</th><th className="p-2">Descautelada</th><th className="p-2">Tempo em serviço</th><th className="p-2">Alterações (resumo)</th></tr>
+              <tr><th className="p-2">Prefixo / Viatura</th><th className="p-2">Condutor</th><th className="p-2">Área de Patrulhamento</th><th className="p-2">Cautelada (data/hora)</th><th className="p-2">KM saída</th><th className="p-2">Devolvida (data/hora)</th><th className="p-2">KM retorno</th><th className="p-2">Tempo em serviço</th><th className="p-2">Alterações (resumo)</th></tr>
             </thead>
             <tbody className="divide-y divide-zinc-800">
-              {monthCautelas.length === 0 ? <tr><td colSpan={7} className="p-4 text-center text-zinc-500">Nenhuma cautela registrada neste mês.</td></tr> : monthCautelas.map((item) => {
+              {monthCautelas.length === 0 ? <tr><td colSpan={9} className="p-4 text-center text-zinc-500">Nenhuma cautela registrada neste mês.</td></tr> : monthCautelas.map((item) => {
                 const minutos = item.dataHoraRetorno ? Math.max(0, Math.floor((new Date(item.dataHoraRetorno).getTime() - new Date(item.dataHoraSaida).getTime()) / 60000)) : null;
                 const tempo = minutos === null ? 'Em andamento' : `${Math.floor(minutos / 60)}h ${minutos % 60}min`;
                 const alteracao = item.houveAvaria ? [item.descricaoAvaria || 'Avaria registrada', item.viaturaBaixadaAposRetorno ? 'viatura baixada' : ''].filter(Boolean).join(' — ') : (item.observacoesRetorno || item.observacoesSaida || 'Sem alteração informada');
@@ -305,7 +305,9 @@ export const MonthlyReport: React.FC = () => {
                   <td className="p-2">{item.condutorGraduacao} {item.condutorNome}<div className="text-[10px] text-zinc-400">RE {item.condutorRE}</div></td>
                   <td className="p-2 min-w-[140px]">{item.areaPatrulhamento || '-'}</td>
                   <td className="p-2 whitespace-nowrap">{item.dataHoraSaida.replace('T', ' ')}</td>
+                  <td className="p-2 whitespace-nowrap">{formatKm(item.kmSaida)}</td>
                   <td className="p-2 whitespace-nowrap">{item.dataHoraRetorno ? item.dataHoraRetorno.replace('T', ' ') : 'Ainda em serviço'}</td>
+                  <td className="p-2 whitespace-nowrap">{item.kmRetorno == null ? '-' : formatKm(item.kmRetorno)}</td>
                   <td className="p-2 whitespace-nowrap">{tempo}</td>
                   <td className="p-2 min-w-[160px]">{alteracao}</td>
                 </tr>;
