@@ -159,6 +159,13 @@ export const CautelaDetailModal: React.FC<CautelaDetailModalProps> = ({
                 </div>
               </div>
 
+              {cautela.areaPatrulhamento && (
+                <div className="pt-2 border-t border-zinc-850 print:border-gray-200 text-xs text-zinc-300 print:text-gray-700">
+                  <span className="font-semibold block text-[10px] uppercase text-zinc-500 print:text-gray-600">Área de Patrulhamento:</span>
+                  <p className="mt-0.5 font-semibold text-amber-300 print:text-black">{cautela.areaPatrulhamento}</p>
+                </div>
+              )}
+
               {cautela.observacoesSaida && (
                 <div className="pt-2 border-t border-zinc-850 print:border-gray-200 text-xs text-zinc-400 print:text-gray-700">
                   <span className="font-semibold block text-[10px] uppercase text-zinc-500">Observações de Saída:</span>
