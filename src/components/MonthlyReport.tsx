@@ -200,9 +200,9 @@ export const MonthlyReport: React.FC = () => {
     });
 
     csvContent += '\nCAUTELAS E DEVOLUCOES DE TODAS AS VIATURAS\n';
-    csvContent += 'Termo;Prefixo;Tipo Viatura;Modelo;Placa;Condutor;RE;Pelotao;Data/Hora Saida;KM Saida;Combustivel Saida;Data/Hora Retorno;KM Retorno;KM Rodado;Status;Avaria\n';
+    csvContent += 'Termo;Prefixo;Tipo Viatura;Modelo;Placa;Condutor;RE;Pelotao;Área de Patrulhamento;Data/Hora Saida;KM Saida;Combustivel Saida;Data/Hora Retorno;KM Retorno;KM Rodado;Status;Avaria\n';
     monthCautelas.forEach((item) => {
-      csvContent += '"' + item.numeroTermo + '";"' + item.prefixoViatura + '";"' + item.tipoViatura + '";"' + item.modeloViatura + '";"' + item.placaViatura + '";"' + item.condutorGraduacao + ' ' + item.condutorNome + '";"' + item.condutorRE + '";"' + item.pelotao + '";"' + item.dataHoraSaida.replace('T', ' ') + '";' + item.kmSaida + ';"' + item.combustivelSaida + '";"' + (item.dataHoraRetorno ? item.dataHoraRetorno.replace('T', ' ') : '-') + '";' + (item.kmRetorno ?? '-') + ';' + (item.kmPercorrido ?? '-') + ';"' + item.status + '";"' + (item.houveAvaria ? (item.viaturaBaixadaAposRetorno ? 'SIM - BAIXADA' : 'SIM') : 'NAO') + '"\n';
+      csvContent += '"' + item.numeroTermo + '";"' + item.prefixoViatura + '";"' + item.tipoViatura + '";"' + item.modeloViatura + '";"' + item.placaViatura + '";"' + item.condutorGraduacao + ' ' + item.condutorNome + '";"' + item.condutorRE + '";"' + item.pelotao + '";"' + (item.areaPatrulhamento || '-').replace(/"/g, '""') + '";"' + item.dataHoraSaida.replace('T', ' ') + '";' + item.kmSaida + ';"' + item.combustivelSaida + '";"' + (item.dataHoraRetorno ? item.dataHoraRetorno.replace('T', ' ') : '-') + '";' + (item.kmRetorno ?? '-') + ';' + (item.kmPercorrido ?? '-') + ';"' + item.status + '";"' + (item.houveAvaria ? (item.viaturaBaixadaAposRetorno ? 'SIM - BAIXADA' : 'SIM') : 'NAO') + '"\n';
     });
     csvContent += '\nRESUMO DE CAUTELAS\nSaidas no mes;' + monthCautelaSaidas.length + '\nRetornos no mes;' + monthCautelaRetornos.length + '\nCautelas de motocicletas;' + monthCautelasMotos + '\nCautelas de viaturas 04 rodas;' + monthCautelasQuatroRodas + '\n';
 
@@ -293,16 +293,17 @@ export const MonthlyReport: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-zinc-950 text-zinc-400 text-[10px] uppercase">
-              <tr><th className="p-2">Prefixo / Viatura</th><th className="p-2">Condutor</th><th className="p-2">Cautelada</th><th className="p-2">Descautelada</th><th className="p-2">Tempo em serviço</th><th className="p-2">Alterações (resumo)</th></tr>
+              <tr><th className="p-2">Prefixo / Viatura</th><th className="p-2">Condutor</th><th className="p-2">Área de Patrulhamento</th><th className="p-2">Cautelada</th><th className="p-2">Descautelada</th><th className="p-2">Tempo em serviço</th><th className="p-2">Alterações (resumo)</th></tr>
             </thead>
             <tbody className="divide-y divide-zinc-800">
-              {monthCautelas.length === 0 ? <tr><td colSpan={6} className="p-4 text-center text-zinc-500">Nenhuma cautela registrada neste mês.</td></tr> : monthCautelas.map((item) => {
+              {monthCautelas.length === 0 ? <tr><td colSpan={7} className="p-4 text-center text-zinc-500">Nenhuma cautela registrada neste mês.</td></tr> : monthCautelas.map((item) => {
                 const minutos = item.dataHoraRetorno ? Math.max(0, Math.floor((new Date(item.dataHoraRetorno).getTime() - new Date(item.dataHoraSaida).getTime()) / 60000)) : null;
                 const tempo = minutos === null ? 'Em andamento' : `${Math.floor(minutos / 60)}h ${minutos % 60}min`;
                 const alteracao = item.houveAvaria ? [item.descricaoAvaria || 'Avaria registrada', item.viaturaBaixadaAposRetorno ? 'viatura baixada' : ''].filter(Boolean).join(' — ') : (item.observacoesRetorno || item.observacoesSaida || 'Sem alteração informada');
                 return <tr key={item.id} className="text-zinc-200 align-top">
                   <td className="p-2"><strong>{item.prefixoViatura}</strong><div className="text-[10px] text-zinc-400">{item.modeloViatura} • {item.placaViatura}</div></td>
                   <td className="p-2">{item.condutorGraduacao} {item.condutorNome}<div className="text-[10px] text-zinc-400">RE {item.condutorRE}</div></td>
+                  <td className="p-2 min-w-[140px]">{item.areaPatrulhamento || '-'}</td>
                   <td className="p-2 whitespace-nowrap">{item.dataHoraSaida.replace('T', ' ')}</td>
                   <td className="p-2 whitespace-nowrap">{item.dataHoraRetorno ? item.dataHoraRetorno.replace('T', ' ') : 'Ainda em serviço'}</td>
                   <td className="p-2 whitespace-nowrap">{tempo}</td>
@@ -694,6 +695,7 @@ export const MonthlyReport: React.FC = () => {
                       <th className="p-1 border-r border-zinc-300">Data saída</th>
                       <th className="p-1 border-r border-zinc-300">Viatura / tipo</th>
                       <th className="p-1 border-r border-zinc-300">Condutor / RE</th>
+                      <th className="p-1 border-r border-zinc-300">Área de Patrulhamento</th>
                       <th className="p-1 border-r border-zinc-300">KM saída</th>
                       <th className="p-1 border-r border-zinc-300">Data retorno</th>
                       <th className="p-1 border-r border-zinc-300">KM retorno / rodado</th>
@@ -707,6 +709,7 @@ export const MonthlyReport: React.FC = () => {
                         <td className="p-1 border-r border-zinc-300">{formatDate(item.dataHoraSaida.slice(0, 10))} {item.dataHoraSaida.slice(11, 16)}</td>
                         <td className="p-1 border-r border-zinc-300">{item.prefixoViatura} ({item.tipoViatura === 'MOTOCICLETA' ? 'Moto' : '04 rodas'})</td>
                         <td className="p-1 border-r border-zinc-300">{item.condutorGraduacao} {item.condutorNome} / {item.condutorRE}</td>
+                        <td className="p-1 border-r border-zinc-300">{item.areaPatrulhamento || '-'}</td>
                         <td className="p-1 border-r border-zinc-300">{formatKm(item.kmSaida)}</td>
                         <td className="p-1 border-r border-zinc-300">{item.dataHoraRetorno ? formatDate(item.dataHoraRetorno.slice(0, 10)) + ' ' + item.dataHoraRetorno.slice(11, 16) : 'Em serviço'}</td>
                         <td className="p-1 border-r border-zinc-300">{item.kmRetorno !== undefined ? formatKm(item.kmRetorno) + ' / ' + formatKm(item.kmPercorrido || 0) : '-'}</td>
