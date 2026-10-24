@@ -158,7 +158,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       prefixoViatura:c.prefixo_viatura||vehicle?.prefixo||'',
       tipoViatura:c.tipo_viatura==='viatura_4_rodas'||vehicle?.tipo==='QUATRO_RODAS'?'QUATRO_RODAS':'MOTOCICLETA',
       modeloViatura:c.modelo_viatura||vehicle?.modelo||'',placaViatura:c.placa_viatura||vehicle?.placa||'',pelotao:c.pelotao||vehicle?.pelotao||'ROCAM',
-      dataHoraSaida:c.data_hora_saida,kmSaida:c.km_saida,combustivelSaida:c.combustivel_saida,condutorNome:c.condutor_nome,condutorRE:c.condutor_re,condutorGraduacao:c.condutor_graduacao,encarregadoVtr:c.encarregado_vtr,observacoesSaida:c.observacoes_saida,checklistSaida:c.checklist_saida||[],fotosAvariasSaida:c.fotos_saida||[],
+      dataHoraSaida:c.data_hora_saida,kmSaida:c.km_saida,combustivelSaida:c.combustivel_saida,condutorNome:c.condutor_nome,condutorRE:c.condutor_re,condutorGraduacao:c.condutor_graduacao,encarregadoVtr:c.encarregado_vtr,areaPatrulhamento:c.area_patrulhamento||'',observacoesSaida:c.observacoes_saida,checklistSaida:c.checklist_saida||[],fotosAvariasSaida:c.fotos_saida||[],
       status:c.status==='CONCLUIDA'?'CONCLUIDA':'EM_PATRULHAMENTO',dataHoraRetorno:c.data_hora_retorno,kmRetorno:c.km_retorno,kmPercorrido:c.km_percorrido,combustivelRetorno:c.combustivel_retorno,recebedorNome:c.recebedor_nome,recebedorRE:c.recebedor_re,observacoesRetorno:c.observacoes_retorno,checklistRetorno:c.checklist_retorno||[],houveAvaria:c.houve_avaria,descricaoAvaria:c.descricao_avaria,viaturaBaixadaAposRetorno:c.viatura_baixada,fotosAvariasRetorno:c.fotos_retorno||[]
     };
   };
@@ -432,7 +432,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const { error } = await supabase.from('cautelas').insert({
       id:newRecord.id,numero_termo:newRecord.numeroTermo,vehicle_id:newRecord.viaturaId,data_hora_saida:newRecord.dataHoraSaida,
       km_saida:newRecord.kmSaida,combustivel_saida:newRecord.combustivelSaida,condutor_nome:newRecord.condutorNome,condutor_re:newRecord.condutorRE,
-      condutor_graduacao:newRecord.condutorGraduacao,encarregado_vtr:newRecord.encarregadoVtr,observacoes_saida:newRecord.observacoesSaida,
+      condutor_graduacao:newRecord.condutorGraduacao,encarregado_vtr:newRecord.encarregadoVtr,area_patrulhamento:newRecord.areaPatrulhamento||null,observacoes_saida:newRecord.observacoesSaida,
       checklist_saida:newRecord.checklistSaida||[],fotos_saida:newRecord.fotosAvariasSaida||[],status:newRecord.status
     });
 
