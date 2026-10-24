@@ -47,6 +47,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
   const [condutorNome, setCondutorNome] = useState<string>('');
   const [condutorRE, setCondutorRE] = useState<string>('');
   const [observacoesSaida, setObservacoesSaida] = useState<string>('');
+  const [areaPatrulhamento, setAreaPatrulhamento] = useState<string>('');
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [fotosAvariasSaida, setFotosAvariasSaida] = useState<DamagePhoto[]>([]);
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -210,6 +211,11 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
       return;
     }
 
+    if (!areaPatrulhamento.trim()) {
+      setErrorMessage('Informe a área de patrulhamento antes de registrar a cautela.');
+      return;
+    }
+
     if (!condutorNome.trim()) {
       setErrorMessage('Informe o nome de guerra do condutor da viatura.');
       return;
@@ -237,6 +243,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
       condutorGraduacao,
       condutorNome: condutorNome.trim().toUpperCase(),
       condutorRE: condutorRE.trim().toUpperCase(),
+      areaPatrulhamento: areaPatrulhamento.trim(),
       observacoesSaida: observacoesSaida.trim() || undefined,
       checklistSaida: checklist,
       fotosAvariasSaida: fotosAvariasSaida.length > 0 ? fotosAvariasSaida : undefined,
@@ -613,6 +620,22 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
               momento="SAIDA"
               title="Registro Fotográfico de Avarias Pré-existentes (Saída)"
               subtitle="Registre fotos de eventuais avarias prévias na viatura antes do início do turno operacional (riscos, mossas, pneus, carenagens)."
+            />
+          </div>
+
+          {/* Área de Patrulhamento */}
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-zinc-300">
+              Área de Patrulhamento *
+            </label>
+            <input
+              type="text"
+              value={areaPatrulhamento}
+              onChange={(e) => setAreaPatrulhamento(e.target.value)}
+              placeholder="Ex.: Zona Norte, Zona Sul, área central ou setor da operação"
+              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
+              required
+              maxLength={180}
             />
           </div>
 
