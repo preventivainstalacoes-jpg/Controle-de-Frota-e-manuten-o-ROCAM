@@ -498,7 +498,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('bulk')}
-            className={\`px-4 py-2.5 text-xs font-bold border-b-2 transition flex items-center space-x-2 cursor-pointer whitespace-nowrap \${activeTab === 'bulk' ? 'border-amber-400 text-amber-400' : 'border-transparent text-zinc-400 hover:text-zinc-200'}\`}
+            className={`px-4 py-2.5 text-xs font-bold border-b-2 transition flex items-center space-x-2 cursor-pointer whitespace-nowrap ${activeTab === 'bulk' ? 'border-amber-400 text-amber-400' : 'border-transparent text-zinc-400 hover:text-zinc-200'}`}
           >
             <Users className="w-4 h-4" />
             <span>Cadastro em lote</span>
@@ -1125,7 +1125,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
               {bulkResult.length > 0 && (
                 <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-3 space-y-1 max-h-64 overflow-y-auto">
                   {bulkResult.map((item, index) => (
-                    <p key={index} className={\`text-[11px] \${index === 0 ? 'font-bold text-white mb-2' : item.startsWith('Falha:') || item.startsWith('Linha ') ? 'text-rose-300' : item.startsWith('Cadastrado:') ? 'text-emerald-300' : 'text-zinc-300'}\`}>{item}</p>
+                    <p key={index} className={`text-[11px] ${index === 0 ? 'font-bold text-white mb-2' : item.startsWith('Falha:') || item.startsWith('Linha ') ? 'text-rose-300' : item.startsWith('Cadastrado:') ? 'text-emerald-300' : 'text-zinc-300'}`}>{item}</p>
                   ))}
                 </div>
               )}
