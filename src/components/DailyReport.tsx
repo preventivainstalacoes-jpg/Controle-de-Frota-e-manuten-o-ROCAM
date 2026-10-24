@@ -111,6 +111,14 @@ export const DailyReport: React.FC<DailyReportProps> = ({
     && (v.status === 'BAIXADA' || v.status === 'EM_MANUTENCAO' || v.status === 'MANUTENCAO_EXTERNA')
   );
   const motosProntas = motos.filter((v) => v.status === 'OPERACIONAL' || v.status === 'RESERVA');
+  const resumoPorAreaPatrulhamento = Object.entries(
+    cautelasDoDia.reduce<Record<string, number>>((acc, cautela) => {
+      const area = (cautela.areaPatrulhamento || '').trim() || 'Área não informada';
+      acc[area] = (acc[area] || 0) + 1;
+      return acc;
+    }, {})
+  ).sort(([a], [b]) => a.localeCompare(b, 'pt-BR'));
+
 
   // Export CSV
   const handleExportCSV = () => {
@@ -124,7 +132,12 @@ export const DailyReport: React.FC<DailyReportProps> = ({
     csvContent += 'MOVIMENTAÇÃO DE VIATURAS NA DATA\\n';
     csvContent += 'Cautelas / saídas;' + saidasDoDia.length + '\\n';
     csvContent += 'Devoluções / retornos;' + retornosDoDia.length + '\\n';
-    csvContent += 'Viaturas ainda em serviço;' + cautelasAtivasHoje.length + '\\n\\n';
+    csvContent += 'Viaturas ainda em serviço;' + cautelasAtivasHoje.length + '\\n\\n';    csvContent += 'MOVIMENTAÇÃO POR ÁREA DE PATRULHAMENTO\\n';
+    csvContent += 'Área de Patrulhamento;Quantidade de registros\\n';
+    resumoPorAreaPatrulhamento.forEach(([area, total]) => {
+      csvContent += '"' + area.replace(/"/g, '""') + '";' + total + '\\n';
+    });
+    csvContent += '\\n';
     csvContent += 'MANUTENÇÕES REGISTRADAS NA DATA;' + movimentacoesDoDia.length + '\\n\\n';
 
     const encodedUri = encodeURI(csvContent);
@@ -262,6 +275,14 @@ export const DailyReport: React.FC<DailyReportProps> = ({
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><div className="text-xs text-zinc-400">Cautelas / saídas do dia</div><div className="text-2xl font-black">{saidasDoDia.length}</div></div>
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><div className="text-xs text-zinc-400">Devoluções / retornos do dia</div><div className="text-2xl font-black">{retornosDoDia.length}</div></div>
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><div className="text-xs text-zinc-400">Viaturas ainda em serviço</div><div className="text-2xl font-black">{cautelasAtivasHoje.length}</div></div>
+      </div>
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-5">
+        <h3 className="text-sm font-bold text-zinc-100 mb-3">Movimentação por área de patrulhamento</h3>
+        {resumoPorAreaPatrulhamento.length === 0 ? <p className="text-xs text-zinc-400">Nenhuma movimentação registrada na data.</p> : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {resumoPorAreaPatrulhamento.map(([area, total]) => <div key={area} className="flex justify-between gap-3 border border-zinc-800 rounded p-2 text-sm"><span>{area}</span><strong>{total}</strong></div>)}
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><div className="text-xs text-zinc-400">Motocicletas baixadas / manutenção</div><div className="text-2xl font-black">{motosBaixadas.length}</div></div>
@@ -425,6 +446,8 @@ export const DailyReport: React.FC<DailyReportProps> = ({
                   <tr><td className="p-2 border-r border-zinc-300">Cautelas / saídas no dia</td><td className="p-2">{saidasDoDia.length}</td></tr>
                   <tr><td className="p-2 border-r border-zinc-300">Devoluções / retornos no dia</td><td className="p-2">{retornosDoDia.length}</td></tr>
                   <tr><td className="p-2 border-r border-zinc-300">Viaturas ainda em serviço</td><td className="p-2">{cautelasAtivasHoje.length}</td></tr>
+                  <tr><td colSpan={2} className="p-2 font-bold bg-zinc-100">MOVIMENTAÇÃO POR ÁREA DE PATRULHAMENTO</td></tr>
+                  {resumoPorAreaPatrulhamento.map(([area, total]) => <tr key={area}><td className="p-2 border-r border-zinc-300">{area}</td><td className="p-2">{total}</td></tr>)}
                 </tbody>
               </table>
             </div>
