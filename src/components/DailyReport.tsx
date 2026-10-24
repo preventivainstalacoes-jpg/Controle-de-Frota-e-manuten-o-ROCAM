@@ -118,12 +118,12 @@ export const DailyReport: React.FC<DailyReportProps> = ({
     });
 
     csvContent += `\nMOVIMENTACOES E CAUTELAS DE VIATURAS NA DATA\n`;
-    csvContent += `Termo;Tipo Movimentacao;Status;Prefixo;Modelo;Placa;Condutor;RE;Pelotao;Data/Hora Saida;KM Saida;Data/Hora Retorno;KM Retorno;KM Rodado;Avaria\n`;
+    csvContent += `Termo;Tipo Movimentacao;Status;Prefixo;Modelo;Placa;Condutor;RE;Pelotao;Área de Patrulhamento;Data/Hora Saida;KM Saida;Data/Hora Retorno;KM Retorno;KM Rodado;Avaria\n`;
     cautelasDoDia.forEach((c) => {
       const isSaida = c.dataHoraSaida.startsWith(selectedDate);
       const isRetorno = c.dataHoraRetorno && c.dataHoraRetorno.startsWith(selectedDate);
       const tipoMov = isSaida && isRetorno ? 'SAIDA E RETORNO' : isSaida ? 'SAIDA (CAUTELA)' : isRetorno ? 'RETORNO (DESCAUTELA)' : 'EM CURSO';
-      csvContent += `"${c.numeroTermo}";"${tipoMov}";"${c.status}";"${c.prefixoViatura}";"${c.modeloViatura}";"${c.placaViatura}";"${c.condutorGraduacao} ${c.condutorNome}";"${c.condutorRE}";"${c.pelotao}";"${c.dataHoraSaida.replace('T', ' ')}";${c.kmSaida};"${c.dataHoraRetorno ? c.dataHoraRetorno.replace('T', ' ') : '-'}";${c.kmRetorno || '-'};${c.kmPercorrido || '-'};"${c.houveAvaria ? (c.viaturaBaixadaAposRetorno ? 'SIM (BAIXADA)' : 'SIM') : 'NAO'}"\n`;
+      csvContent += `"${c.numeroTermo}";"${tipoMov}";"${c.status}";"${c.prefixoViatura}";"${c.modeloViatura}";"${c.placaViatura}";"${c.condutorGraduacao} ${c.condutorNome}";"${c.condutorRE}";"${c.pelotao}";"${(c.areaPatrulhamento || '-').replace(/"/g, '""')}";"${c.dataHoraSaida.replace('T', ' ')}";${c.kmSaida};"${c.dataHoraRetorno ? c.dataHoraRetorno.replace('T', ' ') : '-'}";${c.kmRetorno || '-'};${c.kmPercorrido || '-'};"${c.houveAvaria ? (c.viaturaBaixadaAposRetorno ? 'SIM (BAIXADA)' : 'SIM') : 'NAO'}"\n`;
     });
 
     csvContent += '\nMANUTENCOES E ORDENS DE SERVICO NA DATA\n';
@@ -272,16 +272,17 @@ export const DailyReport: React.FC<DailyReportProps> = ({
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-zinc-950 text-zinc-400 text-[10px] uppercase">
-              <tr><th className="p-2">Prefixo / Viatura</th><th className="p-2">Condutor</th><th className="p-2">Cautelada</th><th className="p-2">Descautelada</th><th className="p-2">Tempo em serviço</th><th className="p-2">Alterações (resumo)</th></tr>
+              <tr><th className="p-2">Prefixo / Viatura</th><th className="p-2">Condutor</th><th className="p-2">Área de Patrulhamento</th><th className="p-2">Cautelada</th><th className="p-2">Descautelada</th><th className="p-2">Tempo em serviço</th><th className="p-2">Alterações (resumo)</th></tr>
             </thead>
             <tbody className="divide-y divide-zinc-800">
-              {cautelasDoDia.length === 0 ? <tr><td colSpan={6} className="p-4 text-center text-zinc-500">Nenhuma cautela registrada nesta data.</td></tr> : cautelasDoDia.map((c) => {
+              {cautelasDoDia.length === 0 ? <tr><td colSpan={7} className="p-4 text-center text-zinc-500">Nenhuma cautela registrada nesta data.</td></tr> : cautelasDoDia.map((c) => {
                 const minutos = c.dataHoraRetorno ? Math.max(0, Math.floor((new Date(c.dataHoraRetorno).getTime() - new Date(c.dataHoraSaida).getTime()) / 60000)) : null;
                 const tempo = minutos === null ? 'Em andamento' : `${Math.floor(minutos / 60)}h ${minutos % 60}min`;
                 const alteracao = c.houveAvaria ? [c.descricaoAvaria || 'Avaria registrada', c.viaturaBaixadaAposRetorno ? 'viatura baixada' : ''].filter(Boolean).join(' — ') : (c.observacoesRetorno || c.observacoesSaida || 'Sem alteração informada');
                 return <tr key={c.id} className="text-zinc-200 align-top">
                   <td className="p-2"><strong>{c.prefixoViatura}</strong><div className="text-[10px] text-zinc-400">{c.modeloViatura} • {c.placaViatura}</div></td>
                   <td className="p-2">{c.condutorGraduacao} {c.condutorNome}<div className="text-[10px] text-zinc-400">RE {c.condutorRE}</div></td>
+                  <td className="p-2 min-w-[140px]">{c.areaPatrulhamento || '-'}</td>
                   <td className="p-2 whitespace-nowrap">{c.dataHoraSaida.replace('T', ' ')}</td>
                   <td className="p-2 whitespace-nowrap">{c.dataHoraRetorno ? c.dataHoraRetorno.replace('T', ' ') : 'Ainda em serviço'}</td>
                   <td className="p-2 whitespace-nowrap">{tempo}</td>
@@ -841,6 +842,7 @@ export const DailyReport: React.FC<DailyReportProps> = ({
                       <th className="p-1 border-r border-zinc-300">Vtr / Placa</th>
                       <th className="p-1 border-r border-zinc-300">Condutor Militar</th>
                       <th className="p-1 border-r border-zinc-300">Pelotão</th>
+                      <th className="p-1 border-r border-zinc-300">Área de Patrulhamento</th>
                       <th className="p-1 border-r border-zinc-300">Saída (Hora/KM)</th>
                       <th className="p-1 border-r border-zinc-300">Retorno (Hora/KM)</th>
                       <th className="p-1 border-r border-zinc-300 text-center">KM Rod.</th>
@@ -860,6 +862,7 @@ export const DailyReport: React.FC<DailyReportProps> = ({
                           <td className="p-1 border-r border-zinc-300">{c.prefixoViatura} ({c.placaViatura})</td>
                           <td className="p-1 border-r border-zinc-300 font-sans">{c.condutorGraduacao} {c.condutorNome} (RE {c.condutorRE})</td>
                           <td className="p-1 border-r border-zinc-300 font-sans">{c.pelotao}</td>
+                          <td className="p-1 border-r border-zinc-300 font-sans">{c.areaPatrulhamento || '-'}</td>
                           <td className="p-1 border-r border-zinc-300">{c.dataHoraSaida.replace('T', ' ')} | {c.kmSaida}km</td>
                           <td className="p-1 border-r border-zinc-300">
                             {c.dataHoraRetorno ? `${c.dataHoraRetorno.replace('T', ' ')} | ${c.kmRetorno}km` : 'EM SERVIÇO'}
