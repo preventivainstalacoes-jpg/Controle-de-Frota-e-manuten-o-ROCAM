@@ -62,7 +62,9 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     pendingApprovalsCount,
   } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'list' | 'pending' | 'create'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'list' | 'pending' | 'create' | 'bulk'>(initialTab);
+  const [bulkRowsText, setBulkRowsText] = useState('');
+  const [bulkResult, setBulkResult] = useState<string[]>([]);
 
   useEffect(() => {
     if (isOpen && initialTab) {
@@ -152,6 +154,78 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     } else {
       showToast(res.error || 'Erro ao cadastrar usuário.', 'error');
     }
+  };
+
+  const handleBulkCreate = async () => {
+    if (!currentUser || currentUser.role !== 'ADMIN') {
+      showToast('Somente Administrador pode cadastrar usuários.', 'error');
+      return;
+    }
+    const lines = bulkRowsText.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    if (!lines.length) {
+      showToast('Cole as linhas dos policiais antes de iniciar.', 'error');
+      return;
+    }
+    setIsSubmitting(true);
+    setBulkResult([]);
+    const results: string[] = [];
+    let created = 0;
+    let skipped = 0;
+    let failed = 0;
+    const normalizeRE = (value: string) => value.replace(/\D/g, '');
+    for (const [index, line] of lines.entries()) {
+      const fields = line.includes(String.fromCharCode(9)) ? line.split(String.fromCharCode(9)) : line.includes(';') ? line.split(';') : line.split(',');
+      const [graduacaoRaw, nameRaw, reRaw, emailRaw, usernameRaw, passwordRaw, roleRaw, pelotaoRaw] = fields.map(value => (value || '').trim());
+      if (index === 0 && /gradua|posto|nome/i.test([graduacaoRaw, nameRaw].join(' ')) && /email|e-mail/i.test(emailRaw || '')) {
+        results.push('Cabeçalho identificado e ignorado.');
+        continue;
+      }
+      const graduacao = graduacaoRaw || 'SD PM';
+      const name = nameRaw || '';
+      const re = reRaw || '';
+      const email = (emailRaw || '').toLowerCase();
+      const username = (usernameRaw || '').toLowerCase();
+      const password = passwordRaw || '';
+      const roleText = (roleRaw || 'OPERADOR').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const role: UserRole = roleText.includes('ADMIN') ? 'ADMIN' : roleText.includes('ADJUNTO') ? 'ADJUNTO' : roleText.includes('MECAN') ? 'MECANICO' : 'OPERADOR';
+      const pelotao = pelotaoRaw || 'SEDE ROCAM';
+      if (!name || !re || !email.includes('@') || !username || password.length < 6) {
+        failed++;
+        results.push('Linha ' + (index + 1) + ': dados incompletos (graduação, nome, RE, e-mail, login e senha de pelo menos 6 caracteres são obrigatórios).');
+        continue;
+      }
+      const normalizedRE = normalizeRE(re);
+      const existing = users.find(user =>
+        (user.email || '').trim().toLowerCase() === email ||
+        (normalizedRE.length > 0 && normalizeRE(user.re || '') === normalizedRE)
+      );
+      if (existing) {
+        skipped++;
+        results.push('Ignorado: ' + graduacao + ' ' + name + ' — já existe conta correspondente; login e perfil atuais preservados.');
+        continue;
+      }
+      const result = await createUser({
+        name: graduacao + ' ' + name,
+        graduacao,
+        re,
+        email,
+        username,
+        password,
+        role,
+        pelotao,
+      });
+      if (result.success) {
+        created++;
+        results.push('Cadastrado: ' + graduacao + ' ' + name + '.');
+      } else {
+        failed++;
+        results.push('Falha: ' + graduacao + ' ' + name + ' — ' + (result.error || 'erro não informado'));
+      }
+    }
+    setIsSubmitting(false);
+    setBulkResult(['Resumo: ' + created + ' cadastrados, ' + skipped + ' existentes ignorados, ' + failed + ' falhas.', ...results]);
+    if (created > 0) showToast('Cadastro em lote concluído: ' + created + ' novos usuários.', 'success');
+    else showToast('Lote processado; confira o resumo para ver os ignorados e as falhas.', failed > 0 ? 'error' : 'success');
   };
 
   const handleOpenDeleteModal = (user: UserProfile) => {
@@ -421,6 +495,13 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
           >
             <UserPlus className="w-4 h-4" />
             <span>+ Novo Usuário</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('bulk')}
+            className={\`px-4 py-2.5 text-xs font-bold border-b-2 transition flex items-center space-x-2 cursor-pointer whitespace-nowrap \${activeTab === 'bulk' ? 'border-amber-400 text-amber-400' : 'border-transparent text-zinc-400 hover:text-zinc-200'}\`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Cadastro em lote</span>
           </button>
         </div>
 
@@ -1012,7 +1093,46 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
             </div>
           )}
 
-          {/* TAB: CADASTRAR NOVO USUÁRIO (DIRETO PELO ADMIN) */}
+          {/* TAB: CADASTRO EM LOTE */}
+          {activeTab === 'bulk' && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-xs text-amber-100 space-y-2">
+                <div className="font-bold text-sm">Cadastro em lote — somente novos usuários</div>
+                <p>Informe uma pessoa por linha, com os campos separados por ponto e vírgula ou tabulação, nesta ordem:</p>
+                <p className="font-mono text-[11px] break-words">Graduação;Nome;RE;E-mail;Login;Senha;Perfil;Pelotão</p>
+                <p>Exemplo: SD PM;João Silva;1234567;joao@email.com;joao.silva;senha123;OPERADOR;SEDE ROCAM</p>
+                <p className="text-amber-200">Contas que já existam por e-mail ou RE serão ignoradas sem alterar login, senha ou perfil. O resumo não exibe senhas.</p>
+              </div>
+              <textarea
+                value={bulkRowsText}
+                onChange={(e) => setBulkRowsText(e.target.value)}
+                rows={8}
+                placeholder="SD PM;Nome de Guerra;RE;email@exemplo.com;login;senha123;OPERADOR;SEDE ROCAM"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-100 font-mono focus:outline-none focus:border-amber-500"
+                spellCheck={false}
+              />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-[11px] text-zinc-400">Linhas informadas: {bulkRowsText.split(/\r?\n/).filter(line => line.trim()).length}. Cada linha será verificada individualmente; contas existentes serão preservadas.</p>
+                <button
+                  type="button"
+                  onClick={handleBulkCreate}
+                  disabled={isSubmitting || !bulkRowsText.trim()}
+                  className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-black disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmitting ? 'Processando lote…' : 'Conferir e cadastrar lote'}
+                </button>
+              </div>
+              {bulkResult.length > 0 && (
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-3 space-y-1 max-h-64 overflow-y-auto">
+                  {bulkResult.map((item, index) => (
+                    <p key={index} className={\`text-[11px] \${index === 0 ? 'font-bold text-white mb-2' : item.startsWith('Falha:') || item.startsWith('Linha ') ? 'text-rose-300' : item.startsWith('Cadastrado:') ? 'text-emerald-300' : 'text-zinc-300'}\`}>{item}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: CADASTRAR NOVO USUÁRIO (DIRETO PELO ADMIN) */
           {activeTab === 'create' && (
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 flex items-center space-x-2">
