@@ -100,37 +100,32 @@ export const DailyReport: React.FC<DailyReportProps> = ({
   const totalKmRodadoDia = cautelasConcluidasHoje.reduce((acc, c) => acc + (c.kmPercorrido || 0), 0);
   const cautelasComAvariaDia = cautelasDoDia.filter((c) => c.houveAvaria);
 
+  // Resumo consolidado da frota de motocicletas para o boletim diário.
+  const motos = vehicles.filter((v) => v.tipo === 'MOTOCICLETA');
+  const motosEmDescarga = motos.filter((v) =>
+    (v.motivoBaixa || '').toLocaleLowerCase('pt-BR').includes('descarga')
+    || (v.observacoes || '').toLocaleLowerCase('pt-BR').includes('destinada à descarga')
+  );
+  const motosBaixadas = motos.filter((v) =>
+    !motosEmDescarga.some((d) => d.id === v.id)
+    && (v.status === 'BAIXADA' || v.status === 'EM_MANUTENCAO' || v.status === 'MANUTENCAO_EXTERNA')
+  );
+  const motosProntas = motos.filter((v) => v.status === 'OPERACIONAL' || v.status === 'RESERVA');
+
   // Export CSV
   const handleExportCSV = () => {
     let csvContent = 'data:text/csv;charset=utf-8,';
     csvContent += `BOLETIM DIARIO DE FROTA ROCAM - DATA: ${formatDate(selectedDate)}\n\n`;
 
-    csvContent += `QUADRO DE VIATURAS BAIXADAS / EM MANUTENCAO\n`;
-    csvContent += `Prefixo;Tipo;Modelo;Placa;Status;KM Atual;Motivo da Baixa;Condutor\n`;
-    baixadasOrMaintenance.forEach((v) => {
-      csvContent += `${v.prefixo};${v.tipo};${v.modelo};${v.placa};${v.status};${v.kmAtual};"${v.motivoBaixa || '-'}";"${v.condutorPadrao || '-'}"\n`;
-    });
-
-    csvContent += `\nQUADRO DE VIATURAS OPERACIONAIS\n`;
-    csvContent += `Prefixo;Tipo;Modelo;Placa;Status;KM Atual;Pelotao;Condutor\n`;
-    operacionais.forEach((v) => {
-      csvContent += `${v.prefixo};${v.tipo};${v.modelo};${v.placa};${v.status};${v.kmAtual};"${v.pelotao}";"${v.condutorPadrao || '-'}"\n`;
-    });
-
-    csvContent += `\nMOVIMENTACOES E CAUTELAS DE VIATURAS NA DATA\n`;
-    csvContent += `Termo;Tipo Movimentacao;Status;Prefixo;Modelo;Placa;Condutor;RE;Pelotao;Área de Patrulhamento;Data/Hora Saida;KM Saida;Data/Hora Retorno;KM Retorno;KM Rodado;Avaria\n`;
-    cautelasDoDia.forEach((c) => {
-      const isSaida = c.dataHoraSaida.startsWith(selectedDate);
-      const isRetorno = c.dataHoraRetorno && c.dataHoraRetorno.startsWith(selectedDate);
-      const tipoMov = isSaida && isRetorno ? 'SAIDA E RETORNO' : isSaida ? 'SAIDA (CAUTELA)' : isRetorno ? 'RETORNO (DESCAUTELA)' : 'EM CURSO';
-      csvContent += `"${c.numeroTermo}";"${tipoMov}";"${c.status}";"${c.prefixoViatura}";"${c.modeloViatura}";"${c.placaViatura}";"${c.condutorGraduacao} ${c.condutorNome}";"${c.condutorRE}";"${c.pelotao}";"${(c.areaPatrulhamento || '-').replace(/"/g, '""')}";"${c.dataHoraSaida.replace('T', ' ')}";${c.kmSaida};"${c.dataHoraRetorno ? c.dataHoraRetorno.replace('T', ' ') : '-'}";${c.kmRetorno || '-'};${c.kmPercorrido || '-'};"${c.houveAvaria ? (c.viaturaBaixadaAposRetorno ? 'SIM (BAIXADA)' : 'SIM') : 'NAO'}"\n`;
-    });
-
-    csvContent += '\nMANUTENCOES E ORDENS DE SERVICO NA DATA\n';
-    csvContent += 'Nro OS;Data Entrada;Data Conclusao;Prefixo;Tipo Viatura;Tipo Manutencao;Categoria;Status;KM Entrada;Descricao;Servicos Executados;Oficina;Mecanico;Saida Oficina Externa;Retorno Oficina Externa;Liberado Por;Data Liberacao\n';
-    movimentacoesDoDia.forEach((item) => {
-      csvContent += '"' + item.numeroOS + '";' + item.dataEntrada + ';' + (item.dataConclusao || '-') + ';"' + item.prefixoViatura + '";"' + item.tipoViatura + '";"' + item.tipoManutencao + '";"' + item.categoria + '";"' + item.status + '";' + item.kmEntrada + ';"' + (item.descricaoProblema || '').replace(/"/g, '""') + '";"' + (item.servicosExecutados || '').replace(/"/g, '""') + '";"' + (item.oficinaResponsavel || '').replace(/"/g, '""') + '";"' + (item.mecanicoResponsavel || '').replace(/"/g, '""') + '";"' + (item.dataHoraSaidaOficina || '-') + '";"' + (item.dataHoraRetornoOficina || '-') + '";"' + (item.liberadoPor || '-') + '";"' + (item.liberadoEm || '-') + '"\n';
-    });
+    csvContent += 'RESUMO QUANTITATIVO DA FROTA DE MOTOCICLETAS\\n';
+    csvContent += 'Motos baixadas / em manutenção;' + motosBaixadas.length + '\\n';
+    csvContent += 'Motos destinadas à descarga;' + motosEmDescarga.length + '\\n';
+    csvContent += 'Motos prontas para o serviço;' + motosProntas.length + '\\n\\n';
+    csvContent += 'MOVIMENTAÇÃO DE VIATURAS NA DATA\\n';
+    csvContent += 'Cautelas / saídas;' + saidasDoDia.length + '\\n';
+    csvContent += 'Devoluções / retornos;' + retornosDoDia.length + '\\n';
+    csvContent += 'Viaturas ainda em serviço;' + cautelasAtivasHoje.length + '\\n\\n';
+    csvContent += 'MANUTENÇÕES REGISTRADAS NA DATA;' + movimentacoesDoDia.length + '\\n\\n';
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -263,35 +258,15 @@ export const DailyReport: React.FC<DailyReportProps> = ({
         </div>
       </div>
 
-      {/* Resumo tabular das cautelas do dia */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-zinc-800">
-          <h3 className="text-sm font-bold text-zinc-100">Resumo diário de cautelas e devoluções</h3>
-          <p className="text-[11px] text-zinc-400">Dados resumidos por viatura, com horários, duração do serviço e alterações informadas.</p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-zinc-950 text-zinc-400 text-[10px] uppercase">
-              <tr><th className="p-2">Prefixo / Viatura</th><th className="p-2">Condutor</th><th className="p-2">Área de Patrulhamento</th><th className="p-2">Cautelada</th><th className="p-2">Descautelada</th><th className="p-2">Tempo em serviço</th><th className="p-2">Alterações (resumo)</th></tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800">
-              {cautelasDoDia.length === 0 ? <tr><td colSpan={7} className="p-4 text-center text-zinc-500">Nenhuma cautela registrada nesta data.</td></tr> : cautelasDoDia.map((c) => {
-                const minutos = c.dataHoraRetorno ? Math.max(0, Math.floor((new Date(c.dataHoraRetorno).getTime() - new Date(c.dataHoraSaida).getTime()) / 60000)) : null;
-                const tempo = minutos === null ? 'Em andamento' : `${Math.floor(minutos / 60)}h ${minutos % 60}min`;
-                const alteracao = c.houveAvaria ? [c.descricaoAvaria || 'Avaria registrada', c.viaturaBaixadaAposRetorno ? 'viatura baixada' : ''].filter(Boolean).join(' — ') : (c.observacoesRetorno || c.observacoesSaida || 'Sem alteração informada');
-                return <tr key={c.id} className="text-zinc-200 align-top">
-                  <td className="p-2"><strong>{c.prefixoViatura}</strong><div className="text-[10px] text-zinc-400">{c.modeloViatura} • {c.placaViatura}</div></td>
-                  <td className="p-2">{c.condutorGraduacao} {c.condutorNome}<div className="text-[10px] text-zinc-400">RE {c.condutorRE}</div></td>
-                  <td className="p-2 min-w-[140px]">{c.areaPatrulhamento || '-'}</td>
-                  <td className="p-2 whitespace-nowrap">{c.dataHoraSaida.replace('T', ' ')}</td>
-                  <td className="p-2 whitespace-nowrap">{c.dataHoraRetorno ? c.dataHoraRetorno.replace('T', ' ') : 'Ainda em serviço'}</td>
-                  <td className="p-2 whitespace-nowrap">{tempo}</td>
-                  <td className="p-2 min-w-[160px]">{alteracao}</td>
-                </tr>;
-              })}
-            </tbody>
-          </table>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><div className="text-xs text-zinc-400">Cautelas / saídas do dia</div><div className="text-2xl font-black">{saidasDoDia.length}</div></div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><div className="text-xs text-zinc-400">Devoluções / retornos do dia</div><div className="text-2xl font-black">{retornosDoDia.length}</div></div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><div className="text-xs text-zinc-400">Viaturas ainda em serviço</div><div className="text-2xl font-black">{cautelasAtivasHoje.length}</div></div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><div className="text-xs text-zinc-400">Motocicletas baixadas / manutenção</div><div className="text-2xl font-black">{motosBaixadas.length}</div></div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><div className="text-xs text-zinc-400">Motocicletas destinadas à descarga</div><div className="text-2xl font-black">{motosEmDescarga.length}</div></div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><div className="text-xs text-zinc-400">Motocicletas prontas para o serviço</div><div className="text-2xl font-black">{motosProntas.length}</div></div>
       </div>
 
       {/* 1. REGISTRO DE MOVIMENTAÇÕES E CAUTELAS DE VIATURAS DO TURNO OPERACIONAL */}
@@ -826,123 +801,17 @@ export const DailyReport: React.FC<DailyReportProps> = ({
               </div>
             </div>
 
-            {/* 1. REGISTRO DE MOVIMENTAÇÕES DE CAUTELAS DE VIATURAS NO TURNO (IMPRESSÃO) */}
             <div className="mb-6">
-              <h4 className="text-xs font-black uppercase border-b border-zinc-800 pb-1 mb-2">
-                1. MOVIMENTAÇÕES DE CAUTELAS E DESCAUTELAS DE VIATURAS NO TURNO ({cautelasDoDia.length})
-              </h4>
-              {cautelasDoDia.length === 0 ? (
-                <div className="text-xs text-zinc-600 italic">Nenhuma movimentação de cautela registrada nesta data.</div>
-              ) : (
-                <table className="w-full text-left text-[10px] border border-zinc-400">
-                  <thead className="bg-zinc-100 border-b border-zinc-400 font-bold">
-                    <tr>
-                      <th className="p-1 border-r border-zinc-300">Movimentação</th>
-                      <th className="p-1 border-r border-zinc-300">Termo</th>
-                      <th className="p-1 border-r border-zinc-300">Vtr / Placa</th>
-                      <th className="p-1 border-r border-zinc-300">Condutor Militar</th>
-                      <th className="p-1 border-r border-zinc-300">Pelotão</th>
-                      <th className="p-1 border-r border-zinc-300">Área de Patrulhamento</th>
-                      <th className="p-1 border-r border-zinc-300">Saída (Hora/KM)</th>
-                      <th className="p-1 border-r border-zinc-300">Retorno (Hora/KM)</th>
-                      <th className="p-1 border-r border-zinc-300 text-center">KM Rod.</th>
-                      <th className="p-1">Situação / Avarias</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-300 font-mono">
-                    {cautelasDoDia.map((c) => {
-                      const isSaida = c.dataHoraSaida.startsWith(selectedDate);
-                      const isRetorno = c.dataHoraRetorno && c.dataHoraRetorno.startsWith(selectedDate);
-                      const tipoMov = isSaida && isRetorno ? 'SAÍDA E RETORNO' : isSaida ? 'SAÍDA' : isRetorno ? 'RETORNO' : 'EM CURSO';
-
-                      return (
-                        <tr key={c.id}>
-                          <td className="p-1 font-bold border-r border-zinc-300 font-sans">{tipoMov}</td>
-                          <td className="p-1 font-bold border-r border-zinc-300">{c.numeroTermo}</td>
-                          <td className="p-1 border-r border-zinc-300">{c.prefixoViatura} ({c.placaViatura})</td>
-                          <td className="p-1 border-r border-zinc-300 font-sans">{c.condutorGraduacao} {c.condutorNome} (RE {c.condutorRE})</td>
-                          <td className="p-1 border-r border-zinc-300 font-sans">{c.pelotao}</td>
-                          <td className="p-1 border-r border-zinc-300 font-sans">{c.areaPatrulhamento || '-'}</td>
-                          <td className="p-1 border-r border-zinc-300">{c.dataHoraSaida.replace('T', ' ')} | {c.kmSaida}km</td>
-                          <td className="p-1 border-r border-zinc-300">
-                            {c.dataHoraRetorno ? `${c.dataHoraRetorno.replace('T', ' ')} | ${c.kmRetorno}km` : 'EM SERVIÇO'}
-                          </td>
-                          <td className="p-1 border-r border-zinc-300 text-center">{c.kmPercorrido !== undefined ? `${c.kmPercorrido}km` : '-'}</td>
-                          <td className="p-1 font-sans">
-                            {c.houveAvaria ? `AVARIA (${c.viaturaBaixadaAposRetorno ? 'BAIXADA' : 'LEVE'})` : c.status === 'CONCLUIDA' ? 'SEM AVARIAS' : 'EM PATRULHAMENTO'}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {/* 2. Quadro de Viaturas Baixadas para Impressão */}
-            <div className="mb-6">
-              <h4 className="text-xs font-black uppercase border-b border-zinc-800 pb-1 mb-2">
-                2. VIATURAS FORA DE SERVIÇO / BAIXADAS
-              </h4>
-              {baixadasOrMaintenance.length === 0 ? (
-                <div className="text-xs text-zinc-600 italic">Nenhuma viatura baixada nesta data.</div>
-              ) : (
-                <table className="w-full text-left text-[11px] border border-zinc-400">
-                  <thead className="bg-zinc-100 border-b border-zinc-400 font-bold">
-                    <tr>
-                      <th className="p-1.5 border-r border-zinc-300">Prefixo</th>
-                      <th className="p-1.5 border-r border-zinc-300">Tipo / Modelo</th>
-                      <th className="p-1.5 border-r border-zinc-300">KM</th>
-                      <th className="p-1.5 border-r border-zinc-300">Status</th>
-                      <th className="p-1.5 border-r border-zinc-300">Motivo da Baixa</th>
-                      <th className="p-1.5">O.S. Vinculada</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-300 font-mono">
-                    {baixadasOrMaintenance.map((v) => (
-                      <tr key={v.id}>
-                        <td className="p-1.5 font-bold border-r border-zinc-300">{v.prefixo}</td>
-                        <td className="p-1.5 border-r border-zinc-300">{v.tipo === 'MOTOCICLETA' ? 'MOTO' : '04 RODAS'} {v.modelo}</td>
-                        <td className="p-1.5 border-r border-zinc-300">{v.kmAtual}</td>
-                        <td className="p-1.5 border-r border-zinc-300">{v.status}</td>
-                        <td className="p-1.5 border-r border-zinc-300 font-sans">{v.motivoBaixa || '-'}</td>
-                        <td className="p-1.5">{v.observacoes || 'Em manutenção'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {/* 3. Quadro de Viaturas Prontas para Impressão */}
-            <div className="mb-8">
-              <h4 className="text-xs font-black uppercase border-b border-zinc-800 pb-1 mb-2">
-                3. VIATURAS OPERACIONAIS DISPONÍVEIS PARA ESCALA
-              </h4>
-              <table className="w-full text-left text-[10px] border border-zinc-400">
-                <thead className="bg-zinc-100 border-b border-zinc-400 font-bold">
-                  <tr>
-                    <th className="p-1 border-r border-zinc-300">Prefixo</th>
-                    <th className="p-1 border-r border-zinc-300">Tipo</th>
-                    <th className="p-1 border-r border-zinc-300">Modelo</th>
-                    <th className="p-1 border-r border-zinc-300">Placa</th>
-                    <th className="p-1 border-r border-zinc-300">KM</th>
-                    <th className="p-1 border-r border-zinc-300">Pelotão</th>
-                    <th className="p-1">Condutor Padrão</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-300 font-mono">
-                  {operacionais.map((v) => (
-                    <tr key={v.id}>
-                      <td className="p-1 font-bold border-r border-zinc-300">{v.prefixo}</td>
-                      <td className="p-1 border-r border-zinc-300">{v.tipo === 'MOTOCICLETA' ? 'MOTO' : '04 RODAS'}</td>
-                      <td className="p-1 border-r border-zinc-300">{v.modelo}</td>
-                      <td className="p-1 border-r border-zinc-300">{v.placa || 'OFICIAL'}</td>
-                      <td className="p-1 border-r border-zinc-300">{v.kmAtual}</td>
-                      <td className="p-1 border-r border-zinc-300 font-sans">{v.pelotao}</td>
-                      <td className="p-1 font-sans">{v.condutorPadrao || 'Equipe Escala'}</td>
-                    </tr>
-                  ))}
+              <h4 className="text-xs font-black uppercase border-b border-zinc-800 pb-1 mb-2">RESUMO DIÁRIO CONSOLIDADO</h4>
+              <table className="w-full text-left text-xs border border-zinc-400">
+                <thead className="bg-zinc-100 border-b border-zinc-400 font-bold"><tr><th className="p-2 border-r border-zinc-300">Indicador</th><th className="p-2">Quantidade</th></tr></thead>
+                <tbody className="divide-y divide-zinc-300">
+                  <tr><td className="p-2 border-r border-zinc-300">Motocicletas baixadas / em manutenção</td><td className="p-2">{motosBaixadas.length}</td></tr>
+                  <tr><td className="p-2 border-r border-zinc-300">Motocicletas destinadas à descarga</td><td className="p-2">{motosEmDescarga.length}</td></tr>
+                  <tr><td className="p-2 border-r border-zinc-300">Motocicletas prontas para o serviço</td><td className="p-2">{motosProntas.length}</td></tr>
+                  <tr><td className="p-2 border-r border-zinc-300">Cautelas / saídas no dia</td><td className="p-2">{saidasDoDia.length}</td></tr>
+                  <tr><td className="p-2 border-r border-zinc-300">Devoluções / retornos no dia</td><td className="p-2">{retornosDoDia.length}</td></tr>
+                  <tr><td className="p-2 border-r border-zinc-300">Viaturas ainda em serviço</td><td className="p-2">{cautelasAtivasHoje.length}</td></tr>
                 </tbody>
               </table>
             </div>
