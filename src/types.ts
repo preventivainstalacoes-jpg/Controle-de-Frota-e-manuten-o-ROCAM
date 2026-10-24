@@ -181,6 +181,7 @@ export interface CautelaRecord {
   condutorRE: string;
   condutorGraduacao: string; // Ex: CB PM, SD PM, 1º SGT PM
   encarregadoVtr?: string;
+  areaPatrulhamento?: string;
   observacoesSaida?: string;
   checklistSaida: ChecklistItem[];
   fotosAvariasSaida?: DamagePhoto[]; // Registro fotográfico na saída
