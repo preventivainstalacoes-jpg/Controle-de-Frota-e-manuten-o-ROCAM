@@ -124,6 +124,21 @@ export const DailyReport: React.FC<DailyReportProps> = ({
   ).sort(([a], [b]) => a.localeCompare(b, 'pt-BR'));
 
 
+  // Lista atual de viaturas em oficina externa, independente da data selecionada.
+  const viaturasExternaDetalhadas = viaturasManutencaoExterna.map((v) => {
+    const registrosDaViatura = maintenanceRecords
+      .filter((r) => r.viaturaId === v.id && r.tipoOficina === 'EXTERNA')
+      .sort((a, b) => (b.dataHoraSaidaOficina || b.dataEntrada || '').localeCompare(a.dataHoraSaidaOficina || a.dataEntrada || ''));
+    const registro = registrosDaViatura[0];
+    return {
+      id: v.id, prefixo: v.prefixo, modelo: v.modelo, placa: v.placa,
+      oficina: registro?.oficinaResponsavel || 'Oficina não informada no cadastro de manutenção',
+      dataSaida: registro?.dataHoraSaidaOficina || registro?.dataEntrada || '',
+      os: registro?.numeroOS || '-',
+      observacao: registro?.descricaoProblema || v.motivoBaixa || v.observacoes || '-',
+    };
+  });
+
   // Export CSV
   const handleExportCSV = () => {
     let csvContent = 'data:text/csv;charset=utf-8,';
@@ -135,6 +150,12 @@ export const DailyReport: React.FC<DailyReportProps> = ({
     csvContent += 'Motos prontas para o serviço;' + motosProntas.length + '\\n';
     csvContent += 'Viaturas baixadas;' + viaturasBaixadas.length + '\\n';
     csvContent += 'Viaturas em manutenção externa;' + viaturasManutencaoExterna.length + '\\n\\n';
+    csvContent += 'DETALHAMENTO ATUAL DE VIATURAS EM OFICINA EXTERNA\\n';
+    csvContent += 'Prefixo;Modelo;Placa;Oficina externa;Data de envio;O.S.;Observação\\n';
+    viaturasExternaDetalhadas.forEach((v) => {
+      csvContent += '"' + v.prefixo + '";"' + v.modelo + '";"' + v.placa + '";"' + v.oficina.replace(/"/g, '""') + '";"' + v.dataSaida + '";"' + v.os + '";"' + v.observacao.replace(/"/g, '""') + '"\\n';
+    });
+    csvContent += '\\n';
     csvContent += 'MOVIMENTAÇÃO DE VIATURAS NA DATA\\n';
     csvContent += 'Cautelas / saídas;' + saidasDoDia.length + '\\n';
     csvContent += 'Devoluções / retornos;' + retornosDoDia.length + '\\n';
@@ -317,6 +338,20 @@ export const DailyReport: React.FC<DailyReportProps> = ({
         </div>
       </div>
 
+      <div className="bg-zinc-900 border border-amber-900/50 rounded-xl overflow-hidden shadow-sm mb-5">
+        <div className="px-5 py-3.5 bg-zinc-950 border-b border-zinc-800">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-amber-300">Viaturas atualmente em manutenção externa ({viaturasExternaDetalhadas.length})</h3>
+        </div>
+        {viaturasExternaDetalhadas.length === 0 ? <div className="p-5 text-center text-xs text-zinc-400">Não há viaturas com status atual de manutenção externa.</div> : (
+          <div className="overflow-x-auto"><table className="w-full text-left text-xs min-w-[800px]">
+            <thead className="bg-zinc-950 text-zinc-400 uppercase text-[10px]"><tr><th className="p-3">Prefixo</th><th className="p-3">Modelo / Placa</th><th className="p-3">Oficina externa</th><th className="p-3">Data de envio</th><th className="p-3">O.S.</th><th className="p-3">Avaria / observação</th></tr></thead>
+            <tbody className="divide-y divide-zinc-800">{viaturasExternaDetalhadas.map((v) => <tr key={v.id} className="text-zinc-200 align-top">
+              <td className="p-3 font-bold">{v.prefixo}</td><td className="p-3">{v.modelo}<div className="text-[10px] text-zinc-400">{v.placa || 'Placa não informada'}</div></td><td className="p-3 font-semibold text-amber-300">{v.oficina}</td><td className="p-3 whitespace-nowrap">{v.dataSaida ? v.dataSaida.replace('T', ' ') : 'Não informada'}</td><td className="p-3">{v.os}</td><td className="p-3 whitespace-normal">{v.observacao}</td>
+            </tr>)}</tbody>
+          </table></div>
+        )}
+      </div>
+
       {/* 4. MOVIMENTAÇÕES DE OFICINA NO DIA SELECIONADO */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-sm">
         <div className="px-5 py-3.5 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between">
@@ -469,6 +504,14 @@ export const DailyReport: React.FC<DailyReportProps> = ({
                   <tr><td colSpan={2} className="p-2 font-bold bg-zinc-100">MOVIMENTAÇÃO POR ÁREA DE PATRULHAMENTO</td></tr>
                   {resumoPorAreaPatrulhamento.map(([area, total]) => <tr key={area}><td className="p-2 border-r border-zinc-300">{area}</td><td className="p-2">{total}</td></tr>)}
                 </tbody>
+              </table>
+            </div>
+
+            <div className="mb-6">
+              <h4 className="text-xs font-black uppercase border-b border-zinc-800 pb-1 mb-2">VIATURAS ATUALMENTE EM MANUTENÇÃO EXTERNA ({viaturasExternaDetalhadas.length})</h4>
+              <table className="w-full text-left text-[10px] border border-zinc-400">
+                <thead className="bg-zinc-100 font-bold"><tr><th className="p-1">Prefixo</th><th className="p-1">Modelo / Placa</th><th className="p-1">Oficina externa</th><th className="p-1">Data de envio</th><th className="p-1">O.S.</th><th className="p-1">Avaria / observação</th></tr></thead>
+                <tbody>{viaturasExternaDetalhadas.length === 0 ? <tr><td colSpan={6} className="p-2">Nenhuma viatura atualmente em oficina externa.</td></tr> : viaturasExternaDetalhadas.map((v) => <tr key={v.id}><td className="p-1 border-t font-bold">{v.prefixo}</td><td className="p-1 border-t">{v.modelo} / {v.placa || '-'}</td><td className="p-1 border-t">{v.oficina}</td><td className="p-1 border-t">{v.dataSaida ? v.dataSaida.replace('T', ' ') : '-'}</td><td className="p-1 border-t">{v.os}</td><td className="p-1 border-t">{v.observacao}</td></tr>)}</tbody>
               </table>
             </div>
 
