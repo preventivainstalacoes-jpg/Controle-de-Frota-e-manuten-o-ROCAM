@@ -58,6 +58,10 @@ export const DailyReport: React.FC<DailyReportProps> = ({
   // Operational vehicles
   const operacionais = vehicles.filter((v) => v.status === 'OPERACIONAL' || v.status === 'RESERVA');
 
+  // Quantitativo geral da frota por situação atual
+  const viaturasBaixadas = vehicles.filter((v) => v.status === 'BAIXADA');
+  const viaturasManutencaoExterna = vehicles.filter((v) => v.status === 'MANUTENCAO_EXTERNA');
+
   // Relatório por eventos registrados na data, não apenas pelo status atual do painel.
   // startsWith aceita datas no formato YYYY-MM-DD e timestamps ISO com horário.
   const movimentacoesDoDia = maintenanceRecords.filter(
@@ -128,7 +132,9 @@ export const DailyReport: React.FC<DailyReportProps> = ({
     csvContent += 'RESUMO QUANTITATIVO DA FROTA DE MOTOCICLETAS\\n';
     csvContent += 'Motos baixadas / em manutenção;' + motosBaixadas.length + '\\n';
     csvContent += 'Motos destinadas à descarga;' + motosEmDescarga.length + '\\n';
-    csvContent += 'Motos prontas para o serviço;' + motosProntas.length + '\\n\\n';
+    csvContent += 'Motos prontas para o serviço;' + motosProntas.length + '\\n';
+    csvContent += 'Viaturas baixadas;' + viaturasBaixadas.length + '\\n';
+    csvContent += 'Viaturas em manutenção externa;' + viaturasManutencaoExterna.length + '\\n\\n';
     csvContent += 'MOVIMENTAÇÃO DE VIATURAS NA DATA\\n';
     csvContent += 'Cautelas / saídas;' + saidasDoDia.length + '\\n';
     csvContent += 'Devoluções / retornos;' + retornosDoDia.length + '\\n';
@@ -272,6 +278,8 @@ export const DailyReport: React.FC<DailyReportProps> = ({
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
+        <div className="bg-zinc-900 border border-rose-900/40 rounded-xl p-4"><div className="text-xs text-zinc-400">Viaturas baixadas</div><div className="text-2xl font-black text-rose-400">{viaturasBaixadas.length}</div></div>
+        <div className="bg-zinc-900 border border-amber-900/40 rounded-xl p-4"><div className="text-xs text-zinc-400">Em manutenção externa</div><div className="text-2xl font-black text-amber-400">{viaturasManutencaoExterna.length}</div></div>
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><div className="text-xs text-zinc-400">Cautelas / saídas do dia</div><div className="text-2xl font-black">{saidasDoDia.length}</div></div>
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><div className="text-xs text-zinc-400">Devoluções / retornos do dia</div><div className="text-2xl font-black">{retornosDoDia.length}</div></div>
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><div className="text-xs text-zinc-400">Viaturas ainda em serviço</div><div className="text-2xl font-black">{cautelasAtivasHoje.length}</div></div>
@@ -453,6 +461,8 @@ export const DailyReport: React.FC<DailyReportProps> = ({
                   <tr><td className="p-2 border-r border-zinc-300">Motocicletas baixadas / em manutenção</td><td className="p-2">{motosBaixadas.length}</td></tr>
                   <tr><td className="p-2 border-r border-zinc-300">Motocicletas destinadas à descarga</td><td className="p-2">{motosEmDescarga.length}</td></tr>
                   <tr><td className="p-2 border-r border-zinc-300">Motocicletas prontas para o serviço</td><td className="p-2">{motosProntas.length}</td></tr>
+                  <tr><td className="p-2 border-r border-zinc-300">Viaturas baixadas (frota total)</td><td className="p-2">{viaturasBaixadas.length}</td></tr>
+                  <tr><td className="p-2 border-r border-zinc-300">Viaturas em manutenção externa (frota total)</td><td className="p-2">{viaturasManutencaoExterna.length}</td></tr>
                   <tr><td className="p-2 border-r border-zinc-300">Cautelas / saídas no dia</td><td className="p-2">{saidasDoDia.length}</td></tr>
                   <tr><td className="p-2 border-r border-zinc-300">Devoluções / retornos no dia</td><td className="p-2">{retornosDoDia.length}</td></tr>
                   <tr><td className="p-2 border-r border-zinc-300">Viaturas ainda em serviço</td><td className="p-2">{cautelasAtivasHoje.length}</td></tr>
