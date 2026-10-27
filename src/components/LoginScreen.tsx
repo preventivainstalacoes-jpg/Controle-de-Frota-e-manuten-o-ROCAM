@@ -121,7 +121,7 @@ export const LoginScreen: React.FC = () => {
       let recoveryEmail = cleanIdentifier;
       if (!cleanIdentifier.includes('@')) {
         const { data: profile, error: lookupError } = await supabase
-          .rpc('find_profile_for_login', { p_identifier: cleanIdentifier })
+          .rpc('find_login_email', { p_identifier: cleanIdentifier })
           .maybeSingle();
         const profileData = profile as { email?: string } | null;
         if (lookupError || !profileData?.email) {

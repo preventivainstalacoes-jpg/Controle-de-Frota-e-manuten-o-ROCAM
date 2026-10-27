@@ -308,20 +308,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       }
 
-      // Para usuário/RE, resolve o e-mail pela função segura no Supabase.
-      const { data: profile, error: lookupError } = await supabase
-        .rpc('find_profile_for_login', { p_identifier: cleanId })
+      // Para usuário/RE, a função pública retorna somente o e-mail necessário para autenticação.
+      const { data: lookup, error: lookupError } = await supabase
+        .rpc('find_login_email', { p_identifier: cleanId })
         .maybeSingle();
 
-      const profileData = profile as any;
-      if (!lookupError && profileData?.email) {
+      const lookupData = lookup as { email?: string } | null;
+      if (!lookupError && lookupData?.email) {
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-          email: profileData.email,
+          email: lookupData.email,
           password: cleanPass,
         });
 
         if (authError || !authData.user) {
           return { success: false, error: authError?.message || 'Credenciais inválidas.' };
+        }
+
+        // Os dados de perfil são consultados somente após autenticação, pelo ID da própria sessão.
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authData.user.id)
+          .maybeSingle();
+
+        if (profileError || !profileData) {
+          await supabase.auth.signOut();
+          return { success: false, error: 'Conta autenticada, mas perfil não encontrado no banco compartilhado. Solicite a regularização ao Administrador.' };
         }
 
         if (profileData.active === false || ['PENDENTE', 'REJEITADO', 'INATIVO', 'EXCLUIDO'].includes(profileData.approval_status)) {
@@ -331,12 +343,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         const mappedUser: UserProfile = {
           id: profileData.id,
-          username: profileData.username || profileData.email.split('@')[0],
-          email: profileData.email,
-          name: profileData.full_name || profileData.username || profileData.email,
+          username: profileData.username || profileData.email?.split('@')[0] || lookupData.email.split('@')[0],
+          email: profileData.email || lookupData.email,
+          name: profileData.full_name || profileData.username || profileData.email || lookupData.email,
           graduacao: profileData.graduacao || '',
           re: profileData.re || '',
-          role: profileData.role === 'admin' ? 'ADMIN' : profileData.role === 'adjunto' ? 'ADJUNTO' : 'OPERADOR',
+          role: profileData.role === 'admin' ? 'ADMIN' : profileData.role === 'adjunto' ? 'ADJUNTO' : profileData.role === 'mecanico' ? 'MECANICO' : 'OPERADOR',
           pelotao: profileData.pelotao || 'ROCAM',
           passwordHash: '',
           salt: '',
