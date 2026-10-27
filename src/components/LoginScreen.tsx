@@ -185,19 +185,20 @@ export const LoginScreen: React.FC = () => {
   const [showAllAdmins, setShowAllAdmins] = useState(false);
   const [opNumberInput, setOpNumberInput] = useState('');
 
-  const adminUsers = users.filter((u) => u.role === 'ADMIN' && u.isActive && u.status === 'ATIVO');
-  const operatorUsers = users.filter((u) => u.role === 'OPERADOR' && u.isActive && u.status === 'ATIVO');
+  // Contas de demonstração/atalhos locais não podem ser usados para autenticar.
+  const adminUsers: UserProfile[] = [];
+  const operatorUsers: UserProfile[] = [];
 
   // O cadastro do primeiro admin não precisa de confirmação
   const hasCustomActiveAdmin = users.some(
     (u) => u.role === 'ADMIN' && u.status === 'ATIVO' && u.id !== 'usr-admin-01' && u.username !== 'admin'
   );
-  const isFirstAdminEligible = !hasCustomActiveAdmin;
+  // Não existe ativação automática de administrador pelo cliente.
+  const isFirstAdminEligible = false;
 
   // O botão de acesso rápido do 1º administrador desaparece após o primeiro uso
-  const isFirstAdminButtonVisible =
-    !firstAdminQuickAccessUsed ||
-    (!hasCustomActiveAdmin && !adminUsers.some((u) => Boolean(u.lastLogin)));
+  // O botão de acesso master local fica permanentemente oculto.
+  const isFirstAdminButtonVisible = true;
 
   const handleQuickOpSelect = (e: React.FormEvent) => {
     e.preventDefault();
@@ -310,42 +311,14 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
-  const handleQuickLogin = async (role: 'ADMIN' | 'OPERADOR', specificUserId?: string) => {
-    setErrorMsg('');
+  const handleQuickLogin = async (_role: 'ADMIN' | 'OPERADOR', _specificUserId?: string) => {
+    setErrorMsg('O acesso rápido foi desativado por segurança. Entre com seu e-mail/usuário/RE e a senha cadastrada.');
     setSuccessMsg('');
-    setIsSubmitting(true);
-    if (role === 'ADMIN') {
-      markFirstAdminQuickAccessUsed();
-    }
-    try {
-      const ok = await quickLoginAs(role, specificUserId);
-      if (!ok) {
-        await quickLoginAs(role);
-      }
-    } catch (err: any) {
-      console.error('Quick login error:', err);
-      // Fallback
-      await quickLoginAs(role);
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   const handleLiberarPrimeiroAcesso = async () => {
-    setErrorMsg('');
+    setErrorMsg('O acesso master não pode ser liberado pelo navegador. Use uma conta administrativa autenticada ou solicite a configuração segura do primeiro administrador.');
     setSuccessMsg('');
-    setIsSubmitting(true);
-    try {
-      const ok = await liberarPrimeiroAcesso();
-      if (!ok) {
-        await quickLoginAs('ADMIN');
-      }
-    } catch (err: any) {
-      console.error('Erro ao liberar primeiro acesso:', err);
-      await quickLoginAs('ADMIN');
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   return (
