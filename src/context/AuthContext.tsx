@@ -12,10 +12,8 @@ import {
   hashPassword,
   verifyPassword,
   generateSalt,
-  resetUsersToFirstAdmin,
   MAX_ADMINS,
   MAX_OPERATORS,
-  FIRST_ADMIN,
   INITIAL_USERS,
 } from '../utils/security';
 
