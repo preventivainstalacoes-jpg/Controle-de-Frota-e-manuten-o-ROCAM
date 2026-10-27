@@ -913,9 +913,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   /**
-   * Reset all user registrations and set the 1st Administrator
+   * Resetar para um administrador local não é permitido.
+   * Essa operação deve ser feita por procedimento seguro no servidor.
    */
-  const resetToFirstAdmin = async (customAdminData?: {
+  const resetToFirstAdmin = async (_customAdminData?: {
     username: string;
     name: string;
     graduacao: string;
@@ -923,22 +924,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     pelotao: string;
     password: string;
   }): Promise<{ success: boolean; error?: string }> => {
-    try {
-      const resetList = await resetUsersToFirstAdmin(customAdminData);
-      try {
-        localStorage.removeItem(STORAGE_FIRST_ADMIN_USED_KEY);
-        localStorage.removeItem('rocam_first_admin_quick_used');
-      } catch {}
-      setFirstAdminQuickAccessUsed(false);
-      setUsers(resetList);
-      setCurrentUser(resetList[0]);
-      const session = createSessionForUser(resetList[0]);
-      saveSavedSession(session);
-      return { success: true };
-    } catch (e) {
-      console.error('Failed to reset users to first admin', e);
-      return { success: false, error: 'Falha ao resetar cadastros.' };
-    }
+    return { success: false, error: 'A criação ou restauração do administrador deve ser feita por procedimento seguro no servidor. Nenhuma conta foi alterada.' };
   };
 
   /**
