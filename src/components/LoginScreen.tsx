@@ -48,13 +48,9 @@ const MILITARY_RANKS = [
 export const LoginScreen: React.FC = () => {
   const {
     login,
-    quickLoginAs,
     registerUserRequest,
     isLoading,
     users,
-    firstAdminQuickAccessUsed,
-    markFirstAdminQuickAccessUsed,
-    liberarPrimeiroAcesso,
   } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
