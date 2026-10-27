@@ -178,10 +178,7 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
-  // Contingent modal and quick access state (20 admins & 300 operators)
-  const [isContingentModalOpen, setIsContingentModalOpen] = useState(false);
-  const [contingentTab, setContingentTab] = useState<'ADMIN' | 'OPERADOR'>('ADMIN');
-  const [contingentSearch, setContingentSearch] = useState('');
+  // Atalhos locais e lista demonstrativa de contingente foram removidos por segurança.
   const [showAllAdmins, setShowAllAdmins] = useState(false);
   const [opNumberInput, setOpNumberInput] = useState('');
 
@@ -190,9 +187,6 @@ export const LoginScreen: React.FC = () => {
   const operatorUsers: UserProfile[] = [];
 
   // O cadastro do primeiro admin não precisa de confirmação
-  const hasCustomActiveAdmin = users.some(
-    (u) => u.role === 'ADMIN' && u.status === 'ATIVO' && u.id !== 'usr-admin-01' && u.username !== 'admin'
-  );
   // Não existe ativação automática de administrador pelo cliente.
   const isFirstAdminEligible = false;
 
@@ -679,7 +673,7 @@ export const LoginScreen: React.FC = () => {
               <div className="text-center pt-1">
                 {isFirstAdminButtonVisible ? (
                   <span className="text-[10px] text-zinc-400">
-                    Senha padrão do 1º Administrador: <code className="text-amber-400 font-mono">admin123</code> | Operadores: <code className="text-emerald-400 font-mono">operador123</code>
+                    Acesso protegido: use suas credenciais pessoais cadastradas
                   </span>
                 ) : (
                   <span className="text-[10px] text-zinc-500">
@@ -967,194 +961,6 @@ export const LoginScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* MODAL: SELETOR DE CONTINGENTE (20 ADMINS & 300 OPERADORES) */}
-      {isContingentModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-zinc-900 border border-zinc-750 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] animate-in fade-in zoom-in-95 duration-150">
-            {/* Header */}
-            <div className="p-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-950/80">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                  <Users className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-                    <span>Contingente ROCAM Habilitado</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
-                      320 Militares
-                    </span>
-                  </h3>
-                  <p className="text-xs text-zinc-400">
-                    20 Administradores (Acesso Total) • 300 Operadores (Acesso Limitado)
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsContingentModalOpen(false)}
-                className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Tabs & Search */}
-            <div className="p-3 border-b border-zinc-800 bg-zinc-950/40 space-y-2.5">
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setContingentTab('ADMIN')}
-                  className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer ${
-                    contingentTab === 'ADMIN'
-                      ? 'bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/20'
-                      : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
-                  }`}
-                >
-                  <Shield className="w-3.5 h-3.5" />
-                  <span>20 Administradores (Total)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setContingentTab('OPERADOR')}
-                  className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer ${
-                    contingentTab === 'OPERADOR'
-                      ? 'bg-emerald-500 text-zinc-950 shadow-md shadow-emerald-500/20'
-                      : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
-                  }`}
-                >
-                  <ClipboardCheck className="w-3.5 h-3.5" />
-                  <span>300 Operadores (Limitado)</span>
-                </button>
-              </div>
-
-              {/* Search input */}
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-2.5 text-zinc-500" />
-                <input
-                  type="text"
-                  value={contingentSearch}
-                  onChange={(e) => setContingentSearch(e.target.value)}
-                  placeholder={
-                    contingentTab === 'ADMIN'
-                      ? 'Buscar nos 20 Administradores (nome, RE, @login)...'
-                      : 'Buscar nos 300 Operadores (nome, RE, @op)...'
-                  }
-                  className="w-full pl-9 pr-3 py-1.5 text-xs bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-amber-500"
-                />
-              </div>
-            </div>
-
-            {/* Users List */}
-            <div className="flex-1 overflow-y-auto p-3 divide-y divide-zinc-800/80">
-              {(() => {
-                const baseList =
-                  contingentTab === 'ADMIN'
-                    ? adminUsers.length > 0
-                      ? adminUsers
-                      : SEED_ADMINS
-                    : operatorUsers.length > 0
-                    ? operatorUsers
-                    : SEED_OPERATORS;
-
-                const list = baseList.filter((u) => {
-                  if (!contingentSearch.trim()) return true;
-                  const term = contingentSearch.toLowerCase().trim();
-                  return (
-                    u.name.toLowerCase().includes(term) ||
-                    u.username.toLowerCase().includes(term) ||
-                    u.re.toLowerCase().includes(term) ||
-                    u.pelotao.toLowerCase().includes(term)
-                  );
-                });
-
-                if (list.length === 0) {
-                  return (
-                    <div className="p-8 text-center text-xs text-zinc-500">
-                      Nenhum militar localizado na busca.
-                    </div>
-                  );
-                }
-
-                return list.map((user, idx) => (
-                  <div
-                    key={user.id}
-                    className="py-2.5 px-2 flex items-center justify-between hover:bg-zinc-950/60 rounded-xl transition"
-                  >
-                    <div className="flex items-center space-x-2.5 min-w-0 pr-2">
-                      <div
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
-                          user.role === 'ADMIN'
-                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                            : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                        }`}
-                      >
-                        {user.role === 'ADMIN' ? (
-                          <Shield className="w-3.5 h-3.5" />
-                        ) : (
-                          <ClipboardCheck className="w-3.5 h-3.5" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center space-x-1.5">
-                          <span className="text-xs font-bold text-zinc-100 truncate">
-                            {user.name}
-                          </span>
-                          <span
-                            className={`text-[9px] px-1 py-0.2 rounded font-mono font-bold shrink-0 ${
-                              user.role === 'ADMIN'
-                                ? 'bg-amber-500/20 text-amber-300'
-                                : 'bg-emerald-500/20 text-emerald-300'
-                            }`}
-                          >
-                            {user.role === 'ADMIN' ? `ADM ${(idx + 1).toString().padStart(2, '0')}` : `@${user.username}`}
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-zinc-400 flex flex-wrap items-center gap-x-1.5 font-mono">
-                          <span>RE: {user.re}</span>
-                          <span>•</span>
-                          <span className="text-zinc-500">{user.pelotao}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        setIsContingentModalOpen(false);
-                        await handleQuickLogin(user.role, user.id);
-                      }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer shrink-0 flex items-center space-x-1 ${
-                        user.role === 'ADMIN'
-                          ? 'bg-amber-500 hover:bg-amber-400 text-zinc-950'
-                          : 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950'
-                      }`}
-                    >
-                      <span>Entrar</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </button>
-                  </div>
-                ));
-              })()}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-3 border-t border-zinc-800 bg-zinc-950/80 flex items-center justify-between text-[11px] text-zinc-400">
-              <span>
-                Senha padrão:{' '}
-                <code className="text-amber-400 font-mono">admin123</code> (Admin) |{' '}
-                <code className="text-emerald-400 font-mono">operador123</code> (Operador)
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsContingentModalOpen(false)}
-                className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-xs transition cursor-pointer"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
