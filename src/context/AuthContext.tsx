@@ -370,72 +370,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   };
 
-  const quickLoginAs = async (role: 'ADMIN' | 'OPERADOR', specificUserId?: string): Promise<boolean> => {
-    try {
-      const listToSearch = users.length > 0 ? users : await loadUsersFromStorage();
-      let candidate: UserProfile | undefined = undefined;
-
-      if (specificUserId) {
-        candidate = listToSearch.find((u: UserProfile) => u.id === specificUserId && u.isActive && u.status === 'ATIVO');
-      }
-
-      if (!candidate) {
-        candidate = listToSearch.find((u: UserProfile) => u.role === role && u.isActive && u.status === 'ATIVO');
-      }
-
-      if (!candidate) {
-        const freshList = await loadUsersFromStorage();
-        if (specificUserId) {
-          candidate = freshList.find((u: UserProfile) => u.id === specificUserId && u.isActive && u.status === 'ATIVO');
-        }
-        if (!candidate) {
-          candidate = freshList.find((u: UserProfile) => u.role === role && u.isActive && u.status === 'ATIVO');
-        }
-      }
-
-      // If still not found and role is ADMIN, guarantee 1º Administrador Master access immediately
-      if (!candidate && role === 'ADMIN') {
-        candidate = FIRST_ADMIN;
-        const currentList = users.length > 0 ? users : await loadUsersFromStorage();
-        const nextUsers = [FIRST_ADMIN, ...currentList.filter((u) => u.id !== FIRST_ADMIN.id && u.username !== 'admin')];
-        setUsers(nextUsers);
-        saveUsersToStorage(nextUsers);
-      }
-
-      if (candidate) {
-        if (candidate.role === 'ADMIN' || role === 'ADMIN') {
-          markFirstAdminQuickAccessUsed();
-        }
-
-        const updatedUser: UserProfile = {
-          ...candidate,
-          isActive: true,
-          status: 'ATIVO',
-          lastLogin: new Date().toISOString(),
-        };
-        const currentList = users.length > 0 ? users : await loadUsersFromStorage();
-        const nextUsers = currentList.map((u: UserProfile) => (u.id === updatedUser.id ? updatedUser : u));
-        if (!nextUsers.some((u) => u.id === updatedUser.id)) {
-          nextUsers.unshift(updatedUser);
-        }
-        setUsers(nextUsers);
-        saveUsersToStorage(nextUsers);
-
-        const session = createSessionForUser(updatedUser);
-        saveSavedSession(session);
-        setCurrentUser(updatedUser);
-        return true;
-      }
-    } catch (e) {
-      console.error('Error in quickLoginAs:', e);
-      if (role === 'ADMIN') {
-        markFirstAdminQuickAccessUsed();
-        const session = createSessionForUser(FIRST_ADMIN);
-        saveSavedSession(session);
-        setCurrentUser(FIRST_ADMIN);
-        return true;
-      }
-    }
+  // O acesso rápido local foi desativado: sessão local não comprova identidade.
+  // Todo acesso precisa passar por Supabase Auth com credenciais válidas.
+  const quickLoginAs = async (_role: 'ADMIN' | 'OPERADOR', _specificUserId?: string): Promise<boolean> => {
     return false;
   };
 
@@ -488,10 +425,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       if (!registeredAuthUser) return { success: false, error: 'O Supabase não retornou o usuário criado.' };
 
-      const hasCustomActiveAdmin = users.some(
-        (u) => u.role === 'ADMIN' && u.status === 'ATIVO' && u.id !== 'usr-admin-01' && u.username !== 'admin'
-      );
-      const isFirstAdmin = !recoveredExistingAuth && data.role === 'ADMIN' && !hasCustomActiveAdmin;
+      // A primeira conta administrativa nunca é ativada por decisão do navegador.
+      // Solicitações de perfil ADMIN ficam pendentes até aprovação de um administrador autenticado.
+      const isFirstAdmin = false;
 
       const { error: profileError } = await supabase.from('profiles').upsert({
         id: registeredAuthUser.id,
@@ -1006,38 +942,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   /**
-   * Força a liberação e entrada imediata como o 1º Administrador Master
+   * O bootstrap de administrador não pode criar uma sessão local.
+   * O primeiro administrador deve ser provisionado por um fluxo seguro no servidor.
    */
   const liberarPrimeiroAcesso = async (): Promise<boolean> => {
-    try {
-      const currentList = users.length > 0 ? users : await loadUsersFromStorage();
-      const updatedAdmin: UserProfile = {
-        ...FIRST_ADMIN,
-        isActive: true,
-        status: 'ATIVO',
-        lastLogin: new Date().toISOString(),
-      };
-
-      const nextUsers = [
-        updatedAdmin,
-        ...currentList.filter((u) => u.id !== FIRST_ADMIN.id && u.username !== 'admin'),
-      ];
-      setUsers(nextUsers);
-      await saveUsersToStorage(nextUsers);
-
-      const session = createSessionForUser(updatedAdmin);
-      saveSavedSession(session);
-      setCurrentUser(updatedAdmin);
-      markFirstAdminQuickAccessUsed();
-      return true;
-    } catch (e) {
-      console.error('Erro ao liberar primeiro acesso:', e);
-      const session = createSessionForUser(FIRST_ADMIN);
-      saveSavedSession(session);
-      setCurrentUser(FIRST_ADMIN);
-      markFirstAdminQuickAccessUsed();
-      return true;
-    }
+    return false;
   };
 
   const pendingUsers = users.filter((u) => u.status === 'PENDENTE');
