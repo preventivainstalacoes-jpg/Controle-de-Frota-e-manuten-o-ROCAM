@@ -545,7 +545,7 @@ export const LoginScreen: React.FC = () => {
                           {operatorUsers[0].name}
                         </div>
                         <div className="text-[10px] text-zinc-400 font-mono">
-                          RE {operatorUsers[0].re} • @{operatorUsers[0].username} • Senha: operador123
+                          RE {operatorUsers[0].re} • @{operatorUsers[0].username}
                         </div>
                       </div>
                     </div>
