@@ -805,7 +805,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                     )}
                   </div>
 
-                  {vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
+                  {vehicle.status === 'BAIXADA' && currentUser?.role !== 'ADJUNTO' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
                     <button
                       type="button"
                       onClick={() => setStatusModal({ vehicle, targetStatus: 'OPERACIONAL', reason: '' })}
@@ -1009,7 +1009,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                           >
                             <Gauge className="w-3.5 h-3.5" />
                           </button>
-                          {vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
+                          {vehicle.status === 'BAIXADA' && currentUser?.role !== 'ADJUNTO' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
                             <button
                               type="button"
                               onClick={() => setStatusModal({ vehicle, targetStatus: 'OPERACIONAL', reason: '' })}
