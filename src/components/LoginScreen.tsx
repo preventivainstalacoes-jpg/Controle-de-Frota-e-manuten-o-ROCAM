@@ -131,7 +131,8 @@ export const LoginScreen: React.FC = () => {
         recoveryEmail = String(profileData.email).trim().toLowerCase();
       }
       const { error } = await supabase.auth.resetPasswordForEmail(recoveryEmail, {
-        redirectTo: window.location.origin,
+        // Sempre retornar ao domínio publicado, nunca ao localhost ou a um preview.
+        redirectTo: 'https://rocammecanizacao.com.br/',
       });
       if (error) throw error;
       setSuccessMsg('Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha. Confira a caixa de entrada e o spam.');
