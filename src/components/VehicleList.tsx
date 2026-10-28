@@ -623,6 +623,9 @@ export const VehicleList: React.FC<VehicleListProps> = ({
 
                     {/* Status badge with direct edit action for baixadas vehicles */}
                     <div className="flex flex-col items-end gap-1">
+                      {vehicle.status === 'BAIXADA' && isMechanic && vehicle.tipo === 'MOTOCICLETA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
+                        <button type="button" onClick={() => setStatusModal({ vehicle, targetStatus: 'BAIXADA', reason: vehicle.motivoBaixa || '' })} title={`Editar motivo da baixa da motocicleta ${vehicle.prefixo}`} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-sky-700 hover:bg-sky-600 text-white border border-sky-400 font-bold text-[11px] transition cursor-pointer">Editar baixa</button>
+                      )}
                       {vehicle.status === 'BAIXADA' && isAdmin && (
                         <button
                           type="button"
@@ -805,7 +808,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                     )}
                   </div>
 
-                  {vehicle.status === 'BAIXADA' && currentUser?.role !== 'ADJUNTO' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
+                  {vehicle.status === 'BAIXADA' && currentUser?.role !== 'ADJUNTO' && (!isMechanic || vehicle.tipo === 'MOTOCICLETA') && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
                     <button
                       type="button"
                       onClick={() => setStatusModal({ vehicle, targetStatus: 'OPERACIONAL', reason: '' })}
@@ -845,7 +848,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                           <span>Enviar para oficina externa</span>
                         </button>
                       )}
-                      {!isMechanic && vehicle.status === 'OPERACIONAL' && (
+                      {(!isMechanic || vehicle.tipo === 'MOTOCICLETA') && vehicle.status === 'OPERACIONAL' && (
                         <button
                           onClick={() => handleOpenStatusModal(vehicle)}
                           title="Baixar viatura"
@@ -954,6 +957,9 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                             <span>{statusInfo.label}</span>
                           </span>
                         )}
+                        {vehicle.status === 'BAIXADA' && isMechanic && vehicle.tipo === 'MOTOCICLETA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
+                          <button type="button" onClick={() => setStatusModal({ vehicle, targetStatus: 'BAIXADA', reason: vehicle.motivoBaixa || '' })} title={`Editar motivo da baixa da motocicleta ${vehicle.prefixo}`} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-sky-700 hover:bg-sky-600 text-white border border-sky-500/60 font-bold transition">Editar baixa</button>
+                        )}
                         {vehicle.status === 'BAIXADA' && isAdmin && (
                           <button
                             type="button"
@@ -1009,7 +1015,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                           >
                             <Gauge className="w-3.5 h-3.5" />
                           </button>
-                          {vehicle.status === 'BAIXADA' && currentUser?.role !== 'ADJUNTO' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
+                          {vehicle.status === 'BAIXADA' && currentUser?.role !== 'ADJUNTO' && (!isMechanic || vehicle.tipo === 'MOTOCICLETA') && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
                             <button
                               type="button"
                               onClick={() => setStatusModal({ vehicle, targetStatus: 'OPERACIONAL', reason: '' })}
