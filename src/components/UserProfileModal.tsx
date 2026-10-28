@@ -16,6 +16,7 @@ import {
   FileBadge
 } from 'lucide-react';
 import { formatDate } from '../utils/formatters';
+import { supabase } from '../lib/supabase';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -33,12 +34,56 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   if (!isOpen || !currentUser) return null;
 
   const handleLogout = () => {
     logout();
     onClose();
+  };
+
+  const handleChangeOwnPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    if (newPassword.length < 8) {
+      setErrorMessage('A nova senha deve ter pelo menos 8 caracteres.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setErrorMessage('A confirmação da nova senha não confere.');
+      return;
+    }
+    if (!currentUser.email) {
+      setErrorMessage('Não foi possível localizar o e-mail de autenticação desta conta. Solicite apoio ao administrador.');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email: currentUser.email,
+        password: currentPassword,
+      });
+      if (verifyError) throw new Error('Senha atual incorreta.');
+
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) throw updateError;
+
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setSuccessMessage('Senha alterada com sucesso.');
+    } catch (error: any) {
+      setErrorMessage(error?.message || 'Não foi possível alterar a senha.');
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   const handleConfirmDeleteAccount = async (e: React.FormEvent) => {
@@ -157,6 +202,30 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Alteração de senha disponível para todos os perfis */}
+          <form onSubmit={handleChangeOwnPassword} className="rounded-xl border border-amber-500/30 bg-zinc-950 p-4 space-y-3">
+            <div className="flex items-center gap-2 text-amber-300">
+              <KeyRound className="w-4 h-4" />
+              <h3 className="text-sm font-bold">Alterar minha senha</h3>
+            </div>
+            <p className="text-[11px] text-zinc-400">Disponível para todos os usuários. A alteração afeta somente sua própria conta.</p>
+            <div>
+              <label className="block text-xs text-zinc-300 mb-1">Senha atual</label>
+              <input type="password" autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-amber-500" placeholder="Digite sua senha atual" />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-300 mb-1">Nova senha (mínimo 8 caracteres)</label>
+              <input type="password" autoComplete="new-password" minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-amber-500" placeholder="Digite a nova senha" />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-300 mb-1">Confirmar nova senha</label>
+              <input type="password" autoComplete="new-password" minLength={8} value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} required className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-amber-500" placeholder="Repita a nova senha" />
+            </div>
+            <button type="submit" disabled={isChangingPassword} className="w-full rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-zinc-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60">
+              {isChangingPassword ? 'Alterando senha...' : 'Salvar nova senha'}
+            </button>
+          </form>
 
           {/* Actions List */}
           <div className="space-y-2">
