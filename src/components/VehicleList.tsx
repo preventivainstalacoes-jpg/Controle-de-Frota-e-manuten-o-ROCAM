@@ -980,12 +980,26 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                                 <AlertTriangle className="w-3.5 h-3.5" />
                                 <span>Descarga</span>
                               </button>
+                              {vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && !isMechanic && (
+                                <button
+                                  type="button"
+                                  onClick={() => updateVehicle(vehicle.id, { status: 'OPERACIONAL', motivoBaixa: undefined })}
+                                  title={`Marcar a viatura ${vehicle.prefixo} como pronta para o serviço após o reparo`}
+                                  aria-label={`Marcar ${vehicle.prefixo} como pronta para o serviço`}
+                                  className="inline-flex items-center gap-1 px-2 py-1.5 rounded bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/60 font-bold transition"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>Pronta para serviço</span>
+                                </button>
+                              )}
                               <button
                                 onClick={() => onEditVehicle(vehicle)}
-                                title="Editar"
-                                className="p-1 rounded bg-zinc-800 hover:bg-zinc-750 text-zinc-300 transition"
+                                title={vehicle.status === 'BAIXADA' ? `Editar dados e peças/motivo da baixa da viatura ${vehicle.prefixo}` : 'Editar'}
+                                aria-label={`Editar viatura ${vehicle.prefixo}`}
+                                className={`inline-flex items-center gap-1 px-2 py-1 rounded transition ${vehicle.status === 'BAIXADA' ? 'bg-sky-700 hover:bg-sky-600 text-white border border-sky-500/60 font-bold' : 'bg-zinc-800 hover:bg-zinc-750 text-zinc-300'}`}
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
+                                {vehicle.status === 'BAIXADA' ? <span>Editar</span> : null}
                               </button>
                               <button
                                 onClick={() => setVehicleToDelete(vehicle)}
