@@ -621,8 +621,20 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                       </div>
                     </div>
 
-                    {/* Status Badge */}
+                    {/* Status badge with direct edit action for baixadas vehicles */}
                     <div className="flex flex-col items-end gap-1">
+                      {vehicle.status === 'BAIXADA' && isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => onEditVehicle(vehicle)}
+                          title={`Editar alterações, peças e motivo da baixa da viatura ${vehicle.prefixo}`}
+                          aria-label={`Editar viatura baixada ${vehicle.prefixo}`}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-sky-700 hover:bg-sky-600 text-white border border-sky-400 font-bold text-[11px] transition cursor-pointer"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span>EDITAR BAIXADA</span>
+                        </button>
+                      )}
                       {activeCautela ? (
                         <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -928,6 +940,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                       </td>
                       <td className="py-3 px-4 text-zinc-300">{vehicle.pelotao}</td>
                       <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
                         {activeCautela ? (
                           <span className="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -941,6 +954,19 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                             <span>{statusInfo.label}</span>
                           </span>
                         )}
+                        {vehicle.status === 'BAIXADA' && isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => onEditVehicle(vehicle)}
+                            title={`Editar alterações, peças e motivo da baixa da viatura ${vehicle.prefixo}`}
+                            aria-label={`Editar viatura baixada ${vehicle.prefixo}`}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-sky-700 hover:bg-sky-600 text-white border border-sky-400 font-bold text-[10px] transition cursor-pointer"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                            <span>EDITAR</span>
+                          </button>
+                        )}
+                        </div>
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
                         {hasCritical ? (
