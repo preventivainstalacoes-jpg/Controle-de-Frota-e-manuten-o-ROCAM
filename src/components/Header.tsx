@@ -158,7 +158,7 @@ export const Header: React.FC<HeaderProps> = ({
       icon: FileText,
       badge: stats.baixadas > 0 ? `${stats.baixadas} Baixada${stats.baixadas > 1 ? 's' : ''}` : undefined,
       badgeColor: 'bg-rose-900/80 text-rose-200 border border-rose-700/60',
-      allowedRoles: ['ADMIN', 'OPERADOR', 'ADJUNTO'],
+      allowedRoles: ['ADMIN', 'OPERADOR', 'ADJUNTO', 'MECANICO'],
     },
     {
       id: 'relatorio-mensal',
