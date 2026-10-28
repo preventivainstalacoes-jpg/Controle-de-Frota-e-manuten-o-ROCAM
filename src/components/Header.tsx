@@ -76,13 +76,12 @@ export const Header: React.FC<HeaderProps> = ({
   useEffect(() => {
     // Administradores e operadores podem alternar manualmente entre as duas unidades.
     // Os demais perfis continuam vinculados à unidade cadastrada no pelotão.
-    if (!isAdmin && !isOperator) {
+    if (!isAdmin && !isOperator && currentUser?.role !== 'ADJUNTO') {
       setActiveUnit(currentUser?.pelotao?.toLowerCase().includes('mossor') ? '3_cpm_rocam_mossoro' : 'batalhao_rocam_natal');
     }
   }, [isAdmin, isOperator, currentUser?.pelotao, setActiveUnit]);
 
-  // Operadores podem consultar a frota da unidade selecionada e usar o módulo de cautelas.
-  // O seletor de unidade permite acessar Natal ou 3ª CPM ROCAM Mossoró.
+  // Operadores e Adjuntos podem alternar entre as duas unidades existentes.
 
 
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -114,6 +113,13 @@ export const Header: React.FC<HeaderProps> = ({
       badge: `${stats.total}`,
       badgeColor: 'bg-zinc-800 text-zinc-300',
       allowedRoles: ['ADMIN', 'OPERADOR', 'ADJUNTO', 'MECANICO'],
+    },
+    {
+      id: 'visao-adjunto',
+      label: 'Resumo da Frota',
+      icon: Users,
+      badge: undefined,
+      allowedRoles: ['ADJUNTO'],
     },
     {
       id: 'cautelas',
@@ -167,7 +173,9 @@ export const Header: React.FC<HeaderProps> = ({
   // Operadores usam exclusivamente o fluxo de cautela/devolução e checklist.
   const navItems = isOperator
     ? allNavItems.filter((item) => item.id === 'frota' || item.id === 'cautelas')
-    : allNavItems.filter((item) => item.allowedRoles.includes(currentRole));
+    : currentRole === 'ADJUNTO'
+      ? allNavItems.filter((item) => ['frota', 'cautelas', 'visao-adjunto'].includes(item.id))
+      : allNavItems.filter((item) => item.allowedRoles.includes(currentRole));
 
   return (
     <header className="bg-zinc-950 border-b border-zinc-800 sticky top-0 z-30 shadow-xl">
@@ -191,7 +199,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Seletor de unidade para administradores e operadores */}
-            {(isAdmin || isOperator) && (
+            {(isAdmin || isOperator || currentRole === 'ADJUNTO') && (
               <div className="order-3 sm:order-none flex w-full sm:w-auto shrink-0 items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-zinc-900 px-3 py-2">
                 <ArrowLeftRight className="h-4 w-4 text-amber-400 shrink-0" />
                 <label htmlFor="rocam-unit-switch" className="sr-only">Selecionar unidade ROCAM</label>
