@@ -19,6 +19,7 @@ import {
   CheckSquare,
   Square,
   Mail,
+  Copy,
   Clock,
   Wrench,
   Upload,
@@ -63,6 +64,8 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     rejectUser,
     pendingUsers,
     pendingApprovalsCount,
+    sendPasswordRecoveryEmail,
+    generatePasswordRecoveryLink,
   } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'list' | 'pending' | 'create' | 'bulk'>(initialTab);
@@ -108,6 +111,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
   const [deleteAdminPassword, setDeleteAdminPassword] = useState('');
   const [showDeletePassword, setShowDeletePassword] = useState(false);
+  const [recoveryActionUserId, setRecoveryActionUserId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -123,6 +127,43 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const showToast = (text: string, type: 'success' | 'error') => {
     setToast({ text, type });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  const handleSendRecoveryEmail = async (user: UserProfile) => {
+    if (!user.email) {
+      showToast('Este usuário não possui e-mail cadastrado.', 'error');
+      return;
+    }
+    setRecoveryActionUserId(user.id);
+    const result = await sendPasswordRecoveryEmail(user.id);
+    setRecoveryActionUserId(null);
+    if (result.success) {
+      showToast(`Solicitação de recuperação enviada para ${user.email}. Oriente o policial a conferir a caixa de entrada e o spam.`, 'success');
+    } else {
+      showToast(result.error || 'Não foi possível enviar o e-mail de recuperação.', 'error');
+    }
+  };
+
+  const handleCopyRecoveryLink = async (user: UserProfile) => {
+    if (!user.email) {
+      showToast('Este usuário não possui e-mail cadastrado.', 'error');
+      return;
+    }
+    setRecoveryActionUserId(user.id);
+    const result = await generatePasswordRecoveryLink(user.id);
+    if (!result.success || !result.link) {
+      setRecoveryActionUserId(null);
+      showToast(result.error || 'Não foi possível gerar o link de recuperação.', 'error');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(result.link);
+      setRecoveryActionUserId(null);
+      showToast('Link temporário copiado. Envie ao policial pelo WhatsApp; ele poderá usá-lo para criar uma nova senha.', 'success');
+    } catch {
+      setRecoveryActionUserId(null);
+      showToast('O link foi gerado, mas o navegador bloqueou a cópia. Tente novamente em uma página HTTPS.', 'error');
+    }
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -989,6 +1030,26 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                             >
                               {u.role === 'ADMIN' ? '👑 ADMIN' : u.role === 'ADJUNTO' ? '🛡️ ADJUNTO' : u.role === 'MECANICO' ? '🔧 MECÂNICO' : '🛡️ OPERADOR'}
                             </span>
+
+                          <button
+                            type="button"
+                            onClick={() => handleSendRecoveryEmail(u)}
+                            disabled={!u.email || recoveryActionUserId === u.id}
+                            className="px-2 py-1.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 text-xs font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                            title={u.email ? `Enviar link de recuperação para ${u.email}` : 'Usuário sem e-mail cadastrado'}
+                          >
+                            <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /><span className="hidden lg:inline">E-mail</span></span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleCopyRecoveryLink(u)}
+                            disabled={!u.email || recoveryActionUserId === u.id}
+                            className="px-2 py-1.5 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 border border-violet-500/30 text-xs font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="Gerar e copiar link temporário para enviar pelo WhatsApp"
+                          >
+                            <span className="flex items-center gap-1"><Copy className="w-3.5 h-3.5" /><span className="hidden lg:inline">Copiar link</span></span>
+                          </button>
 
                           <button
                             type="button"
