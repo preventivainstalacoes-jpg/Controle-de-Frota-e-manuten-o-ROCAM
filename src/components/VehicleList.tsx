@@ -980,7 +980,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                                 <AlertTriangle className="w-3.5 h-3.5" />
                                 <span>Descarga</span>
                               </button>
-                              {vehicle.tipo === 'MOTOCICLETA' && vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
+                              {vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
                                 <button
                                   type="button"
                                   onClick={() => updateVehicle(vehicle.id, { status: 'OPERACIONAL', motivoBaixa: undefined })}
