@@ -79,6 +79,12 @@ export const Header: React.FC<HeaderProps> = ({
     }
   }, [isAdmin, currentUser?.pelotao, setActiveUnit]);
 
+  useEffect(() => {
+    if (isOperator && activeTab !== 'cautelas') {
+      setActiveTab('cautelas');
+    }
+  }, [isOperator, activeTab, setActiveTab]);
+
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -158,7 +164,10 @@ export const Header: React.FC<HeaderProps> = ({
   ];
 
   const currentRole = currentUser?.role || 'OPERADOR';
-  const navItems = allNavItems.filter((item) => item.allowedRoles.includes(currentRole));
+  // Operadores usam exclusivamente o fluxo de cautela/devolução e checklist.
+  const navItems = isOperator
+    ? allNavItems.filter((item) => item.id === 'cautelas')
+    : allNavItems.filter((item) => item.allowedRoles.includes(currentRole));
 
   return (
     <header className="bg-zinc-950 border-b border-zinc-800 sticky top-0 z-30 shadow-xl">
