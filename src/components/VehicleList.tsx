@@ -793,6 +793,19 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                     )}
                   </div>
 
+                  {vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
+                    <button
+                      type="button"
+                      onClick={() => setStatusModal({ vehicle, targetStatus: 'OPERACIONAL', reason: '' })}
+                      title={`Liberar ${vehicle.prefixo} para o serviço após a manutenção`}
+                      aria-label={`Pronta para o serviço: ${vehicle.prefixo}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-black transition cursor-pointer bg-emerald-700 hover:bg-emerald-600 text-white border-2 border-emerald-400 shadow-lg whitespace-nowrap"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>PRONTA PARA O SERVIÇO</span>
+                    </button>
+                  )}
+
                   {canSendToDischarge && (
                     <div className="flex items-center space-x-1">
                       <button
@@ -829,18 +842,6 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                           Baixar
                         </button>
                       )}
-                      {vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
-                        <button
-                          type="button"
-                          onClick={() => setStatusModal({ vehicle, targetStatus: 'OPERACIONAL', reason: '' })}
-                          title={`Marcar a motocicleta/viatura ${vehicle.prefixo} como pronta para o serviço`}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/60"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          PRONTA PARA O SERVIÇO
-                        </button>
-                      )}
-
                       {vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
                         <button
                           type="button"
@@ -982,6 +983,18 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                           >
                             <Gauge className="w-3.5 h-3.5" />
                           </button>
+                          {vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
+                            <button
+                              type="button"
+                              onClick={() => setStatusModal({ vehicle, targetStatus: 'OPERACIONAL', reason: '' })}
+                              title={`Liberar ${vehicle.prefixo} para o serviço após a manutenção`}
+                              aria-label={`Pronta para o serviço: ${vehicle.prefixo}`}
+                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-black transition cursor-pointer bg-emerald-700 hover:bg-emerald-600 text-white border-2 border-emerald-400 shadow-lg whitespace-nowrap"
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                              <span>PRONTA PARA O SERVIÇO</span>
+                            </button>
+                          )}
                           {isAdmin && (
                             <>
                               <button
@@ -1001,18 +1014,6 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                                 <AlertTriangle className="w-3.5 h-3.5" />
                                 <span>Descarga</span>
                               </button>
-                              {vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
-                                <button
-                                  type="button"
-                                  onClick={() => updateVehicle(vehicle.id, { status: 'OPERACIONAL', motivoBaixa: undefined })}
-                                  title={`Marcar a viatura ${vehicle.prefixo} como pronta para o serviço após o reparo`}
-                                  aria-label={`Marcar ${vehicle.prefixo} como pronta para o serviço`}
-                                  className="inline-flex items-center gap-1 px-2 py-1.5 rounded bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/60 font-bold transition"
-                                >
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
-                                  <span>Pronta para serviço</span>
-                                </button>
-                              )}
                               <button
                                 onClick={() => onEditVehicle(vehicle)}
                                 title={vehicle.status === 'BAIXADA' ? `Editar dados e peças/motivo da baixa da viatura ${vehicle.prefixo}` : 'Editar'}
