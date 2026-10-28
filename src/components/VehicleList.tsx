@@ -808,7 +808,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                           Baixar
                         </button>
                       )}
-                      {!isMechanic && vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
+                      {vehicle.tipo === 'MOTOCICLETA' && vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
                         <button
                           type="button"
                           onClick={() => updateVehicle(vehicle.id, { status: 'OPERACIONAL', motivoBaixa: undefined })}
@@ -816,7 +816,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/60"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          Pronta para serviço
+                          PRONTA PARA O SERVIÇO
                         </button>
                       )}
 
@@ -980,7 +980,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                                 <AlertTriangle className="w-3.5 h-3.5" />
                                 <span>Descarga</span>
                               </button>
-                              {vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && !isMechanic && (
+                              {vehicle.tipo === 'MOTOCICLETA' && vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
                                 <button
                                   type="button"
                                   onClick={() => updateVehicle(vehicle.id, { status: 'OPERACIONAL', motivoBaixa: undefined })}
