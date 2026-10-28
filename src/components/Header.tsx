@@ -81,11 +81,9 @@ export const Header: React.FC<HeaderProps> = ({
     }
   }, [isAdmin, isOperator, currentUser?.pelotao, setActiveUnit]);
 
-  useEffect(() => {
-    if (isOperator && activeTab !== 'cautelas') {
-      setActiveTab('cautelas');
-    }
-  }, [isOperator, activeTab, setActiveTab]);
+  // Operadores podem consultar a frota da unidade selecionada e usar o módulo de cautelas.
+  // O seletor de unidade permite acessar Natal ou 3ª CPM ROCAM Mossoró.
+
 
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -168,7 +166,7 @@ export const Header: React.FC<HeaderProps> = ({
   const currentRole = currentUser?.role || 'OPERADOR';
   // Operadores usam exclusivamente o fluxo de cautela/devolução e checklist.
   const navItems = isOperator
-    ? allNavItems.filter((item) => item.id === 'cautelas')
+    ? allNavItems.filter((item) => item.id === 'frota' || item.id === 'cautelas')
     : allNavItems.filter((item) => item.allowedRoles.includes(currentRole));
 
   return (
