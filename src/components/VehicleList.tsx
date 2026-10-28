@@ -799,17 +799,26 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                           <span>Enviar para oficina externa</span>
                         </button>
                       )}
-                      {!isMechanic && <button
-                        onClick={() => handleOpenStatusModal(vehicle)}
-                        title={vehicle.status === 'OPERACIONAL' ? 'Baixar viatura' : 'Liberar como Operacional'}
-                        className={`px-2 py-1 rounded text-[11px] font-semibold transition cursor-pointer ${
-                          vehicle.status === 'OPERACIONAL'
-                            ? 'bg-zinc-800 hover:bg-rose-950/80 text-zinc-400 hover:text-rose-300'
-                            : 'bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300'
-                        }`}
-                      >
-                        {vehicle.status === 'OPERACIONAL' ? 'Baixar' : 'Pronta'}
-                      </button>}
+                      {!isMechanic && vehicle.status === 'OPERACIONAL' && (
+                        <button
+                          onClick={() => handleOpenStatusModal(vehicle)}
+                          title="Baixar viatura"
+                          className="px-2 py-1 rounded text-[11px] font-semibold transition cursor-pointer bg-zinc-800 hover:bg-rose-950/80 text-zinc-400 hover:text-rose-300"
+                        >
+                          Baixar
+                        </button>
+                      )}
+                      {!isMechanic && vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
+                        <button
+                          type="button"
+                          onClick={() => updateVehicle(vehicle.id, { status: 'OPERACIONAL', motivoBaixa: undefined })}
+                          title={`Marcar a motocicleta/viatura ${vehicle.prefixo} como pronta para o serviço`}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/60"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Pronta para serviço
+                        </button>
+                      )}
 
                       {vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
                         <button
@@ -824,10 +833,12 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                       )}
                       {!isMechanic && <button
                         onClick={() => onEditVehicle(vehicle)}
-                        title="Editar viatura"
-                        className="p-1.5 rounded text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition cursor-pointer"
+                        title={vehicle.status === 'BAIXADA' ? `Editar dados da viatura baixada ${vehicle.prefixo}` : 'Editar viatura'}
+                        aria-label={`Editar viatura ${vehicle.prefixo}`}
+                        className={`inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer ${vehicle.status === 'BAIXADA' ? 'bg-sky-700 hover:bg-sky-600 text-white border border-sky-500/60' : 'p-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'}`}
                       >
                         <Edit2 className="w-3.5 h-3.5" />
+                        {vehicle.status === 'BAIXADA' ? <span>Editar</span> : null}
                       </button>}
 
                       <button
