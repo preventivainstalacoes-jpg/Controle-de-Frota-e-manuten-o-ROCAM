@@ -632,7 +632,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const updated: UserProfile = {
       id: saved.id, username: saved.username || saved.email?.split('@')[0] || '', email: saved.email || '',
       name: saved.full_name || saved.username || '', graduacao: saved.graduacao || '', re: saved.re || '',
-      role: saved.role === 'admin' ? 'ADMIN' : 'OPERADOR', pelotao: saved.pelotao || 'ROCAM',
+      role: saved.role === 'admin' ? 'ADMIN' : saved.role === 'adjunto' ? 'ADJUNTO' : saved.role === 'mecanico' ? 'MECANICO' : 'OPERADOR', pelotao: saved.pelotao || 'ROCAM',
       passwordHash: '', salt: '', createdAt: saved.created_at || new Date().toISOString(),
       isActive: false, status: 'REJEITADO', motivoRejeicao: motivo || 'Cadastro não homologado pelo Administrador.'
     };
@@ -652,7 +652,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (data.graduacao !== undefined) dbUpdate.graduacao = data.graduacao;
     if (data.re !== undefined) dbUpdate.re = data.re.trim();
     if (data.pelotao !== undefined) dbUpdate.pelotao = data.pelotao.trim() || 'ROCAM';
-    if (data.role !== undefined) dbUpdate.role = data.role === 'ADMIN' ? 'admin' : 'operador';
+    if (data.role !== undefined) dbUpdate.role = data.role.toLowerCase();
     if (data.isActive !== undefined) dbUpdate.active = data.isActive;
     if (data.status !== undefined) dbUpdate.approval_status = data.status;
     dbUpdate.updated_at = new Date().toISOString();
