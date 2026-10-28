@@ -44,12 +44,12 @@ export const VehicleList: React.FC<VehicleListProps> = ({
   onOpenDescautelaForVehicle,
 }) => {
   const {
-    vehicles,
+    vehicles: allVehicles,
+    activeUnit,
     deleteVehicle,
     maintenanceRecords,
     cautelas,
     alerts,
-    stats,
     searchQuery,
     setSearchQuery,
     typeFilter,
@@ -59,6 +59,27 @@ export const VehicleList: React.FC<VehicleListProps> = ({
     updateVehicle,
   } = useFleet();
   const { isAdmin, isOperator, currentUser } = useAuth();
+  // A unidade selecionada controla a lista efetivamente exibida, não apenas o cabeçalho.
+  const vehicles = allVehicles.filter((vehicle) => {
+    const isMossoro = (vehicle.batalhao || '').toLocaleLowerCase().includes('mossor');
+    return activeUnit === '3_cpm_rocam_mossoro' ? isMossoro : !isMossoro;
+  });
+  const unitVehicleIds = new Set(vehicles.map((vehicle) => vehicle.id));
+  const unitCautelas = cautelas.filter((cautela) => unitVehicleIds.has(cautela.viaturaId));
+  const motosCount = vehicles.filter((vehicle) => vehicle.tipo === 'MOTOCICLETA').length;
+  const quatroRodasCount = vehicles.filter((vehicle) => vehicle.tipo === 'QUATRO_RODAS').length;
+  const operacionaisCount = vehicles.filter((vehicle) => vehicle.status === 'OPERACIONAL').length;
+  const reservaCount = vehicles.filter((vehicle) => vehicle.status === 'RESERVA').length;
+  const stats = {
+    total: vehicles.length,
+    motos: motosCount,
+    quatroRodas: quatroRodasCount,
+    operacionais: operacionaisCount,
+    reserva: reservaCount,
+    baixadas: vehicles.filter((vehicle) => vehicle.status === 'BAIXADA').length,
+    emManutencao: vehicles.filter((vehicle) => vehicle.status === 'EM_MANUTENCAO').length,
+    taxaProntidao: vehicles.length ? Math.round(((operacionaisCount + reservaCount) / vehicles.length) * 100) : 0,
+  };
   const isMechanic = currentUser?.role === 'MECANICO';
   const canSendToDischarge = isAdmin || isMechanic;
 
@@ -114,7 +135,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
     const matchType = typeFilter === 'TODAS' || v.tipo === typeFilter;
     const matchStatus = statusFilter === 'TODOS' || v.status === statusFilter;
     const isForDischarge = (v.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade');
-    const activeCautelaVehicleIds = new Set(cautelas.filter((c) => c.status === 'EM_PATRULHAMENTO').map((c) => c.viaturaId));
+    const activeCautelaVehicleIds = new Set(unitCautelas.filter((c) => c.status === 'EM_PATRULHAMENTO').map((c) => c.viaturaId));
     const matchDashboardFilter =
       dashboardFilter === 'TODOS' ||
       (dashboardFilter === 'MOTOCICLETA' && v.tipo === 'MOTOCICLETA') ||
@@ -216,7 +237,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
 
         <button type="button" onClick={() => applyDashboardFilter('CAUTELADAS')} aria-label="Mostrar viaturas cauteladas em patrulhamento" className={`text-left w-full bg-zinc-900 border rounded-xl p-3.5 shadow-sm transition hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 ${dashboardFilter === 'CAUTELADAS' ? 'border-emerald-500 ring-1 ring-emerald-500/50' : 'border-emerald-900/40'}`}>
           <div className="flex items-center justify-between text-emerald-400 text-xs font-semibold uppercase"><span>Cauteladas / Em Patrulhamento</span><Shield className="w-4 h-4 text-emerald-500" /></div>
-          <div className="mt-2 text-2xl font-black font-mono text-emerald-400">{cautelas.filter((c) => c.status === 'EM_PATRULHAMENTO').length}</div>
+          <div className="mt-2 text-2xl font-black font-mono text-emerald-400">{unitCautelas.filter((c) => c.status === 'EM_PATRULHAMENTO').length}</div>
           <div className="text-[11px] text-emerald-500/80 mt-0.5">Saídas registradas e ainda não devolvidas</div>
           <div className="text-[10px] text-emerald-400 mt-1">Toque para ver as cauteladas</div>
         </button>
