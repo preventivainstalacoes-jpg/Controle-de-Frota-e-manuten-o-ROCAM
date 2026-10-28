@@ -420,12 +420,19 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return false;
     }
 
-    const anoAtual = new Date().getFullYear();
-    const proximoNumero = String(cautelas.length + 1).padStart(4, '0');
+    // O número do termo é reservado no banco com operação atômica.
+    // Não usar cautelas.length: históricos incompletos e acessos simultâneos
+    // podem gerar um número já existente e bloquear o INSERT por UNIQUE.
+    const { data: numeroTermoGerado, error: numeroTermoError } = await supabase.rpc('next_cautela_numero_termo');
+    if (numeroTermoError || typeof numeroTermoGerado !== 'string' || !numeroTermoGerado) {
+      console.error('Não foi possível gerar um número exclusivo para a cautela:', numeroTermoError);
+      return false;
+    }
+
     const newRecord: CautelaRecord = {
       ...cautelaData,
       id: crypto.randomUUID(),
-      numeroTermo: `CAUT-${anoAtual}-${proximoNumero}`,
+      numeroTermo: numeroTermoGerado,
       status: 'EM_PATRULHAMENTO',
     };
 
