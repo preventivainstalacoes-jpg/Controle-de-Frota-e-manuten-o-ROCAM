@@ -58,6 +58,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     deleteUser,
     deleteMultipleUsers,
     toggleUserActive,
+    updateUser,
     approveUser,
     rejectUser,
     pendingUsers,
@@ -95,6 +96,8 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const [formPassword, setFormPassword] = useState('');
   const [formRole, setFormRole] = useState<UserRole>('OPERADOR');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', graduacao: '', re: '', email: '', username: '', pelotao: '', role: 'OPERADOR' as UserRole });
 
   // Pending user approval & rejection state
   const [userToReject, setUserToReject] = useState<UserProfile | null>(null);
@@ -406,6 +409,33 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     }
     setSelectedUserIds(allOtherIds);
     setIsBatchDeleteModalOpen(true);
+  };
+
+  const handleOpenEditUser = (user: UserProfile) => {
+    setUserToEdit(user);
+    setEditForm({ name: user.name || '', graduacao: user.graduacao || '', re: user.re || '', email: user.email || '', username: user.username || '', pelotao: user.pelotao || '', role: user.role || 'OPERADOR' });
+  };
+
+  const handleSaveEditedUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userToEdit) return;
+    if (!editForm.name.trim() || !editForm.username.trim() || !editForm.re.trim()) {
+      showToast('Preencha nome, usuário e RE antes de salvar.', 'error');
+      return;
+    }
+    setIsSubmitting(true);
+    const result = await updateUser(userToEdit.id, {
+      name: editForm.name.trim(), graduacao: editForm.graduacao, re: editForm.re.trim(),
+      email: editForm.email.trim(), username: editForm.username.trim(),
+      pelotao: editForm.pelotao.trim(), role: editForm.role
+    });
+    setIsSubmitting(false);
+    if (result.success) {
+      showToast('Dados do usuário atualizados com sucesso.', 'success');
+      setUserToEdit(null);
+    } else {
+      showToast(result.error || 'Não foi possível atualizar o usuário.', 'error');
+    }
   };
 
   const handleToggleActive = async (user: UserProfile) => {
@@ -959,6 +989,15 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                             >
                               {u.role === 'ADMIN' ? '👑 ADMIN' : u.role === 'ADJUNTO' ? '🛡️ ADJUNTO' : u.role === 'MECANICO' ? '🔧 MECÂNICO' : '🛡️ OPERADOR'}
                             </span>
+
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditUser(u)}
+                            className="px-2 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-bold transition cursor-pointer"
+                            title={`Editar cadastro de ${u.name}`}
+                          >
+                            Editar
+                          </button>
 
                           {/* Toggle Active Status */}
                           <button
@@ -1637,3 +1676,46 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     </div>
   );
 };
+
+      {userToEdit && (
+        <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <form onSubmit={handleSaveEditedUser} className="w-full max-w-xl rounded-2xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between gap-3 p-4 border-b border-zinc-800">
+              <div>
+                <h3 className="text-base font-bold text-white">Editar usuário</h3>
+                <p className="text-xs text-zinc-400">Atualize os dados e o nível de acesso sem excluir o cadastro.</p>
+              </div>
+              <button type="button" onClick={() => setUserToEdit(null)} className="p-2 rounded-lg text-zinc-400 hover:bg-zinc-800" aria-label="Fechar edição"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {([
+                ['name', 'Nome completo', 'text'],
+                ['graduacao', 'Graduação', 'text'],
+                ['re', 'RE / matrícula', 'text'],
+                ['email', 'E-mail', 'email'],
+                ['username', 'Usuário de acesso', 'text'],
+                ['pelotao', 'Pelotão / unidade', 'text'],
+              ] as const).map(([field, label, type]) => (
+                <label key={field} className="text-xs text-zinc-300 space-y-1">
+                  <span>{label}</span>
+                  <input type={type} value={editForm[field]} onChange={(e) => setEditForm(prev => ({ ...prev, [field]: e.target.value }))} className="w-full rounded-lg bg-zinc-950 border border-zinc-700 px-3 py-2 text-sm text-white outline-none focus:border-amber-500" />
+                </label>
+              ))}
+              <label className="text-xs text-zinc-300 space-y-1 sm:col-span-2">
+                <span>Perfil de acesso</span>
+                <select value={editForm.role} onChange={(e) => setEditForm(prev => ({ ...prev, role: e.target.value as UserRole }))} className="w-full rounded-lg bg-zinc-950 border border-zinc-700 px-3 py-2 text-sm text-white">
+                  <option value="ADMIN">Administrador</option>
+                  <option value="OPERADOR">Operador</option>
+                  <option value="ADJUNTO">Adjunto</option>
+                  <option value="MECANICO">Mecânico</option>
+                </select>
+              </label>
+            </div>
+            <div className="p-4 border-t border-zinc-800 flex justify-end gap-2">
+              <button type="button" onClick={() => setUserToEdit(null)} className="px-4 py-2 rounded-lg bg-zinc-800 text-zinc-200 text-xs font-bold">Cancelar</button>
+              <button type="submit" disabled={isSubmitting} className="px-4 py-2 rounded-lg bg-amber-500 text-zinc-950 text-xs font-bold disabled:opacity-50">{isSubmitting ? 'Salvando...' : 'Salvar alterações'}</button>
+            </div>
+          </form>
+        </div>
+      )}
+
