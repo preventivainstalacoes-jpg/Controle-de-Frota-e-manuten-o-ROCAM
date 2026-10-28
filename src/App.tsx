@@ -399,6 +399,58 @@ function AppContent() {
           />
         )}
 
+        
+        {activeTab === 'visao-adjunto' && currentUser?.role === 'ADJUNTO' && (
+          <section className="space-y-5">
+            <div className="rounded-2xl border border-amber-500/30 bg-zinc-900 p-5">
+              <p className="text-xs font-bold uppercase tracking-widest text-amber-400">Visão administrativa limitada</p>
+              <h2 className="mt-1 text-xl font-extrabold text-white">Resumo da frota ROCAM</h2>
+              <p className="mt-1 text-sm text-zinc-400">Quantitativos da unidade selecionada e motocicletas em serviço. Não são exibidos detalhes de ordens de serviço ou diagnósticos de manutenção.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              {[
+                { label: 'Motocicletas na frota', value: vehicles.filter(v => v.tipo === 'MOTOCICLETA').length },
+                { label: 'Motocicletas cauteladas', value: cautelas.filter(c => c.status === 'EM_PATRULHAMENTO' && c.tipoViatura === 'MOTOCICLETA').length },
+                { label: 'Motocicletas baixadas', value: vehicles.filter(v => v.tipo === 'MOTOCICLETA' && v.status === 'BAIXADA').length },
+                { label: 'Em manutenção (total)', value: vehicles.filter(v => v.tipo === 'MOTOCICLETA' && (v.status === 'EM_MANUTENCAO' || v.status === 'MANUTENCAO_EXTERNA')).length },
+                { label: 'Em manutenção interna', value: vehicles.filter(v => v.tipo === 'MOTOCICLETA' && v.status === 'EM_MANUTENCAO').length },
+                { label: 'Em oficina externa', value: vehicles.filter(v => v.tipo === 'MOTOCICLETA' && v.status === 'MANUTENCAO_EXTERNA').length },
+                { label: 'Disponíveis para cautela', value: vehicles.filter(v => v.tipo === 'MOTOCICLETA' && (v.status === 'OPERACIONAL' || v.status === 'RESERVA') && !cautelas.some(c => c.status === 'EM_PATRULHAMENTO' && c.viaturaId === v.id)).length },
+                { label: 'Viaturas de 4 rodas cauteladas', value: cautelas.filter(c => c.status === 'EM_PATRULHAMENTO' && c.tipoViatura === 'QUATRO_RODAS').length },
+              ].map((item) => (
+                <div key={item.label} className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+                  <p className="text-xs text-zinc-400">{item.label}</p>
+                  <p className="mt-2 text-2xl font-black text-white">{item.value}</p>
+                </div>
+              ))}
+            </div>
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 sm:p-5">
+              <h3 className="mb-3 text-base font-bold text-white">Motocicletas atualmente cauteladas</h3>
+              {cautelas.filter(c => c.status === 'EM_PATRULHAMENTO' && c.tipoViatura === 'MOTOCICLETA').length === 0 ? (
+                <p className="text-sm text-zinc-400">Nenhuma motocicleta consta cautelada nesta unidade.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[560px] text-left text-sm">
+                    <thead className="border-b border-zinc-800 text-xs uppercase text-zinc-500">
+                      <tr><th className="px-3 py-2">Motocicleta</th><th className="px-3 py-2">Policial responsável</th><th className="px-3 py-2">RE</th><th className="px-3 py-2">Área de patrulhamento</th></tr>
+                    </thead>
+                    <tbody>
+                      {cautelas.filter(c => c.status === 'EM_PATRULHAMENTO' && c.tipoViatura === 'MOTOCICLETA').map(c => (
+                        <tr key={c.id} className="border-b border-zinc-800/70">
+                          <td className="px-3 py-3 font-semibold text-amber-300">{c.prefixoViatura}</td>
+                          <td className="px-3 py-3 text-zinc-200">{c.condutorNome}</td>
+                          <td className="px-3 py-3 text-zinc-300">{c.condutorRE}</td>
+                          <td className="px-3 py-3 text-zinc-300">{c.areaPatrulhamento || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
         {activeTab === 'cautelas' && (
           <CautelaList
             onOpenNewCautela={() => handleOpenNewCautela()}
@@ -408,7 +460,7 @@ function AppContent() {
         )}
 
         {activeTab === 'manutencao' && (
-          (isAdmin || isMechanic || currentUser?.role === 'ADJUNTO') ? (
+          (isAdmin || isMechanic) ? (
             <MaintenanceList
               onOpenNewMaintenance={handleOpenNewMaintenance}
               onEditMaintenance={handleEditMaintenance}
@@ -450,7 +502,7 @@ function AppContent() {
         )}
 
         {activeTab === 'relatorio-mensal' && (
-          (isAdmin || currentUser?.role === 'ADJUNTO') ? (
+          (isAdmin) ? (
             <MonthlyReport />
           ) : (
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center max-w-lg mx-auto my-12 space-y-4">
