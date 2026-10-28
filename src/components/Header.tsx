@@ -174,7 +174,7 @@ export const Header: React.FC<HeaderProps> = ({
   const navItems = isOperator
     ? allNavItems.filter((item) => item.id === 'frota' || item.id === 'cautelas')
     : currentRole === 'ADJUNTO'
-      ? allNavItems.filter((item) => ['frota', 'cautelas', 'visao-adjunto'].includes(item.id))
+      ? allNavItems.filter((item) => ['frota', 'cautelas', 'visao-adjunto', 'relatorio-diario', 'relatorio-mensal'].includes(item.id))
       : allNavItems.filter((item) => item.allowedRoles.includes(currentRole));
 
   return (
