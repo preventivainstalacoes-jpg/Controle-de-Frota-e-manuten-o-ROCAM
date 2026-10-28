@@ -173,7 +173,7 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="bg-zinc-950 border-b border-zinc-800 sticky top-0 z-30 shadow-xl">
       {/* Top Banner Tático */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between py-2.5 border-b border-zinc-850">
+        <div className="flex flex-wrap items-center justify-between gap-2 py-2.5 border-b border-zinc-850">
           <div className="flex items-center space-x-3">
             <div>
               <div className="flex items-center space-x-2">
@@ -192,10 +192,10 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Seletor de unidade para administradores e operadores */}
             {(isAdmin || isOperator) && (
-              <div className="flex items-center gap-1 rounded-lg border border-amber-500/40 bg-zinc-900 px-2 py-1.5">
+              <div className="order-3 sm:order-none flex w-full sm:w-auto shrink-0 items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-zinc-900 px-3 py-2">
                 <ArrowLeftRight className="h-4 w-4 text-amber-400 shrink-0" />
                 <label htmlFor="rocam-unit-switch" className="sr-only">Selecionar unidade ROCAM</label>
-                <select id="rocam-unit-switch" value={activeUnit} onChange={(e) => setActiveUnit(e.target.value as 'batalhao_rocam_natal' | '3_cpm_rocam_mossoro')} className="max-w-[150px] sm:max-w-[220px] bg-transparent text-[11px] sm:text-xs font-semibold text-amber-200 outline-none cursor-pointer" title="Alternar entre as frotas">
+                <select id="rocam-unit-switch" value={activeUnit} onChange={(e) => setActiveUnit(e.target.value as 'batalhao_rocam_natal' | '3_cpm_rocam_mossoro')} className="w-full max-w-[280px] sm:max-w-[220px] bg-transparent text-xs font-semibold text-amber-200 outline-none cursor-pointer" title="Alternar entre as frotas">
                   <option className="bg-zinc-900 text-zinc-100" value="batalhao_rocam_natal">Batalhão ROCAM Natal</option>
                   <option className="bg-zinc-900 text-zinc-100" value="3_cpm_rocam_mossoro">3ª CPM ROCAM Mossoró</option>
                 </select>
