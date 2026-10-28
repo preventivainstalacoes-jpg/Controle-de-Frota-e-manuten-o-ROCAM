@@ -832,7 +832,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                       {vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
                         <button
                           type="button"
-                          onClick={() => updateVehicle(vehicle.id, { status: 'OPERACIONAL', motivoBaixa: undefined })}
+                          onClick={() => setStatusModal({ vehicle, targetStatus: 'OPERACIONAL', reason: '' })}
                           title={`Marcar a motocicleta/viatura ${vehicle.prefixo} como pronta para o serviço`}
                           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/60"
                         >
