@@ -74,10 +74,12 @@ export const Header: React.FC<HeaderProps> = ({
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
-    if (!isAdmin) {
+    // Administradores e operadores podem alternar manualmente entre as duas unidades.
+    // Os demais perfis continuam vinculados à unidade cadastrada no pelotão.
+    if (!isAdmin && !isOperator) {
       setActiveUnit(currentUser?.pelotao?.toLowerCase().includes('mossor') ? '3_cpm_rocam_mossoro' : 'batalhao_rocam_natal');
     }
-  }, [isAdmin, currentUser?.pelotao, setActiveUnit]);
+  }, [isAdmin, isOperator, currentUser?.pelotao, setActiveUnit]);
 
   useEffect(() => {
     if (isOperator && activeTab !== 'cautelas') {
@@ -190,8 +192,8 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Seletor de unidade: somente administrador geral */}
-            {isAdmin && (
+          {/* Seletor de unidade para administradores e operadores */}
+            {(isAdmin || isOperator) && (
               <div className="flex items-center gap-1 rounded-lg border border-amber-500/40 bg-zinc-900 px-2 py-1.5">
                 <ArrowLeftRight className="h-4 w-4 text-amber-400 shrink-0" />
                 <label htmlFor="rocam-unit-switch" className="sr-only">Selecionar unidade ROCAM</label>
