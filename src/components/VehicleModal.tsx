@@ -287,20 +287,21 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
             </div>
           </div>
 
-          {/* Se baixada ou em manutenção: motivo */}
+          {/* Se baixada ou em manutenção: motivo e peças/serviços pendentes */}
           {(status === 'BAIXADA' || status === 'EM_MANUTENCAO' || status === 'MANUTENCAO_EXTERNA') && (
-            <div className="p-3 bg-rose-950/40 border border-rose-800/60 rounded-xl space-y-1">
+            <div className="p-3 bg-rose-950/40 border border-rose-800/60 rounded-xl space-y-2">
               <label className="flex items-center space-x-1.5 text-xs font-bold text-rose-300 uppercase">
                 <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
-                <span>Motivo da Baixa / Falha / Manutenção</span>
+                <span>Motivo da baixa / falhas / peças pendentes</span>
               </label>
-              <input
-                type="text"
+              <textarea
+                rows={3}
                 value={motivoBaixa}
                 onChange={(e) => setMotivoBaixa(e.target.value)}
-                placeholder="Ex: Vazamento de bengala, pane elétrica, falha no motor, sinistro..."
+                placeholder="Descreva as falhas e as peças necessárias. Edite para acrescentar ou retirar peças conforme o serviço avançar."
                 className="w-full px-3 py-2 bg-zinc-900 border border-rose-700/60 rounded-lg text-sm text-rose-100 placeholder-rose-400/50 focus:outline-none focus:border-rose-500"
               />
+              <p className="text-[11px] text-rose-200/70">Ao editar uma viatura baixada, atualize esta descrição para incluir ou remover peças e registrar o que ainda falta reparar.</p>
             </div>
           )}
 
