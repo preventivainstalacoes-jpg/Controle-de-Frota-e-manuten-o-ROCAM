@@ -56,6 +56,8 @@ interface AuthContextType {
   deleteMultipleUsers: (userIds: string[]) => Promise<{ success: boolean; deletedCount: number; error?: string }>;
   deleteOwnAccount: (password: string) => Promise<{ success: boolean; error?: string }>;
   changePassword: (userId: string, newPass: string) => Promise<{ success: boolean; error?: string }>;
+  sendPasswordRecoveryEmail: (userId: string) => Promise<{ success: boolean; error?: string }>;
+  generatePasswordRecoveryLink: (userId: string) => Promise<{ success: boolean; link?: string; error?: string }>;
   resetPasswordByRecovery: (
     identifier: string,
     emailOrRe: string,
@@ -785,6 +787,46 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const sendPasswordRecoveryEmail = async (userId: string): Promise<{ success: boolean; error?: string }> => {
+    if (!currentUser || currentUser.role !== 'ADMIN') {
+      return { success: false, error: 'Somente Administrador pode enviar links de recuperação.' };
+    }
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) return { success: false, error: 'Sessão do administrador expirada. Entre novamente.' };
+      const { data, error } = await supabase.functions.invoke('admin-user-management', {
+        body: { action: 'send_password_recovery_email', userId },
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      if (error || !data?.success) return { success: false, error: data?.error || error?.message || 'Não foi possível enviar o e-mail de recuperação.' };
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Não foi possível enviar o e-mail de recuperação.' };
+    }
+  };
+
+  const generatePasswordRecoveryLink = async (userId: string): Promise<{ success: boolean; link?: string; error?: string }> => {
+    if (!currentUser || currentUser.role !== 'ADMIN') {
+      return { success: false, error: 'Somente Administrador pode gerar links de recuperação.' };
+    }
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) return { success: false, error: 'Sessão do administrador expirada. Entre novamente.' };
+      const { data, error } = await supabase.functions.invoke('admin-user-management', {
+        body: { action: 'generate_password_recovery_link', userId },
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      if (error || !data?.success || !data?.link) {
+        return { success: false, error: data?.error || error?.message || 'Não foi possível gerar o link de recuperação.' };
+      }
+      return { success: true, link: data.link };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Não foi possível gerar o link de recuperação.' };
+    }
+  };
+
   /**
    * Reset password via security verification (RE or Email matching user record)
    */
@@ -975,6 +1017,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         deleteMultipleUsers,
         deleteOwnAccount,
         changePassword,
+        sendPasswordRecoveryEmail,
+        generatePasswordRecoveryLink,
         resetPasswordByRecovery,
         toggleUserActive,
         resetUsersToDefault,
