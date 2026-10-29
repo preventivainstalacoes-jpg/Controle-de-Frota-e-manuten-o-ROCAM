@@ -50,7 +50,6 @@ export const DailyReport: React.FC<DailyReportProps> = ({
   };
 
   const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString());
-  const [efetivoServico, setEfetivoServico] = useState<string>('');
   const [informacoesComplementares, setInformacoesComplementares] = useState<string>('');
   const [showPrintModal, setShowPrintModal] = useState(false);
 
@@ -355,139 +354,6 @@ export const DailyReport: React.FC<DailyReportProps> = ({
         </div>
       </div>
 
-      {/* Campos de preenchimento posicionados abaixo do fluxo de frota */}
-      <div className="mt-8 border-t-2 border-amber-500/40 pt-6 space-y-4">
-        <h3 className="text-sm font-black uppercase tracking-wider text-amber-400">Complemento do Boletim Diário</h3>
-        {/* Efetivo de serviço informado para o boletim diário */}
-        <div className="mt-8 bg-zinc-900 border-2 border-amber-500/70 rounded-xl p-5 space-y-3 shadow-lg shadow-amber-500/10 scroll-mt-24">
-          <div className="text-xs font-black uppercase tracking-widest text-amber-400">Preenchimento do boletim diário</div>
-          <label htmlFor="efetivo-servico-diario" className="block text-base font-extrabold text-zinc-100">Efetivo de Serviço</label>
-          <p className="text-xs text-zinc-400">Informe os policiais/equipe de serviço do dia. Este campo será incluído na impressão e na planilha CSV do boletim diário.</p>
-          <textarea
-            id="efetivo-servico-diario"
-            value={efetivoServico}
-            onChange={(e) => setEfetivoServico(e.target.value)}
-            placeholder="Ex.: quantidade de policiais e nomes do efetivo de serviço..."
-            rows={3}
-            className="w-full rounded-lg bg-zinc-950 border border-zinc-700 text-zinc-100 placeholder:text-zinc-500 p-3 text-sm focus:outline-none focus:border-amber-500"
-          />
-        </div>
-  
-        {/* Informações complementares dos serviços e consertos realizados no dia */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-2">
-          <label htmlFor="informacoes-complementares-diarias" className="block text-sm font-bold text-zinc-100">Informações Complementares — Serviços e Consertos Realizados</label>
-          <p className="text-xs text-zinc-400">Descreva os serviços executados pela equipe de mecânica no dia, os consertos realizados, peças substituídas e observações relevantes. Este campo será incluído na impressão e na planilha CSV do boletim diário.</p>
-          <textarea
-            id="informacoes-complementares-diarias"
-            value={informacoesComplementares}
-            onChange={(e) => setInformacoesComplementares(e.target.value)}
-            placeholder="Ex.: viatura/prefixo, defeito identificado, serviço realizado, peças substituídas e situação após o conserto..."
-            rows={5}
-            className="w-full rounded-lg bg-zinc-950 border border-zinc-700 text-zinc-100 placeholder:text-zinc-500 p-3 text-sm focus:outline-none focus:border-amber-500"
-          />
-        </div>
-  
-  
-      </div>
-
-
-      <div className="bg-zinc-900 border border-amber-900/50 rounded-xl overflow-hidden shadow-sm mb-5">
-        <div className="px-5 py-3.5 bg-zinc-950 border-b border-zinc-800">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-amber-300">Viaturas atualmente em manutenção externa ({viaturasExternaDetalhadas.length})</h3>
-        </div>
-        {viaturasExternaDetalhadas.length === 0 ? <div className="p-5 text-center text-xs text-zinc-400">Não há viaturas com status atual de manutenção externa.</div> : (
-          <div className="overflow-x-auto"><table className="w-full text-left text-xs min-w-[800px]">
-            <thead className="bg-zinc-950 text-zinc-400 uppercase text-[10px]"><tr><th className="p-3">Prefixo</th><th className="p-3">Modelo / Placa</th><th className="p-3">Oficina externa</th><th className="p-3">Data de envio</th><th className="p-3">O.S.</th><th className="p-3">Avaria / observação</th></tr></thead>
-            <tbody className="divide-y divide-zinc-800">{viaturasExternaDetalhadas.map((v) => <tr key={v.id} className="text-zinc-200 align-top">
-              <td className="p-3 font-bold">{v.prefixo}</td><td className="p-3">{v.modelo}<div className="text-[10px] text-zinc-400">{v.placa || 'Placa não informada'}</div></td><td className="p-3 font-semibold text-amber-300">{v.oficina}</td><td className="p-3 whitespace-nowrap">{v.dataSaida ? v.dataSaida.replace('T', ' ') : 'Não informada'}</td><td className="p-3">{v.os}</td><td className="p-3 whitespace-normal">{v.observacao}</td>
-            </tr>)}</tbody>
-          </table></div>
-        )}
-      </div>
-
-      {/* 4. MOVIMENTAÇÕES DE OFICINA NO DIA SELECIONADO */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-sm">
-        <div className="px-5 py-3.5 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between">
-          <div className="flex items-center space-x-2 text-zinc-300">
-            <Clock className="w-5 h-5 text-amber-400" />
-            <h3 className="text-sm font-bold uppercase tracking-wider">
-              Movimentação de Oficina Registrada na Data ({movimentacoesDoDia.length})
-            </h3>
-          </div>
-        </div>
-
-        {movimentacoesDoDia.length === 0 ? (
-          <div className="p-6 text-center text-xs text-zinc-500">
-            Nenhuma entrada ou saída de oficina registrada na data de {formatDate(selectedDate)}.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-zinc-950 text-zinc-400 font-bold text-[10px] uppercase border-b border-zinc-800">
-                <tr>
-                  <th className="py-2.5 px-4">O.S.</th>
-                  <th className="py-2.5 px-4">Viatura</th>
-                  <th className="py-2.5 px-4">Tipo</th>
-                  <th className="py-2.5 px-4">Serviço / Avaria</th>
-                  <th className="py-2.5 px-4">Oficina / Mecânico</th>
-                  <th className="py-2.5 px-4">Status Atual</th>
-                  <th className="py-2.5 px-4 text-center">Itens / Peças</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-850">
-                {movimentacoesDoDia.map((r) => (
-                  <tr key={r.id}>
-                    <td className="py-2.5 px-4 font-mono font-bold text-zinc-200">{r.numeroOS}</td>
-                    <td className="py-2.5 px-4 font-mono text-zinc-100">{r.prefixoViatura}</td>
-                    <td className="py-2.5 px-4">
-                      <span
-                        className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                          r.tipoManutencao === 'PREVENTIVA'
-                            ? 'bg-blue-950 text-blue-300'
-                            : 'bg-rose-950 text-rose-300'
-                        }`}
-                      >
-                        {r.tipoManutencao}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-4 text-zinc-300 max-w-xs">
-                      <div className="font-semibold">{r.descricaoProblema || 'Sem descrição'}</div>
-                      {r.servicosExecutados && (
-                        <div className="mt-1 whitespace-normal text-emerald-300">
-                          Executado: {r.servicosExecutados}
-                        </div>
-                      )}
-                      {r.dataConclusao && (
-                        <div className="mt-1 text-[10px] text-zinc-500">
-                          Conclusão: {formatDate(r.dataConclusao)}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-2.5 px-4 text-zinc-400">
-                      {r.oficinaResponsavel} ({r.mecanicoResponsavel})
-                    </td>
-                    <td className="py-2.5 px-4">
-                      <span className="font-semibold text-zinc-200">
-                        {getStatusBadgeInfo(r.status).label}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-4 text-center font-mono">
-                      {r.pecasSubstituidas && r.pecasSubstituidas.length > 0 ? (
-                        <span className="text-zinc-300 font-semibold">
-                          {r.pecasSubstituidas.reduce((acc, p) => acc + p.quantidade, 0)} un
-                        </span>
-                      ) : (
-                        <span className="text-zinc-600">-</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
       {/* MODAL DE IMPRESSÃO OFICIAL DO BOLETIM MILITAR */}
       {showPrintModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
@@ -507,11 +373,6 @@ export const DailyReport: React.FC<DailyReportProps> = ({
                 <span>DATA DE REFERÊNCIA: {formatDate(selectedDate)}</span>
                 <span>EMISSÃO: {new Date().toLocaleDateString('pt-BR')} {new Date().toLocaleTimeString('pt-BR')}</span>
               </div>
-            </div>
-
-            <div className="mb-5 border border-zinc-400 rounded p-3 text-xs">
-              <div className="font-bold uppercase mb-1">EFETIVO DE SERVIÇO</div>
-              <div className="whitespace-pre-wrap">{efetivoServico.trim() || 'Não informado'}</div>
             </div>
 
             <div className="mb-5 border border-zinc-400 rounded p-3 text-xs">
