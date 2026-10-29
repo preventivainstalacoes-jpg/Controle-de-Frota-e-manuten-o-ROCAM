@@ -156,7 +156,8 @@ export const DailyReport: React.FC<DailyReportProps> = ({
   // Export CSV
   const handleExportCSV = () => {
     let csvContent = 'data:text/csv;charset=utf-8,';
-    csvContent += `BOLETIM DIARIO DE FROTA ROCAM - DATA: ${formatDate(selectedDate)}\n\n`;
+    csvContent += `BOLETIM DIARIO DE FROTA ROCAM - DATA: ${formatDate(selectedDate)}\\n`;
+    csvContent += `EFETIVO DE SERVIÇO;"${efetivoServico.replace(/"/g, '""')}"\\n\\n`;
 
     csvContent += 'RESUMO QUANTITATIVO DA FROTA DE MOTOCICLETAS\\n';
     csvContent += 'Motos baixadas / em manutenção;' + motosBaixadas.length + '\\n';
