@@ -263,8 +263,9 @@ export const DailyReport: React.FC<DailyReportProps> = ({
       </div>
 
       {/* Efetivo de serviço informado para o boletim diário */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-2">
-        <label htmlFor="efetivo-servico-diario" className="block text-sm font-bold text-zinc-100">Efetivo de Serviço</label>
+      <div className="mt-8 bg-zinc-900 border-2 border-amber-500/70 rounded-xl p-5 space-y-3 shadow-lg shadow-amber-500/10 scroll-mt-24">
+        <div className="text-xs font-black uppercase tracking-widest text-amber-400">Preenchimento do boletim diário</div>
+        <label htmlFor="efetivo-servico-diario" className="block text-base font-extrabold text-zinc-100">Efetivo de Serviço</label>
         <p className="text-xs text-zinc-400">Informe os policiais/equipe de serviço do dia. Este campo será incluído na impressão e na planilha CSV do boletim diário.</p>
         <textarea
           id="efetivo-servico-diario"
