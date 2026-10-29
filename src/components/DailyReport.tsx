@@ -50,6 +50,7 @@ export const DailyReport: React.FC<DailyReportProps> = ({
   };
 
   const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString());
+  const [efetivoServico, setEfetivoServico] = useState<string>('');
   const [showPrintModal, setShowPrintModal] = useState(false);
 
   // Navigate date safely without timezone offset drift
@@ -256,6 +257,20 @@ export const DailyReport: React.FC<DailyReportProps> = ({
             <span>Imprimir Boletim</span>
           </button>
         </div>
+      </div>
+
+      {/* Efetivo de serviço informado para o boletim diário */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-2">
+        <label htmlFor="efetivo-servico-diario" className="block text-sm font-bold text-zinc-100">Efetivo de Serviço</label>
+        <p className="text-xs text-zinc-400">Informe os policiais/equipe de serviço do dia. Este campo será incluído na impressão e na planilha CSV do boletim diário.</p>
+        <textarea
+          id="efetivo-servico-diario"
+          value={efetivoServico}
+          onChange={(e) => setEfetivoServico(e.target.value)}
+          placeholder="Ex.: quantidade de policiais e nomes do efetivo de serviço..."
+          rows={3}
+          className="w-full rounded-lg bg-zinc-950 border border-zinc-700 text-zinc-100 placeholder:text-zinc-500 p-3 text-sm focus:outline-none focus:border-amber-500"
+        />
       </div>
 
       {/* Summary KPI Strip for Daily Readiness & Cautelas */}
@@ -467,6 +482,11 @@ export const DailyReport: React.FC<DailyReportProps> = ({
                 <span>DATA DE REFERÊNCIA: {formatDate(selectedDate)}</span>
                 <span>EMISSÃO: {new Date().toLocaleDateString('pt-BR')} {new Date().toLocaleTimeString('pt-BR')}</span>
               </div>
+            </div>
+
+            <div className="mb-5 border border-zinc-400 rounded p-3 text-xs">
+              <div className="font-bold uppercase mb-1">EFETIVO DE SERVIÇO</div>
+              <div className="whitespace-pre-wrap">{efetivoServico.trim() || 'Não informado'}</div>
             </div>
 
             {/* Resumo de Prontidão */}
