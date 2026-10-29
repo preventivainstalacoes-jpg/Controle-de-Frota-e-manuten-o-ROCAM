@@ -81,6 +81,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
     taxaProntidao: vehicles.length ? Math.round(((operacionaisCount + reservaCount) / vehicles.length) * 100) : 0,
   };
   const isMechanic = currentUser?.role === 'MECANICO';
+  const canReleaseToService = isAdmin || isMechanic;
   const canSendToDischarge = isAdmin || isMechanic;
 
   type DashboardFilter = 'TODOS' | 'MOTOCICLETA' | 'QUATRO_RODAS' | 'BAIXADA' | 'DESCARGA' | 'EM_MANUTENCAO' | 'MANUTENCAO_EXTERNA' | 'CAUTELADAS';
@@ -185,6 +186,8 @@ export const VehicleList: React.FC<VehicleListProps> = ({
   const handleConfirmStatusChange = (e: React.FormEvent) => {
     e.preventDefault();
     if (!statusModal) return;
+    // Apenas Administrador e Mecânico podem liberar uma viatura para o serviço.
+    if (statusModal.targetStatus === 'OPERACIONAL' && !canReleaseToService) return;
 
     if (statusModal.targetStatus === 'BAIXADA' || statusModal.targetStatus === 'EM_MANUTENCAO' || statusModal.targetStatus === 'MANUTENCAO_EXTERNA') {
       updateVehicle(statusModal.vehicle.id, {
@@ -808,7 +811,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                     )}
                   </div>
 
-                  {vehicle.status === 'BAIXADA' && currentUser?.role !== 'ADJUNTO' && (!isMechanic || vehicle.tipo === 'MOTOCICLETA') && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
+                  {canReleaseToService && vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
                     <button
                       type="button"
                       onClick={() => setStatusModal({ vehicle, targetStatus: 'OPERACIONAL', reason: '' })}
