@@ -34,6 +34,7 @@ export const MonthlyReport: React.FC = () => {
   const today = new Date();
   const defaultYearMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   const [selectedMonth, setSelectedMonth] = useState<string>(defaultYearMonth);
+  const [efetivoServico, setEfetivoServico] = useState<string>('');
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [backupNotice, setBackupNotice] = useState<string | null>(null);
   const [isBackingUp, setIsBackingUp] = useState(false);
@@ -182,6 +183,7 @@ export const MonthlyReport: React.FC = () => {
     let csvContent = 'data:text/csv;charset=utf-8,';
     csvContent += `RELATORIO MENSAL OPERACIONAL DE MANUTENCAO ROCAM - ${nomeMesExtenso}\n\n`;
     csvContent += `RESUMO OPERACIONAL\n`;
+    csvContent += `Efetivo de Servico;${(efetivoServico || 'Nao informado').replace(/"/g, '""')}\n`;
     csvContent += `Total de Ordens de Servico;${stats.totalServicos}\n`;
     csvContent += `Manutencoes Preventivas;${stats.preventivas}\n`;
     csvContent += `Manutencoes Corretivas;${stats.corretivas}\n`;
@@ -274,6 +276,19 @@ export const MonthlyReport: React.FC = () => {
             <span>Imprimir Relatório</span>
           </button>
         </div>
+      </div>
+
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <label htmlFor="efetivo-servico-relatorio" className="block text-sm font-bold text-zinc-100 mb-2">Efetivo de serviço</label>
+        <textarea
+          id="efetivo-servico-relatorio"
+          value={efetivoServico}
+          onChange={(e) => setEfetivoServico(e.target.value)}
+          rows={2}
+          placeholder="Informe o efetivo de serviço (quantidade e/ou nomes dos policiais)."
+          className="w-full px-3 py-2 bg-zinc-950 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500"
+        />
+        <p className="text-[11px] text-zinc-500 mt-1">Este campo será incluído na impressão e na exportação CSV do relatório mensal.</p>
       </div>
 
       {/* Backup Notification Toast */}
@@ -595,6 +610,11 @@ export const MonthlyReport: React.FC = () => {
                 <span>MÊS DE REFERÊNCIA: {nomeMesExtenso.toUpperCase()}</span>
                 <span>EMISSÃO: {new Date().toLocaleDateString('pt-BR')}</span>
               </div>
+            </div>
+
+            <div className="mb-5 border border-zinc-400 rounded p-3 text-xs">
+              <div className="font-bold uppercase mb-1">EFETIVO DE SERVIÇO</div>
+              <div className="whitespace-pre-wrap">{efetivoServico.trim() || 'Não informado'}</div>
             </div>
 
             {/* Resumo Operacional */}
