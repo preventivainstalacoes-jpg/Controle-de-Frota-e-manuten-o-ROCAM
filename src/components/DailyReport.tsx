@@ -34,9 +34,22 @@ export const DailyReport: React.FC<DailyReportProps> = ({
 }) => {
   const { vehicles, maintenanceRecords, cautelas, stats } = useFleet();
 
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
+  // Usa a data local do aparelho (horário de Natal/RN), sem conversão UTC.
+  const getLocalDateString = (date = new Date()) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  // Considera o dia completo no horário local: 00:00:00 até 23:59:59.999.
+  const belongsToSelectedDay = (value: string | null | undefined, day: string) => {
+    if (!value) return false;
+    if (/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return value === day;
+    const parsed = new Date(value);
+    return !Number.isNaN(parsed.getTime()) && getLocalDateString(parsed) === day;
+  };
+
+  const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString());
   const [showPrintModal, setShowPrintModal] = useState(false);
 
   // Navigate date safely without timezone offset drift
@@ -65,19 +78,19 @@ export const DailyReport: React.FC<DailyReportProps> = ({
   // Relatório por eventos registrados na data, não apenas pelo status atual do painel.
   // startsWith aceita datas no formato YYYY-MM-DD e timestamps ISO com horário.
   const movimentacoesDoDia = maintenanceRecords.filter(
-    (r) => r.dataEntrada?.startsWith(selectedDate) || r.dataConclusao?.startsWith(selectedDate) || r.dataHoraSaidaOficina?.startsWith(selectedDate) || r.dataHoraRetornoOficina?.startsWith(selectedDate) || r.liberadoEm?.startsWith(selectedDate)
+    (r) => belongsToSelectedDay(r.dataEntrada, selectedDate) || belongsToSelectedDay(r.dataConclusao, selectedDate) || belongsToSelectedDay(r.dataHoraSaidaOficina, selectedDate) || belongsToSelectedDay(r.dataHoraRetornoOficina, selectedDate) || belongsToSelectedDay(r.liberadoEm, selectedDate)
   );
 
   // Cautelas and Descautelas on selectedDate (or active cautelas if selectedDate is today)
-  const todayDateStr = new Date().toISOString().split('T')[0];
+  const todayDateStr = getLocalDateString();
   const isSelectedDateToday = selectedDate === todayDateStr;
 
   const [cautelaMovementFilter, setCautelaMovementFilter] = useState<'TODOS' | 'SAIDAS' | 'RETORNOS' | 'EM_CURSO'>('TODOS');
 
   // All cautela events matching this date
   const cautelasDoDia = cautelas.filter((c) => {
-    const isOutOnDate = c.dataHoraSaida.startsWith(selectedDate);
-    const isReturnedOnDate = c.dataHoraRetorno && c.dataHoraRetorno.startsWith(selectedDate);
+    const isOutOnDate = belongsToSelectedDay(c.dataHoraSaida, selectedDate);
+    const isReturnedOnDate = belongsToSelectedDay(c.dataHoraRetorno, selectedDate);
     const isActiveToday = isSelectedDateToday && c.status === 'EM_PATRULHAMENTO';
     return isOutOnDate || isReturnedOnDate || isActiveToday;
   });
@@ -85,10 +98,10 @@ export const DailyReport: React.FC<DailyReportProps> = ({
   // Filtered movements based on filter tab
   const movimentacoesCautelaFiltradas = cautelasDoDia.filter((c) => {
     if (cautelaMovementFilter === 'SAIDAS') {
-      return c.dataHoraSaida.startsWith(selectedDate);
+      return belongsToSelectedDay(c.dataHoraSaida, selectedDate);
     }
     if (cautelaMovementFilter === 'RETORNOS') {
-      return c.dataHoraRetorno && c.dataHoraRetorno.startsWith(selectedDate);
+      return belongsToSelectedDay(c.dataHoraRetorno, selectedDate);
     }
     if (cautelaMovementFilter === 'EM_CURSO') {
       return c.status === 'EM_PATRULHAMENTO';
@@ -97,8 +110,8 @@ export const DailyReport: React.FC<DailyReportProps> = ({
   });
 
   // Cautelas metrics on this day
-  const saidasDoDia = cautelasDoDia.filter((c) => c.dataHoraSaida.startsWith(selectedDate));
-  const retornosDoDia = cautelasDoDia.filter((c) => c.dataHoraRetorno && c.dataHoraRetorno.startsWith(selectedDate));
+  const saidasDoDia = cautelasDoDia.filter((c) => belongsToSelectedDay(c.dataHoraSaida, selectedDate));
+  const retornosDoDia = cautelasDoDia.filter((c) => belongsToSelectedDay(c.dataHoraRetorno, selectedDate));
   const cautelasAtivasHoje = cautelasDoDia.filter((c) => c.status === 'EM_PATRULHAMENTO');
   const cautelasConcluidasHoje = cautelasDoDia.filter((c) => c.status === 'CONCLUIDA');
   const totalKmRodadoDia = cautelasConcluidasHoje.reduce((acc, c) => acc + (c.kmPercorrido || 0), 0);
@@ -220,7 +233,7 @@ export const DailyReport: React.FC<DailyReportProps> = ({
           </div>
 
           <button
-            onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+            onClick={() => setSelectedDate(getLocalDateString())}
             className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-750 text-zinc-300 text-xs font-semibold border border-zinc-700 transition cursor-pointer"
           >
             Hoje
