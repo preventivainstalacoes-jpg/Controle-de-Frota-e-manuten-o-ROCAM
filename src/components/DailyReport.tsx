@@ -355,6 +355,42 @@ export const DailyReport: React.FC<DailyReportProps> = ({
         </div>
       </div>
 
+      {/* Campos de preenchimento posicionados abaixo do fluxo de frota */}
+      <div className="mt-8 border-t-2 border-amber-500/40 pt-6 space-y-4">
+        <h3 className="text-sm font-black uppercase tracking-wider text-amber-400">Complemento do Boletim Diário</h3>
+        {/* Efetivo de serviço informado para o boletim diário */}
+        <div className="mt-8 bg-zinc-900 border-2 border-amber-500/70 rounded-xl p-5 space-y-3 shadow-lg shadow-amber-500/10 scroll-mt-24">
+          <div className="text-xs font-black uppercase tracking-widest text-amber-400">Preenchimento do boletim diário</div>
+          <label htmlFor="efetivo-servico-diario" className="block text-base font-extrabold text-zinc-100">Efetivo de Serviço</label>
+          <p className="text-xs text-zinc-400">Informe os policiais/equipe de serviço do dia. Este campo será incluído na impressão e na planilha CSV do boletim diário.</p>
+          <textarea
+            id="efetivo-servico-diario"
+            value={efetivoServico}
+            onChange={(e) => setEfetivoServico(e.target.value)}
+            placeholder="Ex.: quantidade de policiais e nomes do efetivo de serviço..."
+            rows={3}
+            className="w-full rounded-lg bg-zinc-950 border border-zinc-700 text-zinc-100 placeholder:text-zinc-500 p-3 text-sm focus:outline-none focus:border-amber-500"
+          />
+        </div>
+  
+        {/* Informações complementares dos serviços e consertos realizados no dia */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-2">
+          <label htmlFor="informacoes-complementares-diarias" className="block text-sm font-bold text-zinc-100">Informações Complementares — Serviços e Consertos Realizados</label>
+          <p className="text-xs text-zinc-400">Descreva os serviços executados pela equipe de mecânica no dia, os consertos realizados, peças substituídas e observações relevantes. Este campo será incluído na impressão e na planilha CSV do boletim diário.</p>
+          <textarea
+            id="informacoes-complementares-diarias"
+            value={informacoesComplementares}
+            onChange={(e) => setInformacoesComplementares(e.target.value)}
+            placeholder="Ex.: viatura/prefixo, defeito identificado, serviço realizado, peças substituídas e situação após o conserto..."
+            rows={5}
+            className="w-full rounded-lg bg-zinc-950 border border-zinc-700 text-zinc-100 placeholder:text-zinc-500 p-3 text-sm focus:outline-none focus:border-amber-500"
+          />
+        </div>
+  
+  
+      </div>
+
+
       <div className="bg-zinc-900 border border-amber-900/50 rounded-xl overflow-hidden shadow-sm mb-5">
         <div className="px-5 py-3.5 bg-zinc-950 border-b border-zinc-800">
           <h3 className="text-sm font-bold uppercase tracking-wider text-amber-300">Viaturas atualmente em manutenção externa ({viaturasExternaDetalhadas.length})</h3>
@@ -450,41 +486,6 @@ export const DailyReport: React.FC<DailyReportProps> = ({
             </table>
           </div>
         )}
-      </div>
-
-      {/* Campos de preenchimento posicionados abaixo do fluxo de frota */}
-      <div className="mt-8 border-t-2 border-amber-500/40 pt-6 space-y-4">
-        <h3 className="text-sm font-black uppercase tracking-wider text-amber-400">Complemento do Boletim Diário</h3>
-        {/* Efetivo de serviço informado para o boletim diário */}
-        <div className="mt-8 bg-zinc-900 border-2 border-amber-500/70 rounded-xl p-5 space-y-3 shadow-lg shadow-amber-500/10 scroll-mt-24">
-          <div className="text-xs font-black uppercase tracking-widest text-amber-400">Preenchimento do boletim diário</div>
-          <label htmlFor="efetivo-servico-diario" className="block text-base font-extrabold text-zinc-100">Efetivo de Serviço</label>
-          <p className="text-xs text-zinc-400">Informe os policiais/equipe de serviço do dia. Este campo será incluído na impressão e na planilha CSV do boletim diário.</p>
-          <textarea
-            id="efetivo-servico-diario"
-            value={efetivoServico}
-            onChange={(e) => setEfetivoServico(e.target.value)}
-            placeholder="Ex.: quantidade de policiais e nomes do efetivo de serviço..."
-            rows={3}
-            className="w-full rounded-lg bg-zinc-950 border border-zinc-700 text-zinc-100 placeholder:text-zinc-500 p-3 text-sm focus:outline-none focus:border-amber-500"
-          />
-        </div>
-  
-        {/* Informações complementares dos serviços e consertos realizados no dia */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-2">
-          <label htmlFor="informacoes-complementares-diarias" className="block text-sm font-bold text-zinc-100">Informações Complementares — Serviços e Consertos Realizados</label>
-          <p className="text-xs text-zinc-400">Descreva os serviços executados pela equipe de mecânica no dia, os consertos realizados, peças substituídas e observações relevantes. Este campo será incluído na impressão e na planilha CSV do boletim diário.</p>
-          <textarea
-            id="informacoes-complementares-diarias"
-            value={informacoesComplementares}
-            onChange={(e) => setInformacoesComplementares(e.target.value)}
-            placeholder="Ex.: viatura/prefixo, defeito identificado, serviço realizado, peças substituídas e situação após o conserto..."
-            rows={5}
-            className="w-full rounded-lg bg-zinc-950 border border-zinc-700 text-zinc-100 placeholder:text-zinc-500 p-3 text-sm focus:outline-none focus:border-amber-500"
-          />
-        </div>
-  
-  
       </div>
 
       {/* MODAL DE IMPRESSÃO OFICIAL DO BOLETIM MILITAR */}
