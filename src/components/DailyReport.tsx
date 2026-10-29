@@ -50,6 +50,7 @@ export const DailyReport: React.FC<DailyReportProps> = ({
   };
 
   const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString());
+  const [efetivoServico, setEfetivoServico] = useState<string>('');
   const [informacoesComplementares, setInformacoesComplementares] = useState<string>('');
   const [showPrintModal, setShowPrintModal] = useState(false);
 
@@ -157,6 +158,7 @@ export const DailyReport: React.FC<DailyReportProps> = ({
   const handleExportCSV = () => {
     let csvContent = 'data:text/csv;charset=utf-8,';
     csvContent += `BOLETIM DIARIO DE FROTA ROCAM - DATA: ${formatDate(selectedDate)}\\n`;
+    csvContent += `EFETIVO DE SERVIÇO;"${efetivoServico.replace(/"/g, '""')}"\\n`;
     csvContent += `INFORMAÇÕES COMPLEMENTARES - SERVIÇOS E CONSERTOS;"${informacoesComplementares.replace(/"/g, '""')}"\\n\\n`;
 
     csvContent += 'RESUMO QUANTITATIVO DA FROTA DE MOTOCICLETAS\\n';
@@ -260,6 +262,17 @@ export const DailyReport: React.FC<DailyReportProps> = ({
         </div>
       </div>
 
+      {/* Campos de preenchimento do boletim diário */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-zinc-900 border border-amber-500/30 rounded-xl p-4">
+          <label htmlFor="efetivo-servico" className="block text-sm font-bold text-amber-400 mb-2">Efetivo de Serviço</label>
+          <textarea id="efetivo-servico" value={efetivoServico} onChange={(e) => setEfetivoServico(e.target.value)} rows={4} placeholder="Informe o efetivo empregado no serviço (nomes, graduações, equipes ou quantitativo)." className="w-full rounded-lg border border-zinc-700 bg-zinc-950 text-zinc-100 placeholder:text-zinc-500 p-3 text-sm focus:outline-none focus:border-amber-500" />
+        </div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+          <label htmlFor="informacoes-complementares" className="block text-sm font-bold text-zinc-100 mb-2">Informações Complementares — Serviços e Consertos</label>
+          <textarea id="informacoes-complementares" value={informacoesComplementares} onChange={(e) => setInformacoesComplementares(e.target.value)} rows={4} placeholder="Registre consertos de viaturas, serviços executados, peças substituídas e outras observações do dia." className="w-full rounded-lg border border-zinc-700 bg-zinc-950 text-zinc-100 placeholder:text-zinc-500 p-3 text-sm focus:outline-none focus:border-amber-500" />
+        </div>
+      </div>
       {/* Summary KPI Strip for Daily Readiness & Cautelas */}
       <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5">
@@ -372,6 +385,11 @@ export const DailyReport: React.FC<DailyReportProps> = ({
                 <span>DATA DE REFERÊNCIA: {formatDate(selectedDate)}</span>
                 <span>EMISSÃO: {new Date().toLocaleDateString('pt-BR')} {new Date().toLocaleTimeString('pt-BR')}</span>
               </div>
+            </div>
+
+            <div className="mb-3 border border-zinc-400 rounded p-3 text-xs">
+              <div className="font-bold uppercase mb-1">EFETIVO DE SERVIÇO</div>
+              <div className="whitespace-pre-wrap">{efetivoServico.trim() || "Não informado"}</div>
             </div>
 
             <div className="mb-5 border border-zinc-400 rounded p-3 text-xs">
