@@ -128,6 +128,17 @@ export const DailyReport: React.FC<DailyReportProps> = ({
     && (v.status === 'BAIXADA' || v.status === 'EM_MANUTENCAO' || v.status === 'MANUTENCAO_EXTERNA')
   );
   const motosProntas = motos.filter((v) => v.status === 'OPERACIONAL' || v.status === 'RESERVA');
+  // Status consolidado das viaturas de 04 rodas para o relatório diário.
+  const viaturasQuatroRodas = vehicles.filter((v) => v.tipo === 'QUATRO_RODAS');
+  const quatroRodasEmDescarga = viaturasQuatroRodas.filter((v) =>
+    (v.motivoBaixa || '').toLocaleLowerCase('pt-BR').includes('descarga')
+    || (v.observacoes || '').toLocaleLowerCase('pt-BR').includes('destinada à descarga')
+  );
+  const quatroRodasBaixadasManutencao = viaturasQuatroRodas.filter((v) =>
+    !quatroRodasEmDescarga.some((d) => d.id === v.id)
+    && (v.status === 'BAIXADA' || v.status === 'EM_MANUTENCAO' || v.status === 'MANUTENCAO_EXTERNA')
+  );
+  const quatroRodasProntas = viaturasQuatroRodas.filter((v) => v.status === 'OPERACIONAL' || v.status === 'RESERVA');
   const resumoPorAreaPatrulhamento = Object.entries(
     cautelasDoDia.reduce<Record<string, number>>((acc, cautela) => {
       const area = (cautela.areaPatrulhamento || '').trim() || 'Área não informada';
@@ -161,6 +172,11 @@ export const DailyReport: React.FC<DailyReportProps> = ({
     csvContent += 'Motos baixadas / em manutenção;' + motosBaixadas.length + '\\n';
     csvContent += 'Motos destinadas à descarga;' + motosEmDescarga.length + '\\n';
     csvContent += 'Motos prontas para o serviço;' + motosProntas.length + '\\n';
+    csvContent += '\\nSTATUS DAS VIATURAS DE 04 RODAS\\n';
+    csvContent += 'Total de viaturas 04 rodas;' + viaturasQuatroRodas.length + '\\n';
+    csvContent += 'Prontas para o serviço;' + quatroRodasProntas.length + '\\n';
+    csvContent += 'Baixadas / em manutenção;' + quatroRodasBaixadasManutencao.length + '\\n';
+    csvContent += 'Destinadas à descarga;' + quatroRodasEmDescarga.length + '\\n';
     csvContent += 'Viaturas baixadas;' + viaturasBaixadas.length + '\\n';
     csvContent += 'Viaturas em manutenção externa;' + viaturasManutencaoExterna.length + '\\n\\n';
     csvContent += 'DETALHAMENTO ATUAL DE VIATURAS EM OFICINA EXTERNA\\n';
@@ -318,6 +334,15 @@ export const DailyReport: React.FC<DailyReportProps> = ({
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><div className="text-xs text-zinc-400">Devoluções / retornos do dia</div><div className="text-2xl font-black">{retornosDoDia.length}</div></div>
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><div className="text-xs text-zinc-400">Viaturas ainda em serviço</div><div className="text-2xl font-black">{cautelasAtivasHoje.length}</div></div>
       </div>
+      <div className="bg-zinc-900 border border-blue-900/50 rounded-xl p-4 mb-5">
+        <h3 className="text-sm font-bold text-blue-300 mb-3">Status das viaturas de 04 rodas</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="rounded-lg border border-zinc-800 p-3"><div className="text-xs text-zinc-400">Total cadastradas</div><div className="text-2xl font-black text-zinc-100">{viaturasQuatroRodas.length}</div></div>
+          <div className="rounded-lg border border-emerald-900/50 p-3"><div className="text-xs text-emerald-400">Prontas para o serviço</div><div className="text-2xl font-black text-emerald-300">{quatroRodasProntas.length}</div></div>
+          <div className="rounded-lg border border-amber-900/50 p-3"><div className="text-xs text-amber-400">Baixadas / manutenção</div><div className="text-2xl font-black text-amber-300">{quatroRodasBaixadasManutencao.length}</div></div>
+          <div className="rounded-lg border border-rose-900/50 p-3"><div className="text-xs text-rose-400">Destinadas à descarga</div><div className="text-2xl font-black text-rose-300">{quatroRodasEmDescarga.length}</div></div>
+        </div>
+      </div>
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-5">
         <h3 className="text-sm font-bold text-zinc-100 mb-3">Movimentação por área de patrulhamento</h3>
         {resumoPorAreaPatrulhamento.length === 0 ? <p className="text-xs text-zinc-400">Nenhuma movimentação registrada na data.</p> : (
@@ -414,6 +439,11 @@ export const DailyReport: React.FC<DailyReportProps> = ({
                   <tr><td className="p-2 border-r border-zinc-300">Motocicletas baixadas / em manutenção</td><td className="p-2">{motosBaixadas.length}</td></tr>
                   <tr><td className="p-2 border-r border-zinc-300">Motocicletas destinadas à descarga</td><td className="p-2">{motosEmDescarga.length}</td></tr>
                   <tr><td className="p-2 border-r border-zinc-300">Motocicletas prontas para o serviço</td><td className="p-2">{motosProntas.length}</td></tr>
+                  <tr><td colSpan={2} className="p-2 font-bold bg-zinc-100">STATUS DAS VIATURAS DE 04 RODAS</td></tr>
+                  <tr><td className="p-2 border-r border-zinc-300">Total de viaturas 04 rodas</td><td className="p-2">{viaturasQuatroRodas.length}</td></tr>
+                  <tr><td className="p-2 border-r border-zinc-300">Viaturas 04 rodas prontas para o serviço</td><td className="p-2">{quatroRodasProntas.length}</td></tr>
+                  <tr><td className="p-2 border-r border-zinc-300">Viaturas 04 rodas baixadas / em manutenção</td><td className="p-2">{quatroRodasBaixadasManutencao.length}</td></tr>
+                  <tr><td className="p-2 border-r border-zinc-300">Viaturas 04 rodas destinadas à descarga</td><td className="p-2">{quatroRodasEmDescarga.length}</td></tr>
                   <tr><td className="p-2 border-r border-zinc-300">Viaturas baixadas (frota total)</td><td className="p-2">{viaturasBaixadas.length}</td></tr>
                   <tr><td className="p-2 border-r border-zinc-300">Viaturas em manutenção externa (frota total)</td><td className="p-2">{viaturasManutencaoExterna.length}</td></tr>
                   <tr><td className="p-2 border-r border-zinc-300">Cautelas / saídas no dia</td><td className="p-2">{saidasDoDia.length}</td></tr>
