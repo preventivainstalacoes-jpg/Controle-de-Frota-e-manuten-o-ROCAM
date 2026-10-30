@@ -274,57 +274,14 @@ export const DailyReport: React.FC<DailyReportProps> = ({
         </div>
       </div>
 
-      {/* Summary KPI Strip for Daily Readiness & Cautelas */}
-      <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5">
-          <div className="text-[10px] font-bold uppercase text-zinc-400">Total da Frota</div>
-          <div className="mt-1 text-2xl font-black font-mono text-zinc-100">{vehicles.length}</div>
-          <div className="text-[11px] text-zinc-500 mt-0.5">Viaturas catalogadas</div>
-        </div>
-
-        <div className="bg-zinc-900 border border-emerald-900/40 rounded-xl p-3.5">
-          <div className="text-[10px] font-bold uppercase text-emerald-400">Prontidão do Dia</div>
-          <div className="mt-1 text-2xl font-black font-mono text-emerald-400">
-            {stats.taxaProntidao}%
-          </div>
-          <div className="text-[11px] text-emerald-500/80 mt-0.5">Aptas para empenho</div>
-        </div>
-
-        {/* Em Patrulhamento (Cautelas Ativas) */}
-        <div className="bg-zinc-900 border border-emerald-800/60 rounded-xl p-3.5">
-          <div className="text-[10px] font-bold uppercase text-emerald-400 flex items-center justify-between">
-            <span>Em Patrulhamento</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          </div>
-          <div className="mt-1 text-2xl font-black font-mono text-emerald-300">
-            {cautelasAtivasHoje.length}
-          </div>
-          <div className="text-[11px] text-zinc-400 mt-0.5">Viaturas Cauteladas</div>
-        </div>
-
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5">
-          <div className="text-[10px] font-bold uppercase text-amber-400">Motos Prontas</div>
-          <div className="mt-1 text-2xl font-black font-mono text-amber-400">
-            {operacionais.filter((v) => v.tipo === 'MOTOCICLETA').length} / {stats.motos}
-          </div>
-          <div className="text-[11px] text-zinc-400 mt-0.5">Motocicletas ativas</div>
-        </div>
-
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5">
-          <div className="text-[10px] font-bold uppercase text-blue-400">04 Rodas Prontas</div>
-          <div className="mt-1 text-2xl font-black font-mono text-blue-400">
-            {operacionais.filter((v) => v.tipo === 'QUATRO_RODAS').length} / {stats.quatroRodas}
-          </div>
-          <div className="text-[11px] text-zinc-400 mt-0.5">Apoio Tático & CFP</div>
-        </div>
-
-        <div className="bg-zinc-900 border border-rose-900/50 rounded-xl p-3.5 col-span-2 sm:col-span-1">
-          <div className="text-[10px] font-bold uppercase text-rose-400">Fora de Serviço</div>
-          <div className="mt-1 text-2xl font-black font-mono text-rose-400">
-            {baixadasOrMaintenance.length}
-          </div>
-          <div className="text-[11px] text-rose-400/80 mt-0.5">Baixadas / Manutenção</div>
-        </div>
+       {/* Resumo principal organizado na ordem solicitada */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5"><div className="text-[10px] font-bold uppercase text-zinc-400">Frota total</div><div className="mt-1 text-2xl font-black font-mono text-zinc-100">{vehicles.length}</div><div className="text-[11px] text-zinc-500 mt-0.5">Veículos cadastrados</div></div>
+        <div className="bg-zinc-900 border border-amber-900/40 rounded-xl p-3.5"><div className="text-[10px] font-bold uppercase text-amber-400">Motocicletas</div><div className="mt-1 text-2xl font-black font-mono text-amber-300">{stats.motos}</div><div className="text-[11px] text-zinc-500 mt-0.5">Total cadastrado</div></div>
+        <div className="bg-zinc-900 border border-blue-900/40 rounded-xl p-3.5"><div className="text-[10px] font-bold uppercase text-blue-400">Viaturas 04 rodas</div><div className="mt-1 text-2xl font-black font-mono text-blue-300">{stats.quatroRodas}</div><div className="text-[11px] text-zinc-500 mt-0.5">Total cadastrado</div></div>
+        <div className="bg-zinc-900 border border-rose-900/50 rounded-xl p-3.5"><div className="text-[10px] font-bold uppercase text-rose-400">Viaturas baixadas</div><div className="mt-1 text-2xl font-black font-mono text-rose-300">{viaturasBaixadas.length}</div><div className="text-[11px] text-zinc-500 mt-0.5">Status atual</div></div>
+        <div className="bg-zinc-900 border border-emerald-900/40 rounded-xl p-3.5"><div className="text-[10px] font-bold uppercase text-emerald-400">Viaturas prontas para o serviço</div><div className="mt-1 text-2xl font-black font-mono text-emerald-300">{operacionais.length}</div><div className="text-[11px] text-zinc-500 mt-0.5">Operacionais / reserva</div></div>
+        <div className="bg-zinc-900 border border-amber-900/40 rounded-xl p-3.5"><div className="text-[10px] font-bold uppercase text-amber-400">Viaturas em manutenção externa</div><div className="mt-1 text-2xl font-black font-mono text-amber-300">{viaturasManutencaoExterna.length}</div><div className="text-[11px] text-zinc-500 mt-0.5">Em oficina externa</div></div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
