@@ -49,7 +49,7 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
 }) => {
   const { currentUser } = useAuth();
   const [dataHoraRetorno, setDataHoraRetorno] = useState<string>('');
-  const [kmRetorno, setKmRetorno] = useState<number>(0);
+  const [kmRetorno, setKmRetorno] = useState<string>('');
   const [combustivelRetorno, setCombustivelRetorno] = useState<'RESERVA' | '1/4' | '1/2' | '3/4' | 'CHEIO'>('1/2');
   const [observacoesRetorno, setObservacoesRetorno] = useState<string>('');
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
@@ -68,7 +68,7 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
         .toISOString()
         .slice(0, 16);
       setDataHoraRetorno(localISO);
-      setKmRetorno(cautela.kmSaida);
+      setKmRetorno('');
       setCombustivelRetorno('1/2');
       setObservacoesRetorno('');
       setHouveAvaria(false);
@@ -87,7 +87,10 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
 
   if (!isOpen || !cautela) return null;
 
-  const kmPercorrido = Math.max(0, kmRetorno - cautela.kmSaida);
+  const kmRetornoNumerico = kmRetorno.trim() === '' ? null : Number(kmRetorno);
+  const kmPercorrido = kmRetornoNumerico === null || !Number.isFinite(kmRetornoNumerico)
+    ? 0
+    : Math.max(0, kmRetornoNumerico - cautela.kmSaida);
 
   const handleSetItemStatus = (id: string, conforme: boolean) => {
     setChecklist((prev) =>
@@ -140,8 +143,13 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
       return;
     }
 
-    if (kmRetorno < cautela.kmSaida) {
-      setErrorMessage(`O odômetro de retorno (${kmRetorno} km) não pode ser menor que o de saída (${cautela.kmSaida} km).`);
+    if (kmRetorno.trim() === '') {
+      setErrorMessage('A devolução está bloqueada. Informe a quilometragem atual do odômetro para concluir a devolução da viatura.');
+      return;
+    }
+    const kmRetornoValidado = Number(kmRetorno);
+    if (!Number.isSafeInteger(kmRetornoValidado) || kmRetornoValidado < cautela.kmSaida) {
+      setErrorMessage(`Informe uma quilometragem válida, igual ou superior à saída (${cautela.kmSaida.toLocaleString('pt-BR')} km).`);
       return;
     }
     if (houveAvaria && !descricaoAvaria.trim()) {
@@ -151,7 +159,7 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
 
     onFinalizeDescautela(cautela.id, {
       dataHoraRetorno,
-      kmRetorno: Number(kmRetorno),
+      kmRetorno: kmRetornoValidado,
       combustivelRetorno,
       observacoesRetorno: observacoesRetorno.trim() || undefined,
       checklistRetorno: checklist,
@@ -263,8 +271,9 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
               <input
                 type="number"
                 min={cautela.kmSaida}
+                step={1}
                 value={kmRetorno}
-                onChange={(e) => setKmRetorno(Number(e.target.value))}
+                onChange={(e) => setKmRetorno(e.target.value)}
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono font-bold focus:outline-none focus:border-amber-500"
                 required
               />
