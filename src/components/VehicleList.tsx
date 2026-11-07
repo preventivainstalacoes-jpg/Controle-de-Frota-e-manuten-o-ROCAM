@@ -81,6 +81,8 @@ export const VehicleList: React.FC<VehicleListProps> = ({
     taxaProntidao: vehicles.length ? Math.round(((operacionaisCount + reservaCount) / vehicles.length) * 100) : 0,
   };
   const isMechanic = currentUser?.role === 'MECANICO';
+  // Operador pode registrar BAIXA, mas não liberar nem alterar para outros status.
+  const canMarkVehicleDown = isAdmin || isOperator || isMechanic;
   const canReleaseToService = isAdmin || isMechanic;
   const canSendToDischarge = isAdmin || isMechanic;
 
@@ -186,7 +188,10 @@ export const VehicleList: React.FC<VehicleListProps> = ({
   const handleConfirmStatusChange = (e: React.FormEvent) => {
     e.preventDefault();
     if (!statusModal) return;
-    // Apenas Administrador e Mecânico podem liberar uma viatura para o serviço.
+    if (!canMarkVehicleDown) return;
+    // O operador só pode registrar a BAIXA. Liberação e demais mudanças
+    // de situação permanecem restritas ao Administrador e ao Mecânico.
+    if (isOperator && statusModal.targetStatus !== 'BAIXADA') return;
     if (statusModal.targetStatus === 'OPERACIONAL' && !canReleaseToService) return;
 
     if (statusModal.targetStatus === 'BAIXADA' || statusModal.targetStatus === 'EM_MANUTENCAO' || statusModal.targetStatus === 'MANUTENCAO_EXTERNA') {
@@ -851,7 +856,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                           <span>Enviar para oficina externa</span>
                         </button>
                       )}
-                      {(!isMechanic || vehicle.tipo === 'MOTOCICLETA') && vehicle.status === 'OPERACIONAL' && (
+                      {canMarkVehicleDown && (!isMechanic || vehicle.tipo === 'MOTOCICLETA') && vehicle.status === 'OPERACIONAL' && (
                         <button
                           onClick={() => handleOpenStatusModal(vehicle)}
                           title="Baixar viatura"
@@ -1299,11 +1304,17 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                   }
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-xs text-zinc-100 focus:outline-none focus:border-amber-500 font-semibold"
                 >
-                  <option value="OPERACIONAL">OPERACIONAL (Pronta para o serviço)</option>
-                  <option value="BAIXADA">BAIXADA (Com falha / avaria mecânica / fora de serviço)</option>
-                  <option value="EM_MANUTENCAO">MANUTENÇÃO INTERNA (Oficina da unidade)</option>
-                  <option value="MANUTENCAO_EXTERNA">MANUTENÇÃO EXTERNA (Oficina particular / concessionária)</option>
-                  <option value="RESERVA">RESERVA TÁTICA (Disponível no quartel)</option>
+                  {isOperator ? (
+                    <option value="BAIXADA">BAIXADA (Com falha / avaria mecânica / fora de serviço)</option>
+                  ) : (
+                    <>
+                      <option value="OPERACIONAL">OPERACIONAL (Pronta para o serviço)</option>
+                      <option value="BAIXADA">BAIXADA (Com falha / avaria mecânica / fora de serviço)</option>
+                      <option value="EM_MANUTENCAO">MANUTENÇÃO INTERNA (Oficina da unidade)</option>
+                      <option value="MANUTENCAO_EXTERNA">MANUTENÇÃO EXTERNA (Oficina particular / concessionária)</option>
+                      <option value="RESERVA">RESERVA TÁTICA (Disponível no quartel)</option>
+                    </>
+                  )}
                 </select>
               </div>
 
