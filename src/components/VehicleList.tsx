@@ -1031,6 +1031,18 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                           >
                             <Gauge className="w-3.5 h-3.5" />
                           </button>
+                          {canMarkVehicleDown && (!isMechanic || vehicle.tipo === 'MOTOCICLETA') && vehicle.status === 'OPERACIONAL' && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenStatusModal(vehicle)}
+                              title={vehicle.tipo === 'MOTOCICLETA' ? `Baixar motocicleta ${vehicle.prefixo}` : `Baixar viatura ${vehicle.prefixo}`}
+                              aria-label={`Baixar ${vehicle.prefixo}`}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded bg-zinc-800 hover:bg-rose-950/80 text-rose-300 border border-rose-900/60 text-[11px] font-bold transition cursor-pointer"
+                            >
+                              <AlertTriangle className="w-3.5 h-3.5" />
+                              <span>Baixar</span>
+                            </button>
+                          )}
                           {canReleaseToService && vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
                             <button
                               type="button"
@@ -1312,7 +1324,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                   }
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-xs text-zinc-100 focus:outline-none focus:border-amber-500 font-semibold"
                 >
-                  {isOperator ? (
+                  {(isOperator || isAdjunto) ? (
                     <option value="BAIXADA">BAIXADA (Com falha / avaria mecânica / fora de serviço)</option>
                   ) : (
                     <>
