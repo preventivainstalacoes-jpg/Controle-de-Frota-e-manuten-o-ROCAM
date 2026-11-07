@@ -29,6 +29,7 @@ function AppContent() {
     vehicles,
     addVehicle,
     updateVehicle,
+    markVehicleDown,
     deleteVehicle,
     updateOdometer,
     addMaintenanceRecord,
@@ -232,11 +233,21 @@ function AppContent() {
     return true;
   };
 
-  const handleBaixarViaturaChecklist = (vehicleId: string, motivo: string) => {
-    updateVehicle(vehicleId, {
-      status: 'BAIXADA',
-      motivoBaixa: motivo || 'Avaria constatada durante checklist de inspeção prévia.',
-    });
+  const handleBaixarViaturaChecklist = async (vehicleId: string, motivo: string) => {
+    const finalReason = motivo || 'Avaria constatada durante checklist de inspeção prévia.';
+
+    // Operadores e adjuntos devem usar a RPC autorizada no Supabase.
+    // A atualização direta via updateVehicle é bloqueada pelas políticas RLS.
+    if (isOperator || currentUser?.role === 'ADJUNTO') {
+      const saved = await markVehicleDown(vehicleId, finalReason);
+      if (!saved) return;
+    } else if (isAdmin || isMechanic) {
+      updateVehicle(vehicleId, { status: 'BAIXADA', motivoBaixa: finalReason });
+    } else {
+      showToast('Seu perfil não tem autorização para baixar viaturas.', 'error');
+      return;
+    }
+
     const v = vehicles.find((veh) => veh.id === vehicleId);
     logActivity({
       tipo: 'AVARIA',
