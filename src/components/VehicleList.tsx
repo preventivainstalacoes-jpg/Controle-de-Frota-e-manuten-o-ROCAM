@@ -81,8 +81,9 @@ export const VehicleList: React.FC<VehicleListProps> = ({
     taxaProntidao: vehicles.length ? Math.round(((operacionaisCount + reservaCount) / vehicles.length) * 100) : 0,
   };
   const isMechanic = currentUser?.role === 'MECANICO';
-  // Operador pode registrar BAIXA, mas não liberar nem alterar para outros status.
-  const canMarkVehicleDown = isAdmin || isOperator || isMechanic;
+  const isAdjunto = currentUser?.role === 'ADJUNTO';
+  // Operador e Adjunto podem registrar BAIXA, sem liberar ou alterar para outros status.
+  const canMarkVehicleDown = isAdmin || isOperator || isAdjunto || isMechanic;
   const canReleaseToService = isAdmin || isMechanic;
   const canSendToDischarge = isAdmin || isMechanic;
 
@@ -189,9 +190,9 @@ export const VehicleList: React.FC<VehicleListProps> = ({
     e.preventDefault();
     if (!statusModal) return;
     if (!canMarkVehicleDown) return;
-    // O operador só pode registrar a BAIXA. Liberação e demais mudanças
-    // de situação permanecem restritas ao Administrador e ao Mecânico.
-    if (isOperator && statusModal.targetStatus !== 'BAIXADA') return;
+    // Operador e Adjunto só podem registrar a BAIXA. Liberação e demais
+    // mudanças de situação permanecem restritas aos perfis autorizados.
+    if ((isOperator || isAdjunto) && statusModal.targetStatus !== 'BAIXADA') return;
     if (statusModal.targetStatus === 'OPERACIONAL' && !canReleaseToService) return;
 
     if (statusModal.targetStatus === 'BAIXADA' || statusModal.targetStatus === 'EM_MANUTENCAO' || statusModal.targetStatus === 'MANUTENCAO_EXTERNA') {
