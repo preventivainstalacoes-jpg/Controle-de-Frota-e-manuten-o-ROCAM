@@ -57,6 +57,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
     statusFilter,
     setStatusFilter,
     updateVehicle,
+    markVehicleDown,
   } = useFleet();
   const { isAdmin, isOperator, currentUser } = useAuth();
   // A unidade selecionada controla a lista efetivamente exibida, não apenas o cabeçalho.
@@ -186,7 +187,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
   const motorcyclesForDischarge = vehiclesForDischarge.filter((v) => v.tipo === 'MOTOCICLETA');
   const fourWheelVehiclesForDischarge = vehiclesForDischarge.filter((v) => v.tipo === 'QUATRO_RODAS');
 
-  const handleConfirmStatusChange = (e: React.FormEvent) => {
+  const handleConfirmStatusChange = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!statusModal) return;
     if (!canMarkVehicleDown) return;
@@ -194,6 +195,12 @@ export const VehicleList: React.FC<VehicleListProps> = ({
     // mudanças de situação permanecem restritas aos perfis autorizados.
     if ((isOperator || isAdjunto) && statusModal.targetStatus !== 'BAIXADA') return;
     if (statusModal.targetStatus === 'OPERACIONAL' && !canReleaseToService) return;
+
+    if ((isOperator || isAdjunto) && statusModal.targetStatus === 'BAIXADA') {
+      const saved = await markVehicleDown(statusModal.vehicle.id, statusModal.reason);
+      if (saved) setStatusModal(null);
+      return;
+    }
 
     if (statusModal.targetStatus === 'BAIXADA' || statusModal.targetStatus === 'EM_MANUTENCAO' || statusModal.targetStatus === 'MANUTENCAO_EXTERNA') {
       updateVehicle(statusModal.vehicle.id, {
