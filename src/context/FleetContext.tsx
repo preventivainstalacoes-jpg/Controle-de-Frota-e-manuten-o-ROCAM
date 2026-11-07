@@ -55,6 +55,7 @@ interface FleetContextType {
   // Actions
   addVehicle: (vehicleData: Omit<Vehicle, 'id' | 'dataUltimaAtualizacaoKm'>) => void;
   updateVehicle: (id: string, updates: Partial<Vehicle>) => void;
+  markVehicleDown: (id: string, reason: string) => Promise<boolean>;
   deleteVehicle: (id: string) => void;
   updateOdometer: (id: string, newKm: number, observacao?: string) => void;
   
@@ -305,6 +306,23 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setVehicles((prev) => prev.map((v) => (v.id === id ? { ...v, ...updates } : v)));
     const db:any={}; if(updates.prefixo!==undefined)db.prefix=updates.prefixo;if(updates.placa!==undefined)db.plate=updates.placa;if(updates.marca!==undefined)db.brand=updates.marca;if(updates.modelo!==undefined)db.model=updates.modelo;if(updates.ano!==undefined)db.year=updates.ano;if(updates.kmAtual!==undefined)db.mileage=updates.kmAtual;if(updates.status!==undefined)db.status=toDbVehicleStatus(updates.status);if(updates.motivoBaixa!==undefined)db.motivo_baixa=updates.motivoBaixa;if(updates.observacoes!==undefined)db.notes=updates.observacoes;if(updates.batalhao!==undefined)db.unit_id=updates.batalhao.toLowerCase().includes('mossor')?'3_cpm_rocam_mossoro':'batalhao_rocam_natal';
     if(Object.keys(db).length)supabase.from('vehicles').update(db).eq('id',id).then(({error})=>{if(error)console.error('Erro ao atualizar viatura:',error)});
+  };
+
+  const markVehicleDown = async (id: string, reason: string): Promise<boolean> => {
+    const finalReason = reason.trim() || 'Constatada falha operacional / avaria.';
+    const { error } = await supabase.rpc('operator_mark_vehicle_down', {
+      p_vehicle_id: id,
+      p_reason: finalReason,
+    });
+    if (error) {
+      console.error('Erro ao registrar baixa da viatura:', error);
+      window.alert(error.message || 'Não foi possível registrar a baixa. Tente novamente ou contate o administrador.');
+      return false;
+    }
+    setVehicles((prev) => prev.map((v) => v.id === id
+      ? { ...v, status: 'BAIXADA', motivoBaixa: finalReason }
+      : v));
+    return true;
   };
 
   const deleteVehicle = (id: string) => {
@@ -787,6 +805,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setStatusFilter,
         addVehicle,
         updateVehicle,
+        markVehicleDown,
         deleteVehicle,
         updateOdometer,
         addMaintenanceRecord,
