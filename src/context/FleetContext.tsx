@@ -496,6 +496,49 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     setCautelas((prev) => [newRecord, ...prev]);
 
+    // Cada AVARIA do checklist vira uma pendência permanente vinculada à viatura.
+    // Não altera a situação operacional: registrar uma alteração não é dar baixa.
+    const vehicle = vehicles.find((v) => v.id === cautelaData.viaturaId);
+    const flaggedItems = (newRecord.checklistSaida || []).filter((item) => !item.conforme);
+    if (vehicle && flaggedItems.length > 0) {
+      const [{ data: authData }, { data: existingIssues, error: issuesReadError }] = await Promise.all([
+        supabase.auth.getUser(),
+        supabase.from('vehicle_checklist_issues')
+          .select('checklist_item_id')
+          .eq('vehicle_id', vehicle.id)
+          .eq('status', 'PENDENTE'),
+      ]);
+      if (issuesReadError) {
+        console.error('Cautela salva, mas não foi possível consultar alterações pendentes:', issuesReadError);
+      } else {
+        const pendingIds = new Set((existingIssues || []).map((issue: any) => issue.checklist_item_id));
+        const unitId = (vehicle.batalhao || '').toLocaleLowerCase().includes('mossor')
+          ? '3_cpm_rocam_mossoro'
+          : 'batalhao_rocam_natal';
+        const issueRows = flaggedItems
+          .filter((item) => !pendingIds.has(item.id))
+          .map((item) => {
+            const matchingPhotos = (newRecord.fotosAvariasSaida || []).filter((photo) => photo.itemChecklistId === item.id);
+            return {
+              vehicle_id: vehicle.id,
+              unit_id: unitId,
+              source_cautela_id: newRecord.id,
+              source_numero_termo: newRecord.numeroTermo,
+              checklist_item_id: item.id,
+              item: item.item,
+              observation: item.observacao || null,
+              photos: matchingPhotos.length ? matchingPhotos : (newRecord.fotosAvariasSaida || []),
+              status: 'PENDENTE',
+              created_by: authData.user?.id || null,
+            };
+          });
+        if (issueRows.length > 0) {
+          const { error: issueInsertError } = await supabase.from('vehicle_checklist_issues').insert(issueRows);
+          if (issueInsertError) console.error('Cautela registrada, mas houve falha ao salvar alterações persistentes:', issueInsertError);
+        }
+      }
+    }
+
     const vehicle = vehicles.find((v) => v.id === cautelaData.viaturaId);
     if (vehicle && cautelaData.kmSaida > vehicle.kmAtual) {
       updateOdometer(vehicle.id, cautelaData.kmSaida, `Saída em Cautela ${newRecord.numeroTermo}`);
