@@ -7,9 +7,11 @@ import { CheckCircle2, ClipboardList, Loader2, Wrench } from 'lucide-react';
 interface VehicleChecklistIssuesPanelProps {
   vehicles: Vehicle[];
   currentUserId?: string;
+  currentUserName?: string;
+  currentUserRE?: string;
 }
 
-export const VehicleChecklistIssuesPanel: React.FC<VehicleChecklistIssuesPanelProps> = ({ vehicles, currentUserId }) => {
+export const VehicleChecklistIssuesPanel: React.FC<VehicleChecklistIssuesPanelProps> = ({ vehicles, currentUserId, currentUserName, currentUserRE }) => {
   const [issues, setIssues] = useState<VehicleChecklistIssue[]>([]);
   const [descriptions, setDescriptions] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -65,6 +67,8 @@ export const VehicleChecklistIssuesPanel: React.FC<VehicleChecklistIssuesPanelPr
       .update({
         status: 'RESOLVIDA',
         resolved_by: currentUserId,
+        resolved_by_name: currentUserName || null,
+        resolved_by_re: currentUserRE || null,
         resolved_at: new Date().toISOString(),
         resolution_description: description,
       })
