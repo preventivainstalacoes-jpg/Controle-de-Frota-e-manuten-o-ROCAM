@@ -88,32 +88,32 @@ export const VehicleChecklistIssuesPanel: React.FC<VehicleChecklistIssuesPanelPr
   if (!issues.length && !loading && !message) return null;
 
   return (
-    <section className="rounded-2xl border border-amber-500/30 bg-zinc-950 p-4 sm:p-5 space-y-4">
+    <section className="rounded-2xl border-2 border-rose-600/70 bg-zinc-950 p-4 sm:p-5 space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Wrench className="h-5 w-5 text-amber-400" />
+          <Wrench className="h-5 w-5 text-rose-400" />
           <div>
             <h2 className="text-sm font-black uppercase tracking-wide text-white">Alterações pendentes do checklist</h2>
             <p className="text-[11px] text-zinc-400">Confirme o serviço executado para retirar cada avaria das próximas cautelas.</p>
           </div>
         </div>
-        <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-300">{issues.length}</span>
+        <span className="rounded-full bg-rose-500/20 px-2.5 py-1 text-xs font-black text-rose-200">{issues.length}</span>
       </div>
       {message && <p className="rounded-lg bg-zinc-900 p-2 text-xs text-amber-200">{message}</p>}
       {loading && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Carregando...</div>}
       {issues.map((issue) => {
         const vehicle = vehicles.find((v) => v.id === issue.vehicleId);
         return (
-          <article key={issue.id} className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 space-y-3">
+          <article key={issue.id} className="rounded-xl border border-rose-600/60 bg-rose-950/20 p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <div className="text-xs font-black text-amber-300">{vehicle?.prefixo || 'Viatura'} • {vehicle?.tipo === 'MOTOCICLETA' ? 'Motocicleta' : 'Viatura 04 rodas'}</div>
-                <h3 className="mt-1 text-sm font-bold text-white">{issue.item}</h3>
+                <div className="text-xs font-black text-rose-300">{vehicle?.prefixo || 'Viatura'} • {vehicle?.tipo === 'MOTOCICLETA' ? 'Motocicleta' : 'Viatura 04 rodas'}</div>
+                <h3 className="mt-1 text-sm font-black text-rose-100">{issue.item}</h3>
               </div>
-              <span className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-bold text-amber-300">PENDENTE</span>
+              <span className="rounded bg-rose-600 px-2 py-1 text-[10px] font-black text-white">AVARIA PENDENTE</span>
             </div>
-            <p className="text-xs text-zinc-300">{issue.observation || 'Sem observação informada.'}</p>
-            <p className="text-[10px] text-zinc-500">
+            <p className="text-xs text-rose-100">{issue.observation || 'Sem observação informada.'}</p>
+            <p className="text-[10px] text-rose-200/80">
               Registrada em {new Date(issue.createdAt).toLocaleString('pt-BR')}
               {issue.sourceNumeroTermo ? ' • Termo ' + issue.sourceNumeroTermo : ''}
             </p>
