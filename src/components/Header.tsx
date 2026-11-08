@@ -115,6 +115,13 @@ export const Header: React.FC<HeaderProps> = ({
       allowedRoles: ['ADMIN', 'OPERADOR', 'ADJUNTO', 'MECANICO'],
     },
     {
+      id: 'pendencias',
+      label: 'Pendências',
+      icon: ClipboardCheck,
+      badge: undefined,
+      allowedRoles: ['ADMIN', 'MECANICO'],
+    },
+    {
       id: 'visao-adjunto',
       label: 'Resumo da Frota',
       icon: Users,
