@@ -553,26 +553,26 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
           </div>
 
           {selectedVehicle && (pendingIssues.length > 0 || issuesLoading) && (
-            <section className="rounded-xl border border-amber-500/40 bg-amber-950/20 p-4 space-y-3">
+            <section className="rounded-xl border-2 border-rose-600 bg-rose-950/30 p-4 space-y-3">
               <div className="flex items-center justify-between gap-2">
-                <h3 className="text-xs font-black uppercase tracking-wider text-amber-300">
+                <h3 className="text-xs font-black uppercase tracking-wider text-rose-300">
                   Alterações pendentes desta viatura
                 </h3>
-                <span className="rounded-full bg-amber-500/20 px-2 py-1 text-[10px] font-bold text-amber-200">
+                <span className="rounded-full bg-rose-500/20 px-2 py-1 text-[10px] font-bold text-rose-200">
                   {issuesLoading ? 'Carregando...' : pendingIssues.length + ' pendente(s)'}
                 </span>
               </div>
-              <p className="text-[11px] text-amber-100/80">
+              <p className="text-[11px] text-rose-100/90">
                 Estas avarias foram registradas em cautelas anteriores. Permanecem no checklist até o mecânico confirmar o serviço realizado.
               </p>
               {pendingIssues.map((issue) => (
-                <article key={issue.id} className="rounded-lg border border-amber-500/30 bg-zinc-950/80 p-3 space-y-2">
+                <article key={issue.id} className="rounded-lg border border-rose-500/60 bg-rose-950/30 p-3 space-y-2">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <strong className="text-xs text-white">{issue.item}</strong>
-                    <span className="text-[10px] font-bold text-amber-300">AVARIA PENDENTE</span>
+                    <strong className="text-xs font-black text-rose-200">{issue.item}</strong>
+                    <span className="rounded bg-rose-600 px-2 py-1 text-[10px] font-black text-white">AVARIA PENDENTE</span>
                   </div>
-                  <p className="text-xs text-zinc-300">{issue.observation || 'Sem observação adicional.'}</p>
-                  <p className="text-[10px] text-zinc-500">
+                  <p className="text-xs text-rose-100">{issue.observation || 'Sem observação adicional.'}</p>
+                  <p className="text-[10px] text-rose-200/80">
                     Registrada em {new Date(issue.createdAt).toLocaleString('pt-BR')}
                     {issue.sourceNumeroTermo ? ' • Termo ' + issue.sourceNumeroTermo : ''}
                   </p>
@@ -630,7 +630,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
                 <div
                   key={item.id}
                   className={`p-2.5 rounded-xl border transition-all ${
-                    item.conforme
+                    item.conforme && !pendingIssueIds.has(item.id)
                       ? 'bg-zinc-900/80 border-zinc-800 hover:border-zinc-700'
                       : 'bg-rose-950/30 border-rose-800/80 shadow-sm shadow-rose-950/40'
                   }`}
@@ -640,9 +640,9 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
                       <span className="text-[10px] font-mono text-zinc-500 font-bold mt-0.5">
                         {String(idx + 1).padStart(2, '0')}.
                       </span>
-                      <span className="text-xs font-medium text-zinc-200 leading-tight">
+                      <span className={`text-xs font-medium leading-tight ${pendingIssueIds.has(item.id) ? 'text-rose-200' : 'text-zinc-200'}`}>
                         {item.item}
-                        {pendingIssueIds.has(item.id) && <span className="ml-2 inline-block text-[9px] font-black text-amber-300">ALTERAÇÃO PENDENTE • MECÂNICO</span>}
+                        {pendingIssueIds.has(item.id) && <span className="ml-2 inline-block rounded bg-rose-600 px-1.5 py-0.5 text-[9px] font-black text-white">AVARIA PENDENTE • MECÂNICO</span>}
                       </span>
                     </div>
 
