@@ -141,8 +141,10 @@ export const VehicleList: React.FC<VehicleListProps> = ({
         id: row.id, vehicleId: row.vehicle_id, unitId: row.unit_id,
         sourceCautelaId: row.source_cautela_id || undefined, sourceNumeroTermo: row.source_numero_termo || undefined,
         checklistItemId: row.checklist_item_id, item: row.item, observation: row.observation || undefined,
-        photos: row.photos || [], status: row.status, createdBy: row.created_by || undefined, createdAt: row.created_at,
-        resolvedBy: row.resolved_by || undefined, resolvedAt: row.resolved_at || undefined,
+        photos: row.photos || [], status: row.status, createdBy: row.created_by || undefined,
+        createdByName: row.created_by_name || undefined, createdByRE: row.created_by_re || undefined, createdAt: row.created_at,
+        resolvedBy: row.resolved_by || undefined, resolvedByName: row.resolved_by_name || undefined,
+        resolvedByRE: row.resolved_by_re || undefined, resolvedAt: row.resolved_at || undefined,
         resolutionDescription: row.resolution_description || undefined,
       })));
     };
@@ -1277,7 +1279,9 @@ export const VehicleList: React.FC<VehicleListProps> = ({
             details: issue.observation || 'Avaria registrada no checklist de cautela.',
             extra: [
               issue.sourceNumeroTermo ? `Termo de origem: ${issue.sourceNumeroTermo}` : '',
+              issue.createdByName ? `Registrada por: ${issue.createdByName}${issue.createdByRE ? ` (RE ${issue.createdByRE})` : ''}` : 'Responsável pelo registro não identificado.',
               issue.status === 'RESOLVIDA' ? `Serviço realizado: ${issue.resolutionDescription || 'Descrição não informada'}` : 'Aguardando confirmação do mecânico.',
+              issue.resolvedByName ? `Serviço confirmado por: ${issue.resolvedByName}${issue.resolvedByRE ? ` (RE ${issue.resolvedByRE})` : ''}` : '',
               issue.photos?.length ? `Fotos preservadas: ${issue.photos.length}` : '',
               issue.resolvedAt ? `Resolvida em: ${new Date(issue.resolvedAt).toLocaleString('pt-BR')}` : '',
             ].filter(Boolean).join(' • '),
