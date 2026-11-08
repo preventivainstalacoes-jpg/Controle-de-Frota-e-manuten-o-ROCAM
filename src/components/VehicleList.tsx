@@ -1202,8 +1202,26 @@ export const VehicleList: React.FC<VehicleListProps> = ({
           .sort((a, b) => `${b.dataHoraSaida || ''}`.localeCompare(a.dataHoraSaida || ''));
         const vehicleStatusEvents = activityLogs
           .filter((log) => (log.badge || '').trim().toLocaleUpperCase() === vehicle.prefixo.trim().toLocaleUpperCase())
-          .filter((log) => /viatura baixada|viatura pronta para o serviço|viatura operacional|viatura em manutenção/i.test(log.titulo || ''));
+          // Inclui os títulos antigos gerados pelo checklist, além das baixas/liberações novas.
+          .filter((log) => /viatura baixada|baixada no checklist|viatura pronta para o serviço|viatura operacional|viatura liberada|viatura em manutenção/i.test(log.titulo || ''));
+        const hasReleaseEvent = vehicleStatusEvents.some((log) =>
+          /pronta para o serviço|viatura operacional|viatura liberada/i.test(log.titulo || '')
+        );
+        // Se o cadastro atual já indica disponibilidade, mas não há evento de liberação,
+        // exibe a situação atual sem inventar data ou responsável por uma movimentação passada.
+        const currentStatusSnapshot = vehicle.status === 'OPERACIONAL' && !hasReleaseEvent
+          ? [{
+              id: `current-status-${vehicle.id}`,
+              date: '',
+              kind: 'SITUAÇÃO ATUAL',
+              title: 'Situação atual: PRONTA PARA O SERVIÇO',
+              status: 'PRONTA PARA O SERVIÇO',
+              details: 'O cadastro atual da frota indica que esta viatura está disponível para o serviço. Não foi localizado um evento histórico de liberação.',
+              extra: 'Responsável e horário da liberação anterior não identificados nos registros disponíveis.',
+            }]
+          : [];
         const historyItems = [
+          ...currentStatusSnapshot,
           ...vehicleStatusEvents.map((log) => ({
             id: `status-${log.id}`,
             date: log.dataHora || '',
