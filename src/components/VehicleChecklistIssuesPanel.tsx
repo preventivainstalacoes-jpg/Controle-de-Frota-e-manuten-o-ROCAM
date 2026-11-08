@@ -85,8 +85,6 @@ export const VehicleChecklistIssuesPanel: React.FC<VehicleChecklistIssuesPanelPr
     setSavingId(null);
   };
 
-  if (!issues.length && !loading && !message) return null;
-
   return (
     <section className="rounded-2xl border-2 border-rose-600/70 bg-zinc-950 p-4 sm:p-5 space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -94,7 +92,7 @@ export const VehicleChecklistIssuesPanel: React.FC<VehicleChecklistIssuesPanelPr
           <Wrench className="h-5 w-5 text-rose-400" />
           <div>
             <h2 className="text-sm font-black uppercase tracking-wide text-white">Alterações pendentes do checklist</h2>
-            <p className="text-[11px] text-zinc-400">Confirme o serviço executado para retirar cada avaria das próximas cautelas.</p>
+            <p className="text-[11px] text-zinc-400">Área exclusiva para administrador e mecânico: registre o serviço realizado e retire a pendência das próximas cautelas. Esta área fica disponível em qualquer tela do aplicativo.</p>
           </div>
         </div>
         <span className="rounded-full bg-rose-500/20 px-2.5 py-1 text-xs font-black text-rose-200">{issues.length}</span>
@@ -144,7 +142,7 @@ export const VehicleChecklistIssuesPanel: React.FC<VehicleChecklistIssuesPanelPr
           </article>
         );
       })}
-      {!loading && issues.length === 0 && <div className="text-xs text-zinc-400">Nenhuma alteração pendente nesta unidade.</div>}
+      {!loading && issues.length === 0 && <div className="text-xs text-zinc-400">Nenhuma alteração pendente encontrada. Quando houver observação ativa no checklist, ela aparecerá aqui para confirmação do serviço.</div>}
     </section>
   );
 };
