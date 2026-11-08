@@ -124,6 +124,8 @@ export const VehicleList: React.FC<VehicleListProps> = ({
   const [vehicleToDischargeId, setVehicleToDischargeId] = useState('');
   const [vehicleToDelete, setVehicleToDelete] = useState<Vehicle | null>(null);
   const [vehicleForHistory, setVehicleForHistory] = useState<Vehicle | null>(null);
+  const [releaseCorrectionConfirmed, setReleaseCorrectionConfirmed] = useState(false);
+  const [releaseServiceDetails, setReleaseServiceDetails] = useState('');
   const [statusModal, setStatusModal] = useState<{
     vehicle: Vehicle;
     targetStatus: VehicleStatus;
@@ -166,6 +168,8 @@ export const VehicleList: React.FC<VehicleListProps> = ({
   };
 
   const handleOpenStatusModal = (vehicle: Vehicle) => {
+    setReleaseCorrectionConfirmed(false);
+    setReleaseServiceDetails('');
     setStatusModal({
       vehicle,
       targetStatus: vehicle.status === 'OPERACIONAL' ? 'BAIXADA' : 'OPERACIONAL',
@@ -197,6 +201,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
     // mudanças de situação permanecem restritas aos perfis autorizados.
     if ((isOperator || isAdjunto) && statusModal.targetStatus !== 'BAIXADA') return;
     if (statusModal.targetStatus === 'OPERACIONAL' && !canReleaseToService) return;
+    if (statusModal.targetStatus === 'OPERACIONAL' && (!releaseCorrectionConfirmed || !releaseServiceDetails.trim())) return;
 
     if ((isOperator || isAdjunto) && statusModal.targetStatus === 'BAIXADA') {
       const saved = await markVehicleDown(statusModal.vehicle.id, statusModal.reason);
@@ -235,7 +240,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
       tipo: statusModal.targetStatus === 'BAIXADA' ? 'AVARIA' : 'SISTEMA',
       titulo: `Viatura ${statusLabel}: ${statusModal.vehicle.prefixo}`,
       descricao: statusModal.targetStatus === 'OPERACIONAL'
-        ? 'Viatura liberada e disponibilizada para o serviço.'
+        ? `Defeito corrigido: SIM. Serviço executado: ${releaseServiceDetails.trim()}.`
         : `Situação alterada para ${statusLabel}. Motivo: ${statusModal.reason.trim() || 'Não informado'}.`,
       usuarioNome: currentUser?.name || 'Policial Militar',
       usuarioRE: currentUser?.re || '',
@@ -1432,6 +1437,22 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                   <p className="text-[11px] text-zinc-500 mt-1">
                     A viatura não poderá ser cautelada enquanto estiver baixada. Para registrar uma descarga por inservibilidade, use a opção acima e descreva a justificativa no campo.
                   </p>
+                </div>
+              ) : statusModal.targetStatus === 'OPERACIONAL' ? (
+                <div className="space-y-3 rounded-xl border border-emerald-800/50 bg-emerald-950/20 p-3">
+                  <div>
+                    <label className="mb-2 block text-xs font-semibold text-emerald-200">O defeito que motivou a baixa foi corrigido? *</label>
+                    <div className="flex gap-4 text-xs text-zinc-200">
+                      <label className="flex items-center gap-2"><input type="radio" name="release-correction" checked={releaseCorrectionConfirmed} onChange={() => setReleaseCorrectionConfirmed(true)} /> Sim, foi corrigido</label>
+                      <label className="flex items-center gap-2"><input type="radio" name="release-correction" checked={!releaseCorrectionConfirmed} onChange={() => setReleaseCorrectionConfirmed(false)} /> Não / ainda há pendência</label>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-zinc-300">Serviço realizado / peça substituída *</label>
+                    <textarea rows={3} value={releaseServiceDetails} onChange={(e) => setReleaseServiceDetails(e.target.value)} placeholder="Ex.: Substituição do pneu dianteiro; teste realizado e defeito corrigido." className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-500 focus:border-emerald-500 focus:outline-none" />
+                    <p className="mt-1 text-[11px] text-zinc-500">Informe exatamente o reparo executado. Ex.: substituição de pneu, troca de pastilhas ou reparo elétrico.</p>
+                  </div>
+                  {!releaseCorrectionConfirmed && <p className="text-[11px] font-semibold text-rose-300">A viatura não poderá ser liberada enquanto o defeito não estiver corrigido.</p>}
                 </div>
               ) : (
                 <div className="p-3 bg-emerald-950/30 border border-emerald-800/50 rounded-xl">
