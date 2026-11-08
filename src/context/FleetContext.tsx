@@ -539,7 +539,6 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     }
 
-    const vehicle = vehicles.find((v) => v.id === cautelaData.viaturaId);
     if (vehicle && cautelaData.kmSaida > vehicle.kmAtual) {
       updateOdometer(vehicle.id, cautelaData.kmSaida, `Saída em Cautela ${newRecord.numeroTermo}`);
     }
