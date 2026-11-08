@@ -175,8 +175,12 @@ export interface VehicleChecklistIssue {
   photos: DamagePhoto[];
   status: 'PENDENTE' | 'RESOLVIDA';
   createdBy?: string;
+  createdByName?: string;
+  createdByRE?: string;
   createdAt: string;
   resolvedBy?: string;
+  resolvedByName?: string;
+  resolvedByRE?: string;
   resolvedAt?: string;
   resolutionDescription?: string;
 }
