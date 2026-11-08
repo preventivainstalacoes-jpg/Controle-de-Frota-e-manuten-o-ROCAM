@@ -156,10 +156,10 @@ export const VehicleList: React.FC<VehicleListProps> = ({
     return matchQuery && matchType && matchStatus && matchDashboardFilter && visibleToProfile;
   });
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (vehicleToDelete) {
-      deleteVehicle(vehicleToDelete.id);
-      setVehicleToDelete(null);
+      const deleted = await deleteVehicle(vehicleToDelete.id);
+      if (deleted) setVehicleToDelete(null);
     }
   };
 
