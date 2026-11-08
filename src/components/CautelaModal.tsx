@@ -3,6 +3,8 @@ import { Vehicle, ChecklistItem, CautelaRecord, DamagePhoto } from '../types';
 import { STANDARD_CHECKLIST_ITEMS, generateDefaultChecklist } from '../data/defaultChecklist';
 import { DamagePhotoManager } from './DamagePhotoManager';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
+import { VehicleChecklistIssue } from '../types';
 import {
   X,
   ClipboardCheck,
@@ -53,6 +55,8 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isBaixarModalOpen, setIsBaixarModalOpen] = useState<boolean>(false);
   const [motivoBaixaChecklist, setMotivoBaixaChecklist] = useState<string>('');
+  const [pendingIssues, setPendingIssues] = useState<VehicleChecklistIssue[]>([]);
+  const [issuesLoading, setIssuesLoading] = useState(false);
 
   // Selected vehicle object
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
@@ -128,6 +132,49 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
       setFotosAvariasSaida([]);
     }
   }, [isOpen, initialVehicleId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadPendingIssues = async () => {
+      if (!isOpen || !selectedVehicleId) {
+        setPendingIssues([]);
+        return;
+      }
+      setIssuesLoading(true);
+      const { data, error } = await supabase
+        .from('vehicle_checklist_issues')
+        .select('*')
+        .eq('vehicle_id', selectedVehicleId)
+        .eq('status', 'PENDENTE')
+        .order('created_at', { ascending: true });
+      if (cancelled) return;
+      if (error) {
+        console.error('Não foi possível carregar alterações pendentes da viatura:', error);
+        setPendingIssues([]);
+      } else {
+        setPendingIssues((data || []).map((row: any) => ({
+          id: row.id,
+          vehicleId: row.vehicle_id,
+          unitId: row.unit_id,
+          sourceCautelaId: row.source_cautela_id || undefined,
+          sourceNumeroTermo: row.source_numero_termo || undefined,
+          checklistItemId: row.checklist_item_id,
+          item: row.item,
+          observation: row.observation || undefined,
+          photos: row.photos || [],
+          status: row.status,
+          createdBy: row.created_by || undefined,
+          createdAt: row.created_at,
+          resolvedBy: row.resolved_by || undefined,
+          resolvedAt: row.resolved_at || undefined,
+          resolutionDescription: row.resolution_description || undefined,
+        })));
+      }
+      setIssuesLoading(false);
+    };
+    void loadPendingIssues();
+    return () => { cancelled = true; };
+  }, [isOpen, selectedVehicleId]);
 
   // When vehicle changes, update KM
   const handleVehicleChange = (newId: string) => {
@@ -257,6 +304,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
   };
 
   const nonConformeCount = checklist.filter((c) => !c.conforme).length;
+  const pendingIssueIds = new Set(pendingIssues.map((issue) => issue.checklistItemId));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
@@ -504,6 +552,38 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
 
           </div>
 
+          {selectedVehicle && (pendingIssues.length > 0 || issuesLoading) && (
+            <section className="rounded-xl border border-amber-500/40 bg-amber-950/20 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-xs font-black uppercase tracking-wider text-amber-300">
+                  Alterações pendentes desta viatura
+                </h3>
+                <span className="rounded-full bg-amber-500/20 px-2 py-1 text-[10px] font-bold text-amber-200">
+                  {issuesLoading ? 'Carregando...' : pendingIssues.length + ' pendente(s)'}
+                </span>
+              </div>
+              <p className="text-[11px] text-amber-100/80">
+                Estas avarias foram registradas em cautelas anteriores. Permanecem no checklist até o mecânico confirmar o serviço realizado.
+              </p>
+              {pendingIssues.map((issue) => (
+                <article key={issue.id} className="rounded-lg border border-amber-500/30 bg-zinc-950/80 p-3 space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <strong className="text-xs text-white">{issue.item}</strong>
+                    <span className="text-[10px] font-bold text-amber-300">AVARIA PENDENTE</span>
+                  </div>
+                  <p className="text-xs text-zinc-300">{issue.observation || 'Sem observação adicional.'}</p>
+                  <p className="text-[10px] text-zinc-500">
+                    Registrada em {new Date(issue.createdAt).toLocaleString('pt-BR')}
+                    {issue.sourceNumeroTermo ? ' • Termo ' + issue.sourceNumeroTermo : ''}
+                  </p>
+                  {issue.photos?.length > 0 && (
+                    <DamagePhotoManager photos={issue.photos} momento="SAIDA" readOnly title="Fotos da alteração registrada" subtitle="" />
+                  )}
+                </article>
+              ))}
+            </section>
+          )}
+
           {/* Checklist de Cautela (Saída) */}
           <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-zinc-800">
@@ -562,6 +642,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
                       </span>
                       <span className="text-xs font-medium text-zinc-200 leading-tight">
                         {item.item}
+                        {pendingIssueIds.has(item.id) && <span className="ml-2 inline-block text-[9px] font-black text-amber-300">ALTERAÇÃO PENDENTE • MECÂNICO</span>}
                       </span>
                     </div>
 
@@ -569,6 +650,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
                     <div className="flex items-center bg-zinc-950 p-0.5 rounded-lg border border-zinc-800/80 shrink-0">
                       <button
                         type="button"
+                        disabled={pendingIssueIds.has(item.id)}
                         onClick={() => handleToggleCheckItem(item.id)}
                         className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center gap-1 ${
                           item.conforme
@@ -582,6 +664,7 @@ export const CautelaModal: React.FC<CautelaModalProps> = ({
                       </button>
                       <button
                         type="button"
+                        disabled={pendingIssueIds.has(item.id)}
                         onClick={() => handleSetItemStatus(item.id, false)}
                         className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center gap-1 ${
                           !item.conforme
