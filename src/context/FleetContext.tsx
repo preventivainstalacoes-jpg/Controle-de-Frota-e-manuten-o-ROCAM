@@ -508,6 +508,9 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           .eq('vehicle_id', vehicle.id)
           .eq('status', 'PENDENTE'),
       ]);
+      const { data: creatorProfile } = authData.user
+        ? await supabase.from('profiles').select('full_name, re').eq('id', authData.user.id).maybeSingle()
+        : { data: null };
       if (issuesReadError) {
         console.error('Cautela salva, mas não foi possível consultar alterações pendentes:', issuesReadError);
       } else {
@@ -530,6 +533,8 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               photos: matchingPhotos.length ? matchingPhotos : (newRecord.fotosAvariasSaida || []),
               status: 'PENDENTE',
               created_by: authData.user?.id || null,
+              created_by_name: creatorProfile?.full_name || null,
+              created_by_re: creatorProfile?.re || null,
             };
           });
         if (issueRows.length > 0) {
