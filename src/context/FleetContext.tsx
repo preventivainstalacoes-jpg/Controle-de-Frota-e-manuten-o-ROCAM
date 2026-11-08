@@ -56,7 +56,7 @@ interface FleetContextType {
   addVehicle: (vehicleData: Omit<Vehicle, 'id' | 'dataUltimaAtualizacaoKm'>) => void;
   updateVehicle: (id: string, updates: Partial<Vehicle>) => void;
   markVehicleDown: (id: string, reason: string) => Promise<boolean>;
-  deleteVehicle: (id: string) => void;
+  deleteVehicle: (id: string) => Promise<boolean>;
   updateOdometer: (id: string, newKm: number, observacao?: string) => void;
   
   addMaintenanceRecord: (recordData: Omit<MaintenanceRecord, 'id' | 'numeroOS'>) => void;
@@ -325,9 +325,38 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return true;
   };
 
-  const deleteVehicle = (id: string) => {
+  const deleteVehicle = async (id: string): Promise<boolean> => {
+    // Preserve the operational history: a vehicle with cautelas or maintenance
+    // records cannot be deleted from the fleet.
+    const [cautelasResult, maintenanceResult] = await Promise.all([
+      supabase.from('cautelas').select('id', { count: 'exact', head: true }).eq('vehicle_id', id),
+      supabase.from('maintenance').select('id', { count: 'exact', head: true }).eq('vehicle_id', id),
+    ]);
+
+    if (cautelasResult.error || maintenanceResult.error) {
+      console.error('Não foi possível verificar o histórico da viatura:', cautelasResult.error || maintenanceResult.error);
+      window.alert('Não foi possível verificar o histórico. A viatura não foi excluída.');
+      return false;
+    }
+
+    const cautelasCount = cautelasResult.count || 0;
+    const maintenanceCount = maintenanceResult.count || 0;
+    if (cautelasCount > 0 || maintenanceCount > 0) {
+      window.alert(
+        `A viatura não pode ser excluída porque possui histórico operacional: ${cautelasCount} cautela(s) e ${maintenanceCount} manutenção(ões). Os registros foram preservados. Utilize a opção de baixa/descarga para retirar a viatura da operação.`
+      );
+      return false;
+    }
+
+    const { error } = await supabase.from('vehicles').delete().eq('id', id);
+    if (error) {
+      console.error('Erro ao excluir viatura:', error);
+      window.alert('Não foi possível excluir a viatura. Nenhum registro foi removido.');
+      return false;
+    }
+
     setVehicles((prev) => prev.filter((v) => v.id !== id));
-    supabase.from('vehicles').delete().eq('id',id).then(({error})=>{if(error)console.error(error)});
+    return true;
   };
 
   const updateOdometer = (id: string, newKm: number, observacao?: string) => {
