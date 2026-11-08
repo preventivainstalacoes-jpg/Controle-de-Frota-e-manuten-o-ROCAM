@@ -349,16 +349,6 @@ function AppContent() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {(isAdmin || isMechanic) && (
-          <div className="mb-6">
-            <VehicleChecklistIssuesPanel
-              vehicles={vehicles}
-              currentUserId={currentUser?.id}
-              currentUserName={currentUser?.name}
-              currentUserRE={currentUser?.re}
-            />
-          </div>
-        )}
         {/* Banner Informativo de Perfil Operador */}
         {isOperator && activeTab === 'frota' && (
           <div className="mb-5 p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-700/50 text-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md animate-in fade-in duration-200">
@@ -418,6 +408,15 @@ function AppContent() {
             onOpenMaintenanceForVehicle={handleOpenMaintenanceForVehicle}
             onOpenNewCautelaForVehicle={(v) => handleOpenNewCautela(v)}
             onOpenDescautelaForVehicle={handleOpenDescautela}
+          />
+        )}
+
+        {activeTab === 'pendencias' && (isAdmin || isMechanic) && (
+          <VehicleChecklistIssuesPanel
+            vehicles={vehicles}
+            currentUserId={currentUser?.id}
+            currentUserName={currentUser?.name}
+            currentUserRE={currentUser?.re}
           />
         )}
 
