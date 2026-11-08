@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useFleet } from '../context/FleetContext';
 import { useAuth } from '../context/AuthContext';
+import { useTeam } from '../context/TeamContext';
 import { Vehicle, VehicleType, VehicleStatus, CautelaRecord } from '../types';
 import {
   Bike,
@@ -60,6 +61,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
     markVehicleDown,
   } = useFleet();
   const { isAdmin, isOperator, currentUser } = useAuth();
+  const { activityLogs, logActivity } = useTeam();
   // A unidade selecionada controla a lista efetivamente exibida, não apenas o cabeçalho.
   const vehicles = allVehicles.filter((vehicle) => {
     const isMossoro = (vehicle.batalhao || '').toLocaleLowerCase().includes('mossor');
@@ -198,7 +200,19 @@ export const VehicleList: React.FC<VehicleListProps> = ({
 
     if ((isOperator || isAdjunto) && statusModal.targetStatus === 'BAIXADA') {
       const saved = await markVehicleDown(statusModal.vehicle.id, statusModal.reason);
-      if (saved) setStatusModal(null);
+      if (saved) {
+        logActivity({
+          tipo: 'AVARIA',
+          titulo: `Viatura Baixada: ${statusModal.vehicle.prefixo}`,
+          descricao: `Status alterado para BAIXADA. Motivo: ${statusModal.reason.trim() || 'Não informado'}.`,
+          usuarioNome: currentUser?.name || 'Policial',
+          usuarioRE: currentUser?.re || '',
+          usuarioRole: currentUser?.role || 'OPERADOR',
+          badge: statusModal.vehicle.prefixo,
+          linkTab: 'frota',
+        });
+        setStatusModal(null);
+      }
       return;
     }
 
@@ -214,6 +228,21 @@ export const VehicleList: React.FC<VehicleListProps> = ({
       });
     }
 
+    const statusLabel = statusModal.targetStatus === 'OPERACIONAL'
+      ? 'PRONTA PARA O SERVIÇO'
+      : statusModal.targetStatus.replace(/_/g, ' ');
+    logActivity({
+      tipo: statusModal.targetStatus === 'BAIXADA' ? 'AVARIA' : 'SISTEMA',
+      titulo: `Viatura ${statusLabel}: ${statusModal.vehicle.prefixo}`,
+      descricao: statusModal.targetStatus === 'OPERACIONAL'
+        ? 'Viatura liberada e disponibilizada para o serviço.'
+        : `Situação alterada para ${statusLabel}. Motivo: ${statusModal.reason.trim() || 'Não informado'}.`,
+      usuarioNome: currentUser?.name || 'Policial Militar',
+      usuarioRE: currentUser?.re || '',
+      usuarioRole: currentUser?.role || 'OPERADOR',
+      badge: statusModal.vehicle.prefixo,
+      linkTab: 'frota',
+    });
     setStatusModal(null);
   };
 
@@ -1171,7 +1200,19 @@ export const VehicleList: React.FC<VehicleListProps> = ({
         const vehicleCautelas = cautelas
           .filter((record) => record.viaturaId === vehicle.id)
           .sort((a, b) => `${b.dataHoraSaida || ''}`.localeCompare(a.dataHoraSaida || ''));
+        const vehicleStatusEvents = activityLogs
+          .filter((log) => (log.badge || '').trim().toLocaleUpperCase() === vehicle.prefixo.trim().toLocaleUpperCase())
+          .filter((log) => /viatura baixada|viatura pronta para o serviço|viatura operacional|viatura em manutenção/i.test(log.titulo || ''));
         const historyItems = [
+          ...vehicleStatusEvents.map((log) => ({
+            id: `status-${log.id}`,
+            date: log.dataHora || '',
+            kind: 'SITUAÇÃO',
+            title: log.titulo,
+            status: /baixada/i.test(log.titulo) ? 'BAIXADA' : 'PRONTA PARA O SERVIÇO',
+            details: log.descricao || 'Alteração de situação registrada.',
+            extra: `Responsável: ${log.usuarioNome || 'Não identificado'}${log.usuarioRE ? ` • RE: ${log.usuarioRE}` : ''}`,
+          })),
           ...vehicleMaintenance.map((record) => ({
             id: `maintenance-${record.id}`,
             date: record.dataEntrada || '',
