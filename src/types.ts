@@ -163,6 +163,24 @@ export interface DamagePhoto {
   itemChecklistId?: string; // Opcional: ID do item do checklist correlato
 }
 
+export interface VehicleChecklistIssue {
+  id: string;
+  vehicleId: string;
+  unitId: string;
+  sourceCautelaId?: string;
+  sourceNumeroTermo?: string;
+  checklistItemId: string;
+  item: string;
+  observation?: string;
+  photos: DamagePhoto[];
+  status: 'PENDENTE' | 'RESOLVIDA';
+  createdBy?: string;
+  createdAt: string;
+  resolvedBy?: string;
+  resolvedAt?: string;
+  resolutionDescription?: string;
+}
+
 export interface CautelaRecord {
   id: string;
   numeroTermo: string; // Ex: CAUT-2026-0042
