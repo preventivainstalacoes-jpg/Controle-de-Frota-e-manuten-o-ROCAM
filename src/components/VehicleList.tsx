@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useFleet } from '../context/FleetContext';
 import { useAuth } from '../context/AuthContext';
 import { useTeam } from '../context/TeamContext';
@@ -26,6 +26,9 @@ import {
   X
 } from 'lucide-react';
 import { formatKm, getStatusBadgeInfo, formatDate } from '../utils/formatters';
+import { supabase } from '../lib/supabase';
+import { VehicleChecklistIssuesPanel } from './VehicleChecklistIssuesPanel';
+import { VehicleChecklistIssue } from '../types';
 
 interface VehicleListProps {
   onOpenNewVehicle: () => void;
@@ -124,6 +127,31 @@ export const VehicleList: React.FC<VehicleListProps> = ({
   const [vehicleToDischargeId, setVehicleToDischargeId] = useState('');
   const [vehicleToDelete, setVehicleToDelete] = useState<Vehicle | null>(null);
   const [vehicleForHistory, setVehicleForHistory] = useState<Vehicle | null>(null);
+  const [vehicleChecklistIssues, setVehicleChecklistIssues] = useState<VehicleChecklistIssue[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const ids = allVehicles.map((vehicle) => vehicle.id);
+    if (!ids.length) { setVehicleChecklistIssues([]); return; }
+    const loadIssues = async () => {
+      const { data, error } = await supabase.from('vehicle_checklist_issues').select('*').in('vehicle_id', ids).order('created_at', { ascending: false });
+      if (cancelled) return;
+      if (error) { console.error('Erro ao carregar histórico de alterações do checklist:', error); return; }
+      setVehicleChecklistIssues((data || []).map((row: any) => ({
+        id: row.id, vehicleId: row.vehicle_id, unitId: row.unit_id,
+        sourceCautelaId: row.source_cautela_id || undefined, sourceNumeroTermo: row.source_numero_termo || undefined,
+        checklistItemId: row.checklist_item_id, item: row.item, observation: row.observation || undefined,
+        photos: row.photos || [], status: row.status, createdBy: row.created_by || undefined, createdAt: row.created_at,
+        resolvedBy: row.resolved_by || undefined, resolvedAt: row.resolved_at || undefined,
+        resolutionDescription: row.resolution_description || undefined,
+      })));
+    };
+    void loadIssues();
+    const channel = supabase.channel('vehicle-checklist-issues-history')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_checklist_issues' }, () => { void loadIssues(); })
+      .subscribe();
+    return () => { cancelled = true; void supabase.removeChannel(channel); };
+  }, [allVehicles.map((vehicle) => vehicle.id).join('|')]);
   const [releaseCorrectionConfirmed, setReleaseCorrectionConfirmed] = useState(false);
   const [releaseServiceDetails, setReleaseServiceDetails] = useState('');
   const [statusModal, setStatusModal] = useState<{
@@ -1239,6 +1267,20 @@ export const VehicleList: React.FC<VehicleListProps> = ({
             status: /baixada/i.test(log.titulo) ? 'BAIXADA' : 'PRONTA PARA O SERVIÇO',
             details: log.descricao || 'Alteração de situação registrada.',
             extra: `Responsável: ${log.usuarioNome || 'Não identificado'}${log.usuarioRE ? ` • RE: ${log.usuarioRE}` : ''}`,
+          })),
+          ...vehicleChecklistIssues.filter((issue) => issue.vehicleId === vehicle.id).map((issue) => ({
+            id: `checklist-issue-${issue.id}`,
+            date: issue.status === 'RESOLVIDA' ? (issue.resolvedAt || issue.createdAt) : issue.createdAt,
+            kind: 'ALTERAÇÃO DO CHECKLIST',
+            title: issue.item,
+            status: issue.status === 'RESOLVIDA' ? 'SERVIÇO CONFIRMADO' : 'PENDENTE',
+            details: issue.observation || 'Avaria registrada no checklist de cautela.',
+            extra: [
+              issue.sourceNumeroTermo ? `Termo de origem: ${issue.sourceNumeroTermo}` : '',
+              issue.status === 'RESOLVIDA' ? `Serviço realizado: ${issue.resolutionDescription || 'Descrição não informada'}` : 'Aguardando confirmação do mecânico.',
+              issue.photos?.length ? `Fotos preservadas: ${issue.photos.length}` : '',
+              issue.resolvedAt ? `Resolvida em: ${new Date(issue.resolvedAt).toLocaleString('pt-BR')}` : '',
+            ].filter(Boolean).join(' • '),
           })),
           ...vehicleMaintenance.map((record) => ({
             id: `maintenance-${record.id}`,
