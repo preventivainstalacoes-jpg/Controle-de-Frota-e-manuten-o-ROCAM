@@ -858,10 +858,14 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                     )}
                   </div>
 
-                  {canReleaseToService && vehicle.status === 'BAIXADA' && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
+                  {canReleaseToService && ['BAIXADA', 'EM_MANUTENCAO', 'MANUTENCAO_EXTERNA'].includes(vehicle.status) && !(vehicle.motivoBaixa || '').toLocaleLowerCase().includes('descarga por inservibilidade') && (
                     <button
                       type="button"
-                      onClick={() => setStatusModal({ vehicle, targetStatus: 'OPERACIONAL', reason: '' })}
+                      onClick={() => {
+                        setReleaseCorrectionConfirmed(false);
+                        setReleaseServiceDetails('');
+                        setStatusModal({ vehicle, targetStatus: 'OPERACIONAL', reason: '' });
+                      }}
                       title={`Liberar ${vehicle.prefixo} para o serviço após a manutenção`}
                       aria-label={`Pronta para o serviço: ${vehicle.prefixo}`}
                       className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-black transition cursor-pointer bg-emerald-700 hover:bg-emerald-600 text-white border-2 border-emerald-400 shadow-lg whitespace-nowrap"
