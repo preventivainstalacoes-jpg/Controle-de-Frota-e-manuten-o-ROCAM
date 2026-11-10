@@ -134,7 +134,7 @@ export const Header: React.FC<HeaderProps> = ({
       icon: ClipboardCheck,
       badge: activeCautelasCount > 0 ? `${activeCautelasCount} em serviço` : undefined,
       badgeColor: 'bg-emerald-500 text-zinc-950 font-bold',
-      allowedRoles: ['ADMIN', 'OPERADOR', 'ADJUNTO'],
+      allowedRoles: ['ADMIN', 'OPERADOR', 'ADJUNTO', 'MECANICO'],
     },
     {
       id: 'manutencao',
@@ -277,8 +277,8 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            {/* Ações Exclusivas de Administrador */}
-            {isAdmin && (
+            {/* Ações de Administrador e Mecânico */}
+            {(isAdmin || currentUser?.role === 'MECANICO') && (
               <>
                 {/* Nova O.S. Button */}
                 <button
@@ -484,7 +484,7 @@ export const Header: React.FC<HeaderProps> = ({
                             : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                         }`}
                       >
-                        {isAdmin ? '👑 ADMIN (Total)' : currentUser?.role === 'ADJUNTO' ? '🛡️ ADJUNTO (Operacional)' : '🛡️ OPERADOR (Limitado)'}
+                        {isAdmin ? '👑 ADMIN (Total)' : currentUser?.role === 'MECANICO' ? '🔧 MECÂNICO (Manutenção)' : currentUser?.role === 'ADJUNTO' ? '🛡️ ADJUNTO (Operacional)' : '🛡️ OPERADOR (Limitado)'}
                       </span>
                     </div>
                   </div>
