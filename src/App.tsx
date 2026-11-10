@@ -567,7 +567,7 @@ function AppContent() {
         </div>
       </footer>
 
-      {/* Modals de Viaturas & Manutenções (Admin only) */}
+      {/* Gestão da frota e banco de dados: somente administrador */}
       {isAdmin && (
         <>
           <VehicleModal
@@ -578,21 +578,24 @@ function AppContent() {
             vehicleToEdit={vehicleToEdit}
           />
 
-          <MaintenanceModal
-            isOpen={isMaintenanceModalOpen}
-            onClose={() => setIsMaintenanceModalOpen(false)}
-            onSave={handleSaveMaintenance}
-            vehicles={vehicles}
-            recordToEdit={recordToEdit}
-            initialVehicleId={initialVehicleId}
-            initialCategory={initialCategory}
-          />
-
           <DatabaseModal
             isOpen={isDatabaseModalOpen}
             onClose={() => setIsDatabaseModalOpen(false)}
           />
         </>
+      )}
+
+      {/* O.S. e manutenção: administrador e mecânico */}
+      {(isAdmin || isMechanic) && (
+        <MaintenanceModal
+          isOpen={isMaintenanceModalOpen}
+          onClose={() => setIsMaintenanceModalOpen(false)}
+          onSave={handleSaveMaintenance}
+          vehicles={vehicles}
+          recordToEdit={recordToEdit}
+          initialVehicleId={initialVehicleId}
+          initialCategory={initialCategory}
+        />
       )}
 
       {/* Hodômetro modal */}
