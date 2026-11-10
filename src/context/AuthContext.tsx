@@ -663,7 +663,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const updated: UserProfile = {
       id: saved.id, username: saved.username || saved.email?.split('@')[0] || '', email: saved.email || '',
       name: saved.full_name || saved.username || '', graduacao: saved.graduacao || '', re: saved.re || '',
-      role: saved.role === 'admin' ? 'ADMIN' : 'OPERADOR', pelotao: saved.pelotao || 'ROCAM',
+      role: saved.role === 'admin' ? 'ADMIN' : saved.role === 'adjunto' ? 'ADJUNTO' : saved.role === 'mecanico' ? 'MECANICO' : 'OPERADOR', pelotao: saved.pelotao || 'ROCAM',
       passwordHash: '', salt: '', createdAt: saved.created_at || new Date().toISOString(),
       isActive: saved.active !== false,
       status: saved.approval_status === 'PENDENTE' ? 'PENDENTE' : saved.approval_status === 'REJEITADO' ? 'REJEITADO' : saved.active === false ? 'INATIVO' : 'ATIVO'
