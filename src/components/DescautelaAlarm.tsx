@@ -21,6 +21,8 @@ type Props = {
 export function DescautelaAlarm({ currentUser, cautelas }: Props) {
   const [incomingAlarm, setIncomingAlarm] = useState<AlarmPayload | null>(null);
   const [sending, setSending] = useState(false);
+  const [channelReady, setChannelReady] = useState(false);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const activeAlarmRef = useRef<AlarmPayload | null>(null);
   const eligibleToReceiveRef = useRef(false);
@@ -45,12 +47,16 @@ export function DescautelaAlarm({ currentUser, cautelas }: Props) {
         setIncomingAlarm(alarm);
       })
       .subscribe((status) => {
+        setChannelReady(status === 'SUBSCRIBED');
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.error('Não foi possível conectar ao canal do alarme de descautela.');
         }
       });
 
+    channelRef.current = channel;
     return () => {
+      channelRef.current = null;
+      setChannelReady(false);
       void supabase.removeChannel(channel);
     };
   }, [currentUser?.id]);
@@ -111,6 +117,11 @@ export function DescautelaAlarm({ currentUser, cautelas }: Props) {
 
   const triggerAlarm = async () => {
     if (!canTrigger || !currentUser || sending) return;
+    const channel = channelRef.current;
+    if (!channelReady || !channel) {
+      setFeedback('Conectando ao serviço de alarme. Tente novamente em alguns segundos.');
+      return;
+    }
     setSending(true);
     setFeedback(null);
 
@@ -122,7 +133,6 @@ export function DescautelaAlarm({ currentUser, cautelas }: Props) {
     };
 
     try {
-      const channel = supabase.channel(CHANNEL_NAME);
       const status = await channel.send({
         type: 'broadcast',
         event: EVENT_NAME,
@@ -157,11 +167,11 @@ export function DescautelaAlarm({ currentUser, cautelas }: Props) {
             <button
               type="button"
               onClick={triggerAlarm}
-              disabled={sending}
+              disabled={sending || !channelReady}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-md transition hover:bg-rose-500 active:scale-95 disabled:cursor-wait disabled:opacity-60"
             >
               <Volume2 className="h-4 w-4" />
-              {sending ? 'ENVIANDO...' : 'ACIONAR ALARME'}
+              {sending ? 'ENVIANDO...' : !channelReady ? 'CONECTANDO...' : 'ACIONAR ALARME'}
             </button>
           </div>
           {feedback && <p role="status" className="mt-2 text-xs text-rose-200">{feedback}</p>}
