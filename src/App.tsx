@@ -3,6 +3,7 @@ import { FleetProvider, useFleet } from './context/FleetContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { TeamProvider, useTeam } from './context/TeamContext';
 import { LoginScreen } from './components/LoginScreen';
+import { DescautelaAlarm } from './components/DescautelaAlarm';
 import { Header } from './components/Header';
 import { VehicleList } from './components/VehicleList';
 import { VehicleChecklistIssuesPanel } from './components/VehicleChecklistIssuesPanel';
@@ -349,6 +350,8 @@ function AppContent() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <DescautelaAlarm currentUser={currentUser} cautelas={cautelas} />
+
         {/* Banner Informativo de Perfil Operador */}
         {isOperator && activeTab === 'frota' && (
           <div className="mb-5 p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-700/50 text-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md animate-in fade-in duration-200">
