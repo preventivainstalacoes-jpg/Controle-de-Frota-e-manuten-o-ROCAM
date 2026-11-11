@@ -139,14 +139,6 @@ export const DailyReport: React.FC<DailyReportProps> = ({
     && (v.status === 'BAIXADA' || v.status === 'EM_MANUTENCAO' || v.status === 'MANUTENCAO_EXTERNA')
   );
   const quatroRodasProntas = viaturasQuatroRodas.filter((v) => v.status === 'OPERACIONAL' || v.status === 'RESERVA');
-  const resumoPorAreaPatrulhamento = Object.entries(
-    cautelasDoDia.reduce<Record<string, number>>((acc, cautela) => {
-      const area = (cautela.areaPatrulhamento || '').trim() || 'Área não informada';
-      acc[area] = (acc[area] || 0) + 1;
-      return acc;
-    }, {})
-  ).sort(([a], [b]) => a.localeCompare(b, 'pt-BR'));
-
 
   // Lista atual de viaturas em oficina externa, independente da data selecionada.
   const viaturasExternaDetalhadas = viaturasManutencaoExterna.map((v) => {
@@ -188,12 +180,7 @@ export const DailyReport: React.FC<DailyReportProps> = ({
     csvContent += 'MOVIMENTAÇÃO DE VIATURAS NA DATA\\n';
     csvContent += 'Cautelas / saídas;' + saidasDoDia.length + '\\n';
     csvContent += 'Devoluções / retornos;' + retornosDoDia.length + '\\n';
-    csvContent += 'Viaturas ainda em serviço;' + cautelasAtivasHoje.length + '\\n\\n';    csvContent += 'MOVIMENTAÇÃO POR ÁREA DE PATRULHAMENTO\\n';
-    csvContent += 'Área de Patrulhamento;Quantidade de registros\\n';
-    resumoPorAreaPatrulhamento.forEach(([area, total]) => {
-      csvContent += '"' + area.replace(/"/g, '""') + '";' + total + '\\n';
-    });
-    csvContent += '\\n';
+    csvContent += 'Viaturas ainda em serviço;' + cautelasAtivasHoje.length + '\\n\\n';
     csvContent += 'MANUTENÇÕES REGISTRADAS NA DATA;' + movimentacoesDoDia.length + '\\n\\n';
 
     const encodedUri = encodeURI(csvContent);
@@ -300,14 +287,6 @@ export const DailyReport: React.FC<DailyReportProps> = ({
           <div className="rounded-lg border border-rose-900/50 p-3"><div className="text-xs text-rose-400">Destinadas à descarga</div><div className="text-2xl font-black text-rose-300">{quatroRodasEmDescarga.length}</div></div>
         </div>
       </div>
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-5">
-        <h3 className="text-sm font-bold text-zinc-100 mb-3">Movimentação por área de patrulhamento</h3>
-        {resumoPorAreaPatrulhamento.length === 0 ? <p className="text-xs text-zinc-400">Nenhuma movimentação registrada na data.</p> : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {resumoPorAreaPatrulhamento.map(([area, total]) => <div key={area} className="flex justify-between gap-3 border border-zinc-800 rounded p-2 text-sm"><span>{area}</span><strong>{total}</strong></div>)}
-          </div>
-        )}
-      </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><div className="text-xs text-zinc-400">Motocicletas baixadas / manutenção</div><div className="text-2xl font-black">{motosBaixadas.length}</div></div>
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><div className="text-xs text-zinc-400">Motocicletas destinadas à descarga</div><div className="text-2xl font-black">{motosEmDescarga.length}</div></div>
@@ -323,10 +302,10 @@ export const DailyReport: React.FC<DailyReportProps> = ({
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs min-w-[1000px]">
-            <thead className="bg-zinc-950 text-zinc-400 uppercase text-[10px]"><tr><th className="p-2">Policial / RE</th><th className="p-2">Viatura</th><th className="p-2">Cautela (data/hora)</th><th className="p-2">KM saída</th><th className="p-2">Devolução (data/hora)</th><th className="p-2">KM retorno</th><th className="p-2">Área de patrulhamento</th></tr></thead>
+            <thead className="bg-zinc-950 text-zinc-400 uppercase text-[10px]"><tr><th className="p-2">Policial / RE</th><th className="p-2">Viatura</th><th className="p-2">Cautela (data/hora)</th><th className="p-2">KM saída</th><th className="p-2">Devolução (data/hora)</th><th className="p-2">KM retorno</th></tr></thead>
             <tbody className="divide-y divide-zinc-800">
-              {movimentacoesCautelaFiltradas.length === 0 ? <tr><td colSpan={7} className="p-4 text-center text-zinc-500">Nenhuma cautela ou devolução registrada para esta data.</td></tr> : movimentacoesCautelaFiltradas.map((item) => <tr key={item.id} className="text-zinc-200 align-top">
-                <td className="p-2">{item.condutorGraduacao} {item.condutorNome}<div className="text-[10px] text-zinc-400">RE {item.condutorRE}</div></td><td className="p-2"><strong>{item.prefixoViatura}</strong><div className="text-[10px] text-zinc-400">{item.modeloViatura}</div></td><td className="p-2 whitespace-nowrap">{item.dataHoraSaida.replace('T', ' ')}</td><td className="p-2">{formatKm(item.kmSaida)}</td><td className="p-2 whitespace-nowrap">{item.dataHoraRetorno ? item.dataHoraRetorno.replace('T', ' ') : 'Ainda em serviço'}</td><td className="p-2">{item.kmRetorno == null ? '-' : formatKm(item.kmRetorno)}</td><td className="p-2">{item.areaPatrulhamento || 'Área não informada'}</td>
+              {movimentacoesCautelaFiltradas.length === 0 ? <tr><td colSpan={6} className="p-4 text-center text-zinc-500">Nenhuma cautela ou devolução registrada para esta data.</td></tr> : movimentacoesCautelaFiltradas.map((item) => <tr key={item.id} className="text-zinc-200 align-top">
+                <td className="p-2">{item.condutorGraduacao} {item.condutorNome}<div className="text-[10px] text-zinc-400">RE {item.condutorRE}</div></td><td className="p-2"><strong>{item.prefixoViatura}</strong><div className="text-[10px] text-zinc-400">{item.modeloViatura}</div></td><td className="p-2 whitespace-nowrap">{item.dataHoraSaida.replace('T', ' ')}</td><td className="p-2">{formatKm(item.kmSaida)}</td><td className="p-2 whitespace-nowrap">{item.dataHoraRetorno ? item.dataHoraRetorno.replace('T', ' ') : 'Ainda em serviço'}</td><td className="p-2">{item.kmRetorno == null ? '-' : formatKm(item.kmRetorno)}</td>
               </tr>)}
             </tbody>
           </table>
@@ -406,8 +385,6 @@ export const DailyReport: React.FC<DailyReportProps> = ({
                   <tr><td className="p-2 border-r border-zinc-300">Cautelas / saídas no dia</td><td className="p-2">{saidasDoDia.length}</td></tr>
                   <tr><td className="p-2 border-r border-zinc-300">Devoluções / retornos no dia</td><td className="p-2">{retornosDoDia.length}</td></tr>
                   <tr><td className="p-2 border-r border-zinc-300">Viaturas ainda em serviço</td><td className="p-2">{cautelasAtivasHoje.length}</td></tr>
-                  <tr><td colSpan={2} className="p-2 font-bold bg-zinc-100">MOVIMENTAÇÃO POR ÁREA DE PATRULHAMENTO</td></tr>
-                  {resumoPorAreaPatrulhamento.map(([area, total]) => <tr key={area}><td className="p-2 border-r border-zinc-300">{area}</td><td className="p-2">{total}</td></tr>)}
                 </tbody>
               </table>
             </div>
@@ -423,8 +400,8 @@ export const DailyReport: React.FC<DailyReportProps> = ({
             <div className="mb-6">
               <h4 className="text-xs font-black uppercase border-b border-zinc-800 pb-1 mb-2">DETALHAMENTO DE CAUTELAS E DEVOLUÇÕES</h4>
               <table className="w-full text-left text-[10px] border border-zinc-400">
-                <thead className="bg-zinc-100 font-bold"><tr><th className="p-1">Policial / RE</th><th className="p-1">Viatura</th><th className="p-1">Cautela (data/hora)</th><th className="p-1">KM saída</th><th className="p-1">Devolução (data/hora)</th><th className="p-1">KM retorno</th><th className="p-1">Área de patrulhamento</th></tr></thead>
-                <tbody>{movimentacoesCautelaFiltradas.length === 0 ? <tr><td colSpan={7} className="p-2">Nenhuma movimentação de cautela ou devolução na data.</td></tr> : movimentacoesCautelaFiltradas.map((item) => <tr key={item.id}><td className="p-1 border-t">{item.condutorGraduacao} {item.condutorNome} (RE {item.condutorRE})</td><td className="p-1 border-t">{item.prefixoViatura}</td><td className="p-1 border-t">{item.dataHoraSaida.replace('T', ' ')}</td><td className="p-1 border-t">{formatKm(item.kmSaida)}</td><td className="p-1 border-t">{item.dataHoraRetorno ? item.dataHoraRetorno.replace('T', ' ') : 'Ainda em serviço'}</td><td className="p-1 border-t">{item.kmRetorno == null ? '-' : formatKm(item.kmRetorno)}</td><td className="p-1 border-t">{item.areaPatrulhamento || 'Área não informada'}</td></tr>)}</tbody>
+                <thead className="bg-zinc-100 font-bold"><tr><th className="p-1">Policial / RE</th><th className="p-1">Viatura</th><th className="p-1">Cautela (data/hora)</th><th className="p-1">KM saída</th><th className="p-1">Devolução (data/hora)</th><th className="p-1">KM retorno</th></tr></thead>
+                <tbody>{movimentacoesCautelaFiltradas.length === 0 ? <tr><td colSpan={6} className="p-2">Nenhuma movimentação de cautela ou devolução na data.</td></tr> : movimentacoesCautelaFiltradas.map((item) => <tr key={item.id}><td className="p-1 border-t">{item.condutorGraduacao} {item.condutorNome} (RE {item.condutorRE})</td><td className="p-1 border-t">{item.prefixoViatura}</td><td className="p-1 border-t">{item.dataHoraSaida.replace('T', ' ')}</td><td className="p-1 border-t">{formatKm(item.kmSaida)}</td><td className="p-1 border-t">{item.dataHoraRetorno ? item.dataHoraRetorno.replace('T', ' ') : 'Ainda em serviço'}</td><td className="p-1 border-t">{item.kmRetorno == null ? '-' : formatKm(item.kmRetorno)}</td></tr>)}</tbody>
               </table>
             </div>
 
