@@ -606,24 +606,42 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
 
-    // Find cautela to get viaturaId
+    // Atualiza o hodômetro por uma função segura no banco.
+    // Operadores/adjuntos só podem atualizar a viatura da própria cautela concluída.
     const currentCautela = cautelas.find((c) => c.id === id);
-    if (currentCautela) {
-      const v = vehicles.find((veh) => veh.id === currentCautela.viaturaId);
-      if (v) {
-        const updates: Partial<Vehicle> = {
-          kmAtual: descautelaData.kmRetorno,
-          dataUltimaAtualizacaoKm: descautelaData.dataHoraRetorno.split('T')[0],
-        };
-
-        if (descautelaData.baixarViatura) {
-          updates.status = 'BAIXADA';
-          updates.motivoBaixa = descautelaData.motivoBaixa || descautelaData.descricaoAvaria || 'Avaria constatada no retorno da cautela.';
-        }
-
-        updateVehicle(v.id, updates);
-      }
+    if (!currentCautela) {
+      console.error('Devolução salva, mas a cautela não foi encontrada para atualizar a quilometragem.');
+      window.alert('A devolução foi registrada, mas não foi possível localizar a cautela para atualizar a quilometragem. Avise o administrador.');
+      return;
     }
+
+    const motivoBaixa = descautelaData.motivoBaixa
+      || descautelaData.descricaoAvaria
+      || 'Avaria constatada no retorno da cautela.';
+    const { error: vehicleUpdateError } = await supabase.rpc('finalize_cautela_vehicle_update', {
+      p_cautela_id: id,
+      p_km_retorno: descautelaData.kmRetorno,
+      p_baixar_viatura: !!descautelaData.baixarViatura,
+      p_motivo_baixa: descautelaData.baixarViatura ? motivoBaixa : null,
+    });
+
+    if (vehicleUpdateError) {
+      console.error('Devolução salva, mas houve falha ao atualizar a quilometragem da viatura:', vehicleUpdateError);
+      window.alert(`A devolução foi registrada, mas a quilometragem da viatura não foi atualizada: ${vehicleUpdateError.message}. Avise o administrador.`);
+      return;
+    }
+
+    setVehicles((prev) => prev.map((vehicle) => {
+      if (vehicle.id !== currentCautela.viaturaId) return vehicle;
+      return {
+        ...vehicle,
+        kmAtual: descautelaData.kmRetorno,
+        dataUltimaAtualizacaoKm: descautelaData.dataHoraRetorno.split('T')[0],
+        ...(descautelaData.baixarViatura
+          ? { status: 'BAIXADA' as const, motivoBaixa }
+          : {}),
+      };
+    }));
   };
 
   const deleteCautela = (id: string) => {
