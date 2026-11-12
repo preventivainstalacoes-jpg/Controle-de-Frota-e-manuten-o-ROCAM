@@ -60,6 +60,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     deleteMultipleUsers,
     toggleUserActive,
     updateUser,
+    changePassword,
     approveUser,
     rejectUser,
     pendingUsers,
@@ -99,6 +100,8 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const [formPassword, setFormPassword] = useState('');
   const [formRole, setFormRole] = useState<UserRole>('OPERADOR');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
   const [editForm, setEditForm] = useState({ name: '', graduacao: '', re: '', email: '', username: '', pelotao: '', role: 'OPERADOR' as UserRole });
 
@@ -453,6 +456,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   };
 
   const handleOpenEditUser = (user: UserProfile) => {
+    setNewUserPassword('');
     setUserToEdit(user);
     setEditForm({ name: user.name || '', graduacao: user.graduacao || '', re: user.re || '', email: user.email || '', username: user.username || '', pelotao: user.pelotao || '', role: user.role || 'OPERADOR' });
   };
@@ -476,6 +480,23 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
       setUserToEdit(null);
     } else {
       showToast(result.error || 'Não foi possível atualizar o usuário.', 'error');
+    }
+  };
+
+  const handleChangeUserPassword = async () => {
+    if (!userToEdit) return;
+    if (newUserPassword.length < 6) {
+      showToast('A nova senha deve ter no mínimo 6 caracteres.', 'error');
+      return;
+    }
+    setIsChangingPassword(true);
+    const result = await changePassword(userToEdit.id, newUserPassword);
+    setIsChangingPassword(false);
+    if (result.success) {
+      setNewUserPassword('');
+      showToast('Senha do usuário alterada com sucesso.', 'success');
+    } else {
+      showToast(result.error || 'Não foi possível alterar a senha.', 'error');
     }
   };
 
@@ -1767,6 +1788,16 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                   <option value="MECANICO">Mecânico</option>
                 </select>
               </label>
+            </div>
+            <div className="px-4 pb-4">
+              <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-semibold text-amber-300"><KeyRound className="w-4 h-4" /> Alterar senha deste usuário</div>
+                <p className="text-xs text-zinc-400">Somente administradores podem definir uma nova senha. A senha atual não será exibida.</p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input type="password" autoComplete="new-password" value={newUserPassword} onChange={(e) => setNewUserPassword(e.target.value)} minLength={6} placeholder="Digite a nova senha (mínimo 6 caracteres)" className="min-w-0 flex-1 rounded-lg bg-zinc-950 border border-zinc-700 px-3 py-2 text-sm text-white outline-none focus:border-amber-500" />
+                  <button type="button" onClick={handleChangeUserPassword} disabled={isChangingPassword || newUserPassword.length < 6} className="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-bold disabled:opacity-50">{isChangingPassword ? 'Alterando...' : 'Alterar senha'}</button>
+                </div>
+              </div>
             </div>
             <div className="p-4 border-t border-zinc-800 flex justify-end gap-2">
               <button type="button" onClick={() => setUserToEdit(null)} className="px-4 py-2 rounded-lg bg-zinc-800 text-zinc-200 text-xs font-bold">Cancelar</button>
