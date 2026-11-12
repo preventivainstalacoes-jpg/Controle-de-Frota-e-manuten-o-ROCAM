@@ -1757,7 +1757,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
 
       {userToEdit && (
         <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <form onSubmit={handleSaveEditedUser} className="w-full max-w-xl rounded-2xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden">
+          <form onSubmit={handleSaveEditedUser} className="w-full max-w-xl max-h-[90vh] overflow-y-auto overscroll-contain rounded-2xl border border-zinc-700 bg-zinc-900 shadow-2xl">
             <div className="flex items-center justify-between gap-3 p-4 border-b border-zinc-800">
               <div>
                 <h3 className="text-base font-bold text-white">Editar usuário</h3>
