@@ -194,9 +194,10 @@ export function DescautelaAlarm({ currentUser, cautelas }: Props) {
 type AlarmButtonProps = {
   currentUser: UserProfile | null;
   cautela: CautelaRecord;
+  canManageAlarms?: boolean;
 };
 
-export function DescautelaAlarmButton({ currentUser, cautela }: AlarmButtonProps) {
+export function DescautelaAlarmButton({ currentUser, cautela, canManageAlarms = false }: AlarmButtonProps) {
   const [sending, setSending] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const normalizedRole = String(currentUser?.role ?? '')
@@ -204,9 +205,9 @@ export function DescautelaAlarmButton({ currentUser, cautela }: AlarmButtonProps
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toUpperCase();
-  const canSend = ['ADMIN', 'ADMINISTRADOR', 'ADJUNTO'].includes(normalizedRole);
+  const canSend = canManageAlarms || ['ADMIN', 'ADMINISTRADOR', 'ADJUNTO'].includes(normalizedRole);
 
-  if (!canSend || cautela.status !== 'EM_PATRULHAMENTO') return null;
+  if (cautela.status !== 'EM_PATRULHAMENTO') return null;
 
   const sendAlarm = async () => {
     if (!currentUser || sending) return;
@@ -258,9 +259,9 @@ export function DescautelaAlarmButton({ currentUser, cautela }: AlarmButtonProps
       <button
         type="button"
         onClick={() => void sendAlarm()}
-        disabled={sending}
-        className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-extrabold text-white shadow transition hover:bg-rose-500 active:scale-95 disabled:cursor-wait disabled:opacity-60"
-        title={`Enviar alerta individual para ${cautela.condutorNome}`}
+        disabled={sending || !canSend}
+        className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-rose-400 bg-rose-600 px-3 py-2 text-xs font-extrabold text-white shadow transition hover:bg-rose-500 active:scale-95 disabled:cursor-not-allowed disabled:border-zinc-600 disabled:bg-zinc-700 disabled:text-zinc-300"
+        title={canSend ? `Enviar alerta individual para ${cautela.condutorNome}` : "Apenas administrador ou adjunto pode acionar o alarme"}
       >
         <Volume2 className="h-3.5 w-3.5" />
         {sending ? 'ENVIANDO...' : 'ACIONAR ALARME'}
