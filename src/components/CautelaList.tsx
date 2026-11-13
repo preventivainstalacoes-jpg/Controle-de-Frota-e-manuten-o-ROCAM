@@ -449,7 +449,7 @@ export const CautelaList: React.FC<CautelaListProps> = ({
                 <div className="pt-3 border-t border-zinc-800 flex flex-col gap-2">
                   {isEmPatrulhamento && (
                     <>
-                      <DescautelaAlarmButton currentUser={currentUser} cautela={cautela} />
+                      <DescautelaAlarmButton currentUser={currentUser} cautela={cautela} canManageAlarms={isAdmin || currentUser?.role === 'ADJUNTO'} />
                       <button
                         onClick={() => onOpenDescautela(cautela)}
                         className="flex w-full items-center justify-center space-x-1.5 px-3 py-2 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow transition cursor-pointer"
