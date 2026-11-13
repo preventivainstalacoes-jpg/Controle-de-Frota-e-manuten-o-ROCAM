@@ -199,7 +199,12 @@ type AlarmButtonProps = {
 export function DescautelaAlarmButton({ currentUser, cautela }: AlarmButtonProps) {
   const [sending, setSending] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const canSend = currentUser?.role === 'ADMIN' || currentUser?.role === 'ADJUNTO';
+  const normalizedRole = String(currentUser?.role ?? '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+  const canSend = ['ADMIN', 'ADMINISTRADOR', 'ADJUNTO'].includes(normalizedRole);
 
   if (!canSend || cautela.status !== 'EM_PATRULHAMENTO') return null;
 
