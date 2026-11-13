@@ -73,13 +73,12 @@ export function DescautelaAlarm({ currentUser, cautelas }: Props) {
     }
 
     const channel = supabase
-      .channel(getOperatorChannel(userRE))
+      .channel(getOperatorChannel(userRE), { config: { broadcast: { self: true } } })
       .on('broadcast', { event: 'descautela_alarm' }, ({ payload }) => {
         const alarm = payload as AlarmPayload;
         if (
           !eligibleToReceiveRef.current ||
           !alarm?.senderId ||
-          alarm.senderId === currentUser?.id ||
           normalizeRE(alarm.targetRE) !== userRE
         ) return;
         setIncomingAlarm(alarm);
@@ -214,7 +213,8 @@ export function DescautelaAlarmButton({ currentUser, cautela, canManageAlarms = 
     // Usa o RE já carregado na cautela; se a tela entregar um registro parcial,
     // consulta o registro original pelo ID antes de desistir do envio.
     let targetRE = normalizeRE(cautela.condutorRE);
-    if (!targetRE && cautela.id) {
+    // Consulta o RE oficial da cautela para evitar depender de dados parciais ou desatualizados da tela.
+    if (cautela.id) {
       const { data: freshCautela, error: lookupError } = await supabase
         .from('cautelas')
         .select('condutor_re')
@@ -226,7 +226,7 @@ export function DescautelaAlarmButton({ currentUser, cautela, canManageAlarms = 
         setFeedback('Não foi possível consultar o RE desta cautela. Tente novamente.');
         return;
       }
-      targetRE = normalizeRE(freshCautela?.condutor_re);
+      targetRE = normalizeRE(freshCautela?.condutor_re) || targetRE;
     }
 
     if (!targetRE) {
