@@ -19,7 +19,7 @@ type Props = {
   cautelas: CautelaRecord[];
 };
 
-const normalizeRE = (value?: string) => (value || '').trim().toUpperCase();
+const normalizeRE = (value?: string) => (value || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 const getOperatorChannel = (re: string) =>
   `${CHANNEL_PREFIX}-${encodeURIComponent(normalizeRE(re))}`;
