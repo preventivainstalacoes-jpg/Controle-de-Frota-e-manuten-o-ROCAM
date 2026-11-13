@@ -19,13 +19,6 @@ type Props = {
   cautelas: CautelaRecord[];
 };
 
-type OperatorCautelaGroup = {
-  re: string;
-  nome: string;
-  graduacao: string;
-  cautelas: CautelaRecord[];
-};
-
 const normalizeRE = (value?: string) => (value || '').trim().toUpperCase();
 
 const getOperatorChannel = (re: string) =>
@@ -33,8 +26,6 @@ const getOperatorChannel = (re: string) =>
 
 export function DescautelaAlarm({ currentUser, cautelas }: Props) {
   const [incomingAlarm, setIncomingAlarm] = useState<AlarmPayload | null>(null);
-  const [sendingRE, setSendingRE] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<{ re: string; message: string; error?: boolean } | null>(null);
   const [channelReady, setChannelReady] = useState(false);
   const activeAlarmRef = useRef<AlarmPayload | null>(null);
   const eligibleToReceiveRef = useRef(false);
@@ -160,121 +151,8 @@ export function DescautelaAlarm({ currentUser, cautelas }: Props) {
     };
   }, [incomingAlarm, hasActiveCautela]);
 
-  const triggerAlarm = async (operator: OperatorCautelaGroup) => {
-    if (!canManageAlarms || !currentUser || sendingRE) return;
-
-    const targetRE = normalizeRE(operator.re);
-    const channel = supabase.channel(getOperatorChannel(targetRE));
-    setSendingRE(targetRE);
-    setFeedback(null);
-
-    const payload: AlarmPayload = {
-      senderId: currentUser.id,
-      senderName: currentUser.name,
-      senderRole: currentUser.role,
-      targetRE,
-      vehiclePrefixes: operator.cautelas.map((item) => item.prefixoViatura),
-      sentAt: new Date().toISOString(),
-    };
-
-    try {
-      const subscriptionStatus = await new Promise<string>((resolve, reject) => {
-        const timeout = window.setTimeout(() => reject(new Error('Tempo esgotado ao conectar ao canal do operador.')), 10000);
-        channel.subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            window.clearTimeout(timeout);
-            resolve(status);
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            window.clearTimeout(timeout);
-            reject(new Error('Não foi possível conectar ao canal individual do operador.'));
-          }
-        });
-      });
-
-      if (subscriptionStatus !== 'SUBSCRIBED') throw new Error('Canal do operador indisponível.');
-
-      const status = await channel.send({
-        type: 'broadcast',
-        event: 'descautela_alarm',
-        payload,
-      });
-      if (status !== 'ok') throw new Error('O serviço não confirmou o envio do aviso.');
-
-      setFeedback({
-        re: targetRE,
-        message: `Aviso individual enviado para ${operator.nome}. O operador precisa estar com o aplicativo aberto e conectado para receber o alarme em tempo real.`,
-      });
-    } catch (error) {
-      console.error('Erro ao disparar alarme individual de descautela:', error);
-      setFeedback({
-        re: targetRE,
-        message: error instanceof Error ? error.message : 'Não foi possível enviar o aviso. Tente novamente.',
-        error: true,
-      });
-    } finally {
-      await supabase.removeChannel(channel);
-      setSendingRE(null);
-      window.setTimeout(() => setFeedback((current) => current?.re === targetRE ? null : current), 7000);
-    }
-  };
-
   return (
     <>
-      {canManageAlarms && (
-        <section className="mb-5 rounded-xl border border-rose-700/60 bg-rose-950/25 p-4 shadow-lg shadow-rose-950/20">
-          <div className="mb-3 flex items-center gap-3">
-            <div className="rounded-lg bg-rose-600 p-2 text-white">
-              <BellRing className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-sm font-extrabold text-white">Alarme individual de cautela esquecida</h2>
-              <p className="text-xs text-rose-200">
-                Selecione o policial que ainda consta com viatura cautelada. Somente ele receberá o aviso.
-              </p>
-            </div>
-          </div>
-
-          {operatorGroups.length === 0 ? (
-            <p className="rounded-lg border border-zinc-700 bg-zinc-900/70 p-3 text-xs text-zinc-300">
-              Não há operadores com cautelas em aberto neste momento.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {operatorGroups.map((operator) => (
-                <div key={operator.re} className="flex flex-col gap-3 rounded-lg border border-zinc-700 bg-zinc-900/80 p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-white">
-                      {operator.graduacao ? `${operator.graduacao} ` : ''}{operator.nome}
-                    </p>
-                    <p className="text-xs text-zinc-400">RE: {operator.re}</p>
-                    <p className="mt-1 text-xs text-amber-300">
-                      Viatura(s): {operator.cautelas.map((item) => item.prefixoViatura).join(', ')}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => void triggerAlarm(operator)}
-                    disabled={Boolean(sendingRE)}
-                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-md transition hover:bg-rose-500 active:scale-95 disabled:cursor-wait disabled:opacity-60"
-                  >
-                    <Volume2 className="h-4 w-4" />
-                    {sendingRE === operator.re ? 'ENVIANDO...' : 'ACIONAR ALARME'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          {feedback && (
-            <p role="status" className={`mt-3 text-xs ${feedback.error ? 'text-rose-300' : 'text-emerald-300'}`}>
-              {feedback.message}
-            </p>
-          )}
-          <p className="mt-3 text-[11px] text-zinc-500">
-            O envio em segundo plano (com o aplicativo fechado) depende da configuração de notificações push, ainda não habilitada neste projeto.
-          </p>
-        </section>
-      )}
-
       {incomingAlarm && hasActiveCautela && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
           <section role="alertdialog" aria-modal="true" aria-labelledby="descautela-alarm-title" className="w-full max-w-md rounded-2xl border-2 border-rose-500 bg-zinc-950 p-6 text-center shadow-2xl shadow-rose-950/60">
@@ -284,7 +162,7 @@ export function DescautelaAlarm({ currentUser, cautelas }: Props) {
             <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-rose-300">Alerta individual de cautela</p>
             <h2 id="descautela-alarm-title" className="mt-2 text-2xl font-black text-white">ATENÇÃO, ROCAM!</h2>
             <p className="mt-3 text-sm font-semibold leading-relaxed text-zinc-100">
-              Fim de serviço. Realize a devolução e descautela da sua viatura.
+              Consta uma viatura cautelada em seu nome. Verifique se é necessário realizar a descautela. Se o serviço foi prorrogado, você poderá permanecer com a viatura cautelada. A ciência deste aviso não altera a cautela.
             </p>
             {incomingAlarm.vehiclePrefixes?.length > 0 && (
               <p className="mt-2 text-sm font-bold text-amber-300">
@@ -300,7 +178,7 @@ export function DescautelaAlarm({ currentUser, cautelas }: Props) {
               className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-3 text-sm font-extrabold text-white transition hover:bg-rose-500"
             >
               <Check className="h-4 w-4" />
-              CIENTE — PARAR ALARME
+              CIENTE — FECHAR AVISO
             </button>
           </section>
         </div>
@@ -309,5 +187,80 @@ export function DescautelaAlarm({ currentUser, cautelas }: Props) {
         <span className="sr-only"><Radio /> Conectando ao canal individual de alertas.</span>
       )}
     </>
+  );
+}
+
+
+type AlarmButtonProps = {
+  currentUser: UserProfile | null;
+  cautela: CautelaRecord;
+};
+
+export function DescautelaAlarmButton({ currentUser, cautela }: AlarmButtonProps) {
+  const [sending, setSending] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const canSend = currentUser?.role === 'ADMIN' || currentUser?.role === 'ADJUNTO';
+
+  if (!canSend || cautela.status !== 'EM_PATRULHAMENTO') return null;
+
+  const sendAlarm = async () => {
+    if (!currentUser || sending) return;
+    const targetRE = normalizeRE(cautela.condutorRE);
+    if (!targetRE) {
+      setFeedback('Não foi possível identificar o RE do operador.');
+      return;
+    }
+
+    const channel = supabase.channel(getOperatorChannel(targetRE));
+    setSending(true);
+    setFeedback(null);
+    const payload: AlarmPayload = {
+      senderId: currentUser.id,
+      senderName: currentUser.name,
+      senderRole: currentUser.role,
+      targetRE,
+      vehiclePrefixes: [cautela.prefixoViatura],
+      sentAt: new Date().toISOString(),
+    };
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const timeout = window.setTimeout(() => reject(new Error('Tempo esgotado ao conectar ao operador.')), 10000);
+        channel.subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            window.clearTimeout(timeout);
+            resolve();
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            window.clearTimeout(timeout);
+            reject(new Error('Não foi possível conectar ao canal do operador.'));
+          }
+        });
+      });
+      const status = await channel.send({ type: 'broadcast', event: 'descautela_alarm', payload });
+      if (status !== 'ok') throw new Error('O serviço não confirmou o envio do aviso.');
+      setFeedback('Aviso enviado ao operador.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Falha ao enviar o aviso.');
+    } finally {
+      await supabase.removeChannel(channel);
+      setSending(false);
+      window.setTimeout(() => setFeedback(null), 5000);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-stretch gap-1">
+      <button
+        type="button"
+        onClick={() => void sendAlarm()}
+        disabled={sending}
+        className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-extrabold text-white shadow transition hover:bg-rose-500 active:scale-95 disabled:cursor-wait disabled:opacity-60"
+        title={`Enviar alerta individual para ${cautela.condutorNome}`}
+      >
+        <Volume2 className="h-3.5 w-3.5" />
+        {sending ? 'ENVIANDO...' : 'ACIONAR ALARME'}
+      </button>
+      {feedback && <span role="status" className="max-w-[190px] text-[10px] text-zinc-300">{feedback}</span>}
+    </div>
   );
 }
