@@ -445,30 +445,29 @@ export const CautelaList: React.FC<CautelaListProps> = ({
                   </div>
                 </div>
 
-                {/* Card Actions */}
-                <div className="pt-3 border-t border-zinc-800 flex items-center justify-between gap-2">
-                  <button
-                    onClick={() => onViewCautelaDetail(cautela)}
-                    className="flex items-center space-x-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-750 text-zinc-200 transition cursor-pointer"
-                  >
-                    <Eye className="w-3.5 h-3.5 text-zinc-400" />
-                    <span>Ver Ficha</span>
-                  </button>
-
-                  <div className="flex flex-col items-stretch gap-2">
-                    {isEmPatrulhamento && (
-                      <>
-                        <DescautelaAlarmButton currentUser={currentUser} cautela={cautela} />
-                        <button
-                          onClick={() => onOpenDescautela(cautela)}
-                          className="flex items-center justify-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow transition cursor-pointer"
-                          title="Devolver viatura ao final do serviço"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          <span>Devolução (Fim de Serviço)</span>
-                        </button>
-                      </>
-                    )}
+                {/* Ações da cautela: alertar acima da devolução, em largura total */}
+                <div className="pt-3 border-t border-zinc-800 flex flex-col gap-2">
+                  {isEmPatrulhamento && (
+                    <>
+                      <DescautelaAlarmButton currentUser={currentUser} cautela={cautela} />
+                      <button
+                        onClick={() => onOpenDescautela(cautela)}
+                        className="flex w-full items-center justify-center space-x-1.5 px-3 py-2 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow transition cursor-pointer"
+                        title="Devolver viatura ao final do serviço"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Devolução (Fim de Serviço)</span>
+                      </button>
+                    </>
+                  )}
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => onViewCautelaDetail(cautela)}
+                      className="flex items-center space-x-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-750 text-zinc-200 transition cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-zinc-400" />
+                      <span>Ver Ficha</span>
+                    </button>
                     {!isEmPatrulhamento && isAdmin && (
                       <button
                         onClick={() => setCautelaToDelete(cautela)}
