@@ -80,6 +80,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const normalizeProfileRole = (value: unknown): UserRole => {
+  const role = String(value ?? '').trim().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase();
+  if (role === 'ADMIN' || role === 'ADMINISTRADOR') return 'ADMIN';
+  if (role === 'ADJUNTO') return 'ADJUNTO';
+  if (role === 'MECANICO' || role === 'MECÂNICO') return 'MECANICO';
+  return 'OPERADOR';
+};
+
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
@@ -141,7 +150,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         name: profile.full_name || profile.username || authUser.email || '',
         graduacao: profile.graduacao || '',
         re: profile.re || '',
-        role: profile.role === 'admin' ? 'ADMIN' : profile.role === 'adjunto' ? 'ADJUNTO' : profile.role === 'mecanico' ? 'MECANICO' : 'OPERADOR',
+        role: normalizeProfileRole(profile.role),
         pelotao: profile.pelotao || 'ROCAM',
         passwordHash: '',
         salt: '',
@@ -222,7 +231,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           name: profile.full_name || profile.username || profile.email || 'Usuário sem nome',
           graduacao: profile.graduacao || '',
           re: profile.re || '',
-          role: profile.role === 'admin' ? 'ADMIN' : profile.role === 'adjunto' ? 'ADJUNTO' : profile.role === 'mecanico' ? 'MECANICO' : 'OPERADOR',
+          role: normalizeProfileRole(profile.role),
           pelotao: profile.pelotao || 'ROCAM',
           passwordHash: '',
           salt: '',
@@ -289,7 +298,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               email: directProfile.email || cleanId,
               name: directProfile.full_name || cleanId.split('@')[0],
               graduacao: directProfile.graduacao || '', re: directProfile.re || '',
-              role: directProfile.role === 'admin' ? 'ADMIN' : directProfile.role === 'adjunto' ? 'ADJUNTO' : directProfile.role === 'mecanico' ? 'MECANICO' : 'OPERADOR',
+              role: normalizeProfileRole(directProfile.role),
               pelotao: directProfile.pelotao || 'ROCAM', passwordHash: '', salt: '',
               createdAt: directProfile.created_at || new Date().toISOString(),
               isActive: true, status: 'ATIVO', lastLogin: new Date().toISOString(),
@@ -350,7 +359,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           name: profileData.full_name || profileData.username || profileData.email || lookupData.email,
           graduacao: profileData.graduacao || '',
           re: profileData.re || '',
-          role: profileData.role === 'admin' ? 'ADMIN' : profileData.role === 'adjunto' ? 'ADJUNTO' : profileData.role === 'mecanico' ? 'MECANICO' : 'OPERADOR',
+          role: normalizeProfileRole(profileData.role),
           pelotao: profileData.pelotao || 'ROCAM',
           passwordHash: '',
           salt: '',
@@ -634,7 +643,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const updated: UserProfile = {
       id: saved.id, username: saved.username || saved.email?.split('@')[0] || '', email: saved.email || '',
       name: saved.full_name || saved.username || '', graduacao: saved.graduacao || '', re: saved.re || '',
-      role: saved.role === 'admin' ? 'ADMIN' : saved.role === 'adjunto' ? 'ADJUNTO' : saved.role === 'mecanico' ? 'MECANICO' : 'OPERADOR', pelotao: saved.pelotao || 'ROCAM',
+      role: normalizeProfileRole(saved.role), pelotao: saved.pelotao || 'ROCAM',
       passwordHash: '', salt: '', createdAt: saved.created_at || new Date().toISOString(),
       isActive: false, status: 'REJEITADO', motivoRejeicao: motivo || 'Cadastro não homologado pelo Administrador.'
     };
@@ -663,7 +672,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const updated: UserProfile = {
       id: saved.id, username: saved.username || saved.email?.split('@')[0] || '', email: saved.email || '',
       name: saved.full_name || saved.username || '', graduacao: saved.graduacao || '', re: saved.re || '',
-      role: saved.role === 'admin' ? 'ADMIN' : saved.role === 'adjunto' ? 'ADJUNTO' : saved.role === 'mecanico' ? 'MECANICO' : 'OPERADOR', pelotao: saved.pelotao || 'ROCAM',
+      role: normalizeProfileRole(saved.role), pelotao: saved.pelotao || 'ROCAM',
       passwordHash: '', salt: '', createdAt: saved.created_at || new Date().toISOString(),
       isActive: saved.active !== false,
       status: saved.approval_status === 'PENDENTE' ? 'PENDENTE' : saved.approval_status === 'REJEITADO' ? 'REJEITADO' : saved.active === false ? 'INATIVO' : 'ATIVO'
