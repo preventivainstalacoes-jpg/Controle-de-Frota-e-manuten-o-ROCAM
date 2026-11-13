@@ -19,7 +19,7 @@ type Props = {
   cautelas: CautelaRecord[];
 };
 
-const normalizeRE = (value?: string) => (value || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+const normalizeRE = (value?: string | number | null) => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 const getOperatorChannel = (re: string) =>
   `${CHANNEL_PREFIX}-${encodeURIComponent(normalizeRE(re))}`;
@@ -210,11 +210,10 @@ export function DescautelaAlarmButton({ currentUser, cautela, canManageAlarms = 
 
   const sendAlarm = async () => {
     if (!currentUser || sending) return;
-    // Usa o RE já carregado na cautela; se a tela entregar um registro parcial,
-    // consulta o registro original pelo ID antes de desistir do envio.
+    // Prioriza o RE que já veio no registro da cautela. A consulta ao banco
+    // fica como fallback apenas quando a tela não trouxe esse campo.
     let targetRE = normalizeRE(cautela.condutorRE);
-    // Consulta o RE oficial da cautela para evitar depender de dados parciais ou desatualizados da tela.
-    if (cautela.id) {
+    if (!targetRE && cautela.id) {
       const { data: freshCautela, error: lookupError } = await supabase
         .from('cautelas')
         .select('condutor_re')
@@ -226,7 +225,7 @@ export function DescautelaAlarmButton({ currentUser, cautela, canManageAlarms = 
         setFeedback('Não foi possível consultar o RE desta cautela. Tente novamente.');
         return;
       }
-      targetRE = normalizeRE(freshCautela?.condutor_re) || targetRE;
+      targetRE = normalizeRE(freshCautela?.condutor_re);
     }
 
     if (!targetRE) {
