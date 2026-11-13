@@ -183,7 +183,7 @@ export function DescautelaAlarm({ currentUser, cautelas }: Props) {
           </section>
         </div>
       )}
-      {hasActiveCautela && !canManageAlarms && !incomingAlarm && !channelReady && (
+      {hasActiveCautela && !incomingAlarm && !channelReady && (
         <span className="sr-only"><Radio /> Conectando ao canal individual de alertas.</span>
       )}
     </>
