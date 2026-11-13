@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useFleet } from '../context/FleetContext';
 import { useAuth } from '../context/AuthContext';
+import { DescautelaAlarmButton } from './DescautelaAlarm';
 import { CautelaRecord, VehicleType } from '../types';
 import {
   ClipboardCheck,
@@ -454,26 +455,28 @@ export const CautelaList: React.FC<CautelaListProps> = ({
                     <span>Ver Ficha</span>
                   </button>
 
-                  <div className="flex items-center space-x-1.5">
-                    {isEmPatrulhamento ? (
-                      <button
-                        onClick={() => onOpenDescautela(cautela)}
-                        className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow transition cursor-pointer"
-                        title="Devolver viatura ao final do serviço"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                        <span>Devolução (Fim de Serviço)</span>
-                      </button>
-                    ) : (
-                      isAdmin && (
+                  <div className="flex flex-col items-stretch gap-2">
+                    {isEmPatrulhamento && (
+                      <>
+                        <DescautelaAlarmButton currentUser={currentUser} cautela={cautela} />
                         <button
-                          onClick={() => setCautelaToDelete(cautela)}
-                          title="Excluir Registro (Administrador)"
-                          className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-950/30 rounded-lg transition cursor-pointer"
+                          onClick={() => onOpenDescautela(cautela)}
+                          className="flex items-center justify-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow transition cursor-pointer"
+                          title="Devolver viatura ao final do serviço"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Devolução (Fim de Serviço)</span>
                         </button>
-                      )
+                      </>
+                    )}
+                    {!isEmPatrulhamento && isAdmin && (
+                      <button
+                        onClick={() => setCautelaToDelete(cautela)}
+                        title="Excluir Registro (Administrador)"
+                        className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-950/30 rounded-lg transition cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     )}
                   </div>
                 </div>
