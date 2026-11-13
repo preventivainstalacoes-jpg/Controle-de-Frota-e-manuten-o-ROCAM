@@ -211,9 +211,26 @@ export function DescautelaAlarmButton({ currentUser, cautela, canManageAlarms = 
 
   const sendAlarm = async () => {
     if (!currentUser || sending) return;
-    const targetRE = normalizeRE(cautela.condutorRE);
+    // Usa o RE já carregado na cautela; se a tela entregar um registro parcial,
+    // consulta o registro original pelo ID antes de desistir do envio.
+    let targetRE = normalizeRE(cautela.condutorRE);
+    if (!targetRE && cautela.id) {
+      const { data: freshCautela, error: lookupError } = await supabase
+        .from('cautelas')
+        .select('condutor_re')
+        .eq('id', cautela.id)
+        .maybeSingle();
+
+      if (lookupError) {
+        console.error('Falha ao recuperar o RE da cautela para o alarme:', lookupError);
+        setFeedback('Não foi possível consultar o RE desta cautela. Tente novamente.');
+        return;
+      }
+      targetRE = normalizeRE(freshCautela?.condutor_re);
+    }
+
     if (!targetRE) {
-      setFeedback('Não foi possível identificar o RE do operador.');
+      setFeedback(`A cautela ${cautela.prefixoViatura || ''} não possui RE válido cadastrado.`.trim());
       return;
     }
 
