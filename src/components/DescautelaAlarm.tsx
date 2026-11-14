@@ -3,15 +3,11 @@ import { BellRing, Check, Volume2, Radio } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { CautelaRecord, UserProfile } from '../types';
 
-const CHANNEL_PREFIX = 'rocam-frota-alarme-descautela';
-
 type AlarmPayload = {
-  senderId: string;
-  senderName: string;
-  senderRole: string;
-  targetRE: string;
-  vehiclePrefixes: string[];
-  sentAt: string;
+  id: string;
+  sender_name: string;
+  vehicle_prefix: string;
+  created_at: string;
 };
 
 type Props = {
@@ -19,16 +15,13 @@ type Props = {
   cautelas: CautelaRecord[];
 };
 
-const normalizeRE = (value?: string | number | null) => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-
-const getOperatorChannel = (re: string) =>
-  `${CHANNEL_PREFIX}-${encodeURIComponent(normalizeRE(re))}`;
+const normalizeRE = (value?: string | number | null) =>
+  String(value ?? '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 export function DescautelaAlarm({ currentUser, cautelas }: Props) {
   const [incomingAlarm, setIncomingAlarm] = useState<AlarmPayload | null>(null);
   const [channelReady, setChannelReady] = useState(false);
   const activeAlarmRef = useRef<AlarmPayload | null>(null);
-  const eligibleToReceiveRef = useRef(false);
 
   const userRE = normalizeRE(currentUser?.re);
   const myActiveCautelas = useMemo(
@@ -39,66 +32,69 @@ export function DescautelaAlarm({ currentUser, cautelas }: Props) {
     [cautelas, userRE]
   );
   const hasActiveCautela = Boolean(userRE && myActiveCautelas.length > 0);
-  const canManageAlarms = currentUser?.role === 'ADMIN' || currentUser?.role === 'ADJUNTO';
 
-  const operatorGroups = useMemo<OperatorCautelaGroup[]>(() => {
-    const groups = new Map<string, OperatorCautelaGroup>();
-    cautelas
-      .filter((item) => item.status === 'EM_PATRULHAMENTO' && normalizeRE(item.condutorRE))
-      .forEach((item) => {
-        const re = normalizeRE(item.condutorRE);
-        const existing = groups.get(re);
-        if (existing) {
-          existing.cautelas.push(item);
-        } else {
-          groups.set(re, {
-            re,
-            nome: item.condutorNome || 'Policial não identificado',
-            graduacao: item.condutorGraduacao || '',
-            cautelas: [item],
-          });
-        }
-      });
-    return Array.from(groups.values()).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-  }, [cautelas]);
-
-  eligibleToReceiveRef.current = hasActiveCautela;
   activeAlarmRef.current = incomingAlarm;
 
-  // Cada operador escuta exclusivamente o canal associado ao próprio RE.
+  // O alarme fica gravado no banco. Assim, uma oscilação do Realtime ou
+  // o operador abrir o aplicativo alguns segundos depois não faz o aviso sumir.
   useEffect(() => {
-    if (!hasActiveCautela) {
+    if (!currentUser?.id || !hasActiveCautela || !userRE) {
       setChannelReady(false);
+      setIncomingAlarm(null);
       return;
     }
 
+    let cancelled = false;
+
+    const loadPendingAlarm = async () => {
+      const { data, error } = await supabase
+        .from('alarm_notifications')
+        .select('id,sender_name,vehicle_prefix,created_at')
+        .eq('recipient_re', userRE)
+        .is('acknowledged_at', null)
+        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Não foi possível consultar os alarmes pendentes:', error);
+        return;
+      }
+      if (!cancelled && data && !activeAlarmRef.current) {
+        setIncomingAlarm(data as AlarmPayload);
+      }
+    };
+
+    void loadPendingAlarm();
+
     const channel = supabase
-      .channel(getOperatorChannel(userRE), { config: { broadcast: { self: true } } })
-      .on('broadcast', { event: 'descautela_alarm' }, ({ payload }) => {
-        const alarm = payload as AlarmPayload;
-        if (
-          !eligibleToReceiveRef.current ||
-          !alarm?.senderId ||
-          normalizeRE(alarm.targetRE) !== userRE
-        ) return;
-        setIncomingAlarm(alarm);
-      })
+      .channel(`rocam-alarmes-operador-${userRE}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'alarm_notifications', filter: `recipient_re=eq.${userRE}` },
+        (payload) => {
+          const alarm = payload.new as AlarmPayload;
+          if (!cancelled && alarm?.id) setIncomingAlarm(alarm);
+        }
+      )
       .subscribe((status) => {
         setChannelReady(status === 'SUBSCRIBED');
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error('Não foi possível conectar ao canal individual do alarme de descautela.');
+          console.error('Canal de alarmes indisponível; a consulta periódica continuará ativa.');
         }
       });
 
+    // Recuperação de segurança caso o evento em tempo real não chegue.
+    const refreshTimer = window.setInterval(() => void loadPendingAlarm(), 7000);
+
     return () => {
+      cancelled = true;
+      window.clearInterval(refreshTimer);
       setChannelReady(false);
       void supabase.removeChannel(channel);
     };
   }, [currentUser?.id, hasActiveCautela, userRE]);
-
-  useEffect(() => {
-    if (!hasActiveCautela && incomingAlarm) setIncomingAlarm(null);
-  }, [hasActiveCautela, incomingAlarm]);
 
   useEffect(() => {
     if (!incomingAlarm || !hasActiveCautela) return;
@@ -150,6 +146,21 @@ export function DescautelaAlarm({ currentUser, cautelas }: Props) {
     };
   }, [incomingAlarm, hasActiveCautela]);
 
+  const acknowledgeAlarm = async () => {
+    if (!incomingAlarm) return;
+    const alarmId = incomingAlarm.id;
+    setIncomingAlarm(null);
+    const { error } = await supabase
+      .from('alarm_notifications')
+      .update({ acknowledged_at: new Date().toISOString() })
+      .eq('id', alarmId)
+      .is('acknowledged_at', null);
+    if (error) {
+      console.error('Não foi possível registrar a ciência do alarme:', error);
+      setIncomingAlarm(incomingAlarm);
+    }
+  };
+
   return (
     <>
       {incomingAlarm && hasActiveCautela && (
@@ -163,17 +174,13 @@ export function DescautelaAlarm({ currentUser, cautelas }: Props) {
             <p className="mt-3 text-sm font-semibold leading-relaxed text-zinc-100">
               Consta uma viatura cautelada em seu nome. Verifique se é necessário realizar a descautela. Se o serviço foi prorrogado, você poderá permanecer com a viatura cautelada. A ciência deste aviso não altera a cautela.
             </p>
-            {incomingAlarm.vehiclePrefixes?.length > 0 && (
-              <p className="mt-2 text-sm font-bold text-amber-300">
-                Viatura(s): {incomingAlarm.vehiclePrefixes.join(', ')}
-              </p>
+            {incomingAlarm.vehicle_prefix && (
+              <p className="mt-2 text-sm font-bold text-amber-300">Viatura: {incomingAlarm.vehicle_prefix}</p>
             )}
-            <p className="mt-3 text-xs text-zinc-400">
-              Alarme acionado por {incomingAlarm.senderName}.
-            </p>
+            <p className="mt-3 text-xs text-zinc-400">Alarme acionado por {incomingAlarm.sender_name}.</p>
             <button
               type="button"
-              onClick={() => setIncomingAlarm(null)}
+              onClick={() => void acknowledgeAlarm()}
               className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-3 text-sm font-extrabold text-white transition hover:bg-rose-500"
             >
               <Check className="h-4 w-4" />
@@ -189,7 +196,6 @@ export function DescautelaAlarm({ currentUser, cautelas }: Props) {
   );
 }
 
-
 type AlarmButtonProps = {
   currentUser: UserProfile | null;
   cautela: CautelaRecord;
@@ -202,7 +208,7 @@ export function DescautelaAlarmButton({ currentUser, cautela, canManageAlarms = 
   const normalizedRole = String(currentUser?.role ?? '')
     .trim()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\\u0300-\\u036f]/g, '')
     .toUpperCase();
   const canSend = canManageAlarms || ['ADMIN', 'ADMINISTRADOR', 'ADJUNTO'].includes(normalizedRole);
 
@@ -210,63 +216,47 @@ export function DescautelaAlarmButton({ currentUser, cautela, canManageAlarms = 
 
   const sendAlarm = async () => {
     if (!currentUser || sending) return;
-    // Prioriza o RE que já veio no registro da cautela. A consulta ao banco
-    // fica como fallback apenas quando a tela não trouxe esse campo.
-    let targetRE = normalizeRE(cautela.condutorRE);
-    if (!targetRE && cautela.id) {
-      const { data: freshCautela, error: lookupError } = await supabase
-        .from('cautelas')
-        .select('condutor_re')
-        .eq('id', cautela.id)
-        .maybeSingle();
-
-      if (lookupError) {
-        console.error('Falha ao recuperar o RE da cautela para o alarme:', lookupError);
-        setFeedback('Não foi possível consultar o RE desta cautela. Tente novamente.');
-        return;
-      }
-      targetRE = normalizeRE(freshCautela?.condutor_re);
-    }
-
-    if (!targetRE) {
-      setFeedback(`A cautela ${cautela.prefixoViatura || ''} não possui RE válido cadastrado.`.trim());
-      return;
-    }
-
-    const channel = supabase.channel(getOperatorChannel(targetRE));
     setSending(true);
     setFeedback(null);
-    const payload: AlarmPayload = {
-      senderId: currentUser.id,
-      senderName: currentUser.name,
-      senderRole: currentUser.role,
-      targetRE,
-      vehiclePrefixes: [cautela.prefixoViatura],
-      sentAt: new Date().toISOString(),
-    };
 
     try {
-      await new Promise<void>((resolve, reject) => {
-        const timeout = window.setTimeout(() => reject(new Error('Tempo esgotado ao conectar ao operador.')), 10000);
-        channel.subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            window.clearTimeout(timeout);
-            resolve();
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            window.clearTimeout(timeout);
-            reject(new Error('Não foi possível conectar ao canal do operador.'));
-          }
+      let targetRE = normalizeRE(cautela.condutorRE);
+      if (!targetRE && cautela.id) {
+        const { data: freshCautela, error: lookupError } = await supabase
+          .from('cautelas')
+          .select('condutor_re')
+          .eq('id', cautela.id)
+          .maybeSingle();
+
+        if (lookupError) throw new Error('Não foi possível consultar o RE desta cautela.');
+        targetRE = normalizeRE(freshCautela?.condutor_re);
+      }
+
+      if (!targetRE) {
+        throw new Error(`A cautela ${cautela.prefixoViatura || ''} não possui RE válido cadastrado.`.trim());
+      }
+
+      const { error } = await supabase
+        .from('alarm_notifications')
+        .insert({
+          sender_id: currentUser.id,
+          sender_name: currentUser.name || 'Administrador',
+          recipient_re: targetRE,
+          vehicle_prefix: cautela.prefixoViatura || 'Viatura',
+          cautela_id: cautela.id,
         });
-      });
-      const status = await channel.send({ type: 'broadcast', event: 'descautela_alarm', payload });
-      if (status !== 'ok') throw new Error('O serviço não confirmou o envio do aviso.');
-      setFeedback('Aviso enviado ao operador.');
+
+      if (error) {
+        console.error('Falha ao registrar alarme no banco:', error);
+        throw new Error('O banco não aceitou registrar o alarme. Verifique sua conexão e permissão.');
+      }
+
+      setFeedback('Alarme registrado. O operador receberá o aviso ao estar conectado ao aplicativo.');
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Falha ao enviar o aviso.');
+      setFeedback(error instanceof Error ? error.message : 'Falha ao registrar o alarme.');
     } finally {
-      await supabase.removeChannel(channel);
       setSending(false);
-      window.setTimeout(() => setFeedback(null), 5000);
+      window.setTimeout(() => setFeedback(null), 7000);
     }
   };
 
@@ -277,12 +267,12 @@ export function DescautelaAlarmButton({ currentUser, cautela, canManageAlarms = 
         onClick={() => void sendAlarm()}
         disabled={sending || !canSend}
         className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-rose-400 bg-rose-600 px-3 py-2 text-xs font-extrabold text-white shadow transition hover:bg-rose-500 active:scale-95 disabled:cursor-not-allowed disabled:border-zinc-600 disabled:bg-zinc-700 disabled:text-zinc-300"
-        title={canSend ? `Enviar alerta individual para ${cautela.condutorNome}` : "Apenas administrador ou adjunto pode acionar o alarme"}
+        title={canSend ? `Enviar alerta individual para ${cautela.condutorNome}` : 'Apenas administrador ou adjunto pode acionar o alarme'}
       >
         <Volume2 className="h-3.5 w-3.5" />
         {sending ? 'ENVIANDO...' : 'ACIONAR ALARME'}
       </button>
-      {feedback && <span role="status" className="max-w-[190px] text-[10px] text-zinc-300">{feedback}</span>}
+      {feedback && <span role="status" className="max-w-[220px] text-[10px] text-zinc-300">{feedback}</span>}
     </div>
   );
 }
