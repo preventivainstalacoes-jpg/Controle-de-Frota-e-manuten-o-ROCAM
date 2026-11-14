@@ -246,7 +246,7 @@ export function DescautelaAlarmButton({ currentUser, cautela, canManageAlarms = 
         throw new Error(`A cautela ${cautela.prefixoViatura || ''} não possui RE válido cadastrado.`.trim());
       }
 
-      const { error } = await supabase
+      const { data: createdAlarm, error } = await supabase
         .from('alarm_notifications')
         .insert({
           sender_id: currentUser.id,
@@ -254,14 +254,27 @@ export function DescautelaAlarmButton({ currentUser, cautela, canManageAlarms = 
           recipient_re: targetRE,
           vehicle_prefix: cautela.prefixoViatura || 'Viatura',
           cautela_id: cautela.id,
-        });
+        })
+        .select('id')
+        .single();
 
-      if (error) {
+      if (error || !createdAlarm?.id) {
         console.error('Falha ao registrar alarme no banco:', error);
         throw new Error('O banco não aceitou registrar o alarme. Verifique sua conexão e permissão.');
       }
 
-      setFeedback('Alarme registrado no servidor. A entrega será verificada pelo aplicativo do destinatário.');
+      const { data: pushResult, error: pushError } = await supabase.functions.invoke('send-alarm-push', {
+        body: { alarmId: createdAlarm.id },
+      });
+
+      if (pushError) {
+        console.warn('Alarme registrado, mas o envio push falhou:', pushError);
+        setFeedback('Alarme registrado no sistema. O push não foi enviado; confirme se o destinatário ativou as notificações.');
+      } else if (pushResult?.sent > 0) {
+        setFeedback(`Alarme registrado e notificação push enviada para ${pushResult.sent} dispositivo(s).`);
+      } else {
+        setFeedback('Alarme registrado. O destinatário ainda não habilitou notificações push neste celular.');
+      }
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Falha ao registrar o alarme.');
     } finally {
