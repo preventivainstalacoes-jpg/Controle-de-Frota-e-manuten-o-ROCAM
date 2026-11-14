@@ -16,7 +16,7 @@ type Props = {
 };
 
 const normalizeRE = (value?: string | number | null) =>
-  String(value ?? '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 export function DescautelaAlarm({ currentUser, cautelas }: Props) {
   const [incomingAlarm, setIncomingAlarm] = useState<AlarmPayload | null>(null);
@@ -208,7 +208,7 @@ export function DescautelaAlarmButton({ currentUser, cautela, canManageAlarms = 
   const normalizedRole = String(currentUser?.role ?? '')
     .trim()
     .normalize('NFD')
-    .replace(/[\\u0300-\\u036f]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toUpperCase();
   const canSend = canManageAlarms || ['ADMIN', 'ADMINISTRADOR', 'ADJUNTO'].includes(normalizedRole);
 
