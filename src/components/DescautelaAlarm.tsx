@@ -21,6 +21,8 @@ const normalizeRE = (value?: string | number | null) =>
 export function DescautelaAlarm({ currentUser }: Props) {
   const [incomingAlarm, setIncomingAlarm] = useState<AlarmPayload | null>(null);
   const [channelReady, setChannelReady] = useState(false);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
   const activeAlarmRef = useRef<AlarmPayload | null>(null);
 
   const userRE = normalizeRE(currentUser?.re);
@@ -87,23 +89,38 @@ export function DescautelaAlarm({ currentUser }: Props) {
     };
   }, [currentUser?.id, userRE]);
 
-  useEffect(() => {
-    if (!incomingAlarm) return;
+  const enableAlarmSound = async () => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      audioContextRef.current ||= new AudioContextClass();
+      if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
+      setAudioUnlocked(audioContextRef.current.state === 'running');
+    } catch (error) {
+      console.warn('Não foi possível ativar o áudio do alarme:', error);
+      setAudioUnlocked(false);
+    }
+  };
 
-    let context: AudioContext | null = null;
+  useEffect(() => {
+    const unlock = () => { void enableAlarmSound(); };
+    document.addEventListener('pointerdown', unlock, { once: true });
+    document.addEventListener('keydown', unlock, { once: true });
+    return () => {
+      document.removeEventListener('pointerdown', unlock);
+      document.removeEventListener('keydown', unlock);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!incomingAlarm || !audioUnlocked) return;
     let intervalId: number | undefined;
     let stopped = false;
-
-    const playBeep = async () => {
+    const playBeep = () => {
       try {
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContextClass || stopped) return;
-        context ||= new AudioContextClass();
-        if (context.state === 'suspended') await context.resume();
-        if (stopped) return;
-
-        const playTone = (frequency: number, startAt: number, duration: number) => {
-          if (!context) return;
+        const context = audioContextRef.current;
+        if (!context || context.state !== 'running' || stopped) return;
+        const tone = (frequency: number, startAt: number, duration: number) => {
           const oscillator = context.createOscillator();
           const gain = context.createGain();
           oscillator.type = 'sine';
@@ -116,26 +133,22 @@ export function DescautelaAlarm({ currentUser }: Props) {
           oscillator.start(startAt);
           oscillator.stop(startAt + duration + 0.02);
         };
-
         const now = context.currentTime;
-        playTone(880, now, 0.24);
-        playTone(660, now + 0.32, 0.24);
-        playTone(880, now + 0.64, 0.32);
+        tone(880, now, 0.24);
+        tone(660, now + 0.32, 0.24);
+        tone(880, now + 0.64, 0.32);
       } catch (error) {
-        console.warn('O navegador bloqueou a reprodução automática do alarme sonoro:', error);
+        console.warn('Falha ao reproduzir o som do alarme:', error);
         try { navigator.vibrate?.([250, 120, 250, 120, 450]); } catch {}
       }
     };
-
-    void playBeep();
-    intervalId = window.setInterval(() => void playBeep(), 2600);
-
+    playBeep();
+    intervalId = window.setInterval(playBeep, 2600);
     return () => {
       stopped = true;
       if (intervalId !== undefined) window.clearInterval(intervalId);
-      if (context) void context.close().catch(() => {});
     };
-  }, [incomingAlarm]);
+  }, [incomingAlarm, audioUnlocked]);
 
   const acknowledgeAlarm = async () => {
     if (!incomingAlarm) return;
@@ -169,6 +182,12 @@ export function DescautelaAlarm({ currentUser }: Props) {
               <p className="mt-2 text-sm font-bold text-amber-300">Viatura: {incomingAlarm.vehicle_prefix}</p>
             )}
             <p className="mt-3 text-xs text-zinc-400">Alarme acionado por {incomingAlarm.sender_name}.</p>
+            {!audioUnlocked && (
+              <button type="button" onClick={() => void enableAlarmSound()}
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-amber-400 bg-amber-500 px-4 py-3 text-sm font-extrabold text-zinc-950">
+                <Volume2 className="h-4 w-4" /> TOQUE PARA ATIVAR O SOM
+              </button>
+            )}
             <button
               type="button"
               onClick={() => void acknowledgeAlarm()}
