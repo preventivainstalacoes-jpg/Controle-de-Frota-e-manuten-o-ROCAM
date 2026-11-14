@@ -18,7 +18,7 @@ type Props = {
 const normalizeRE = (value?: string | number | null) =>
   String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
-export function DescautelaAlarm({ currentUser, cautelas }: Props) {
+export function DescautelaAlarm({ currentUser }: Props) {
   const [incomingAlarm, setIncomingAlarm] = useState<AlarmPayload | null>(null);
   const [channelReady, setChannelReady] = useState(false);
   const activeAlarmRef = useRef<AlarmPayload | null>(null);
