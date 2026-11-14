@@ -3,6 +3,7 @@ import { FleetProvider, useFleet } from './context/FleetContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { TeamProvider, useTeam } from './context/TeamContext';
 import { LoginScreen } from './components/LoginScreen';
+import { PushNotificationSetup } from './components/PushNotificationSetup';
 import { DescautelaAlarm } from './components/DescautelaAlarm';
 import { Header } from './components/Header';
 import { VehicleList } from './components/VehicleList';
@@ -350,6 +351,7 @@ function AppContent() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <PushNotificationSetup currentUser={currentUser} />
         <DescautelaAlarm currentUser={currentUser} cautelas={cautelas} />
 
         {/* Banner Informativo de Perfil Operador */}
