@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BellRing, Check, Volume2, Radio } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { CautelaRecord, UserProfile } from '../types';
@@ -24,21 +24,12 @@ export function DescautelaAlarm({ currentUser, cautelas }: Props) {
   const activeAlarmRef = useRef<AlarmPayload | null>(null);
 
   const userRE = normalizeRE(currentUser?.re);
-  const myActiveCautelas = useMemo(
-    () => cautelas.filter((item) =>
-      item.status === 'EM_PATRULHAMENTO' &&
-      normalizeRE(item.condutorRE) === userRE
-    ),
-    [cautelas, userRE]
-  );
-  const hasActiveCautela = Boolean(userRE && myActiveCautelas.length > 0);
-
   activeAlarmRef.current = incomingAlarm;
 
   // O alarme fica gravado no banco. Assim, uma oscilação do Realtime ou
   // o operador abrir o aplicativo alguns segundos depois não faz o aviso sumir.
   useEffect(() => {
-    if (!currentUser?.id || !hasActiveCautela || !userRE) {
+    if (!currentUser?.id || !userRE) {
       setChannelReady(false);
       setIncomingAlarm(null);
       return;
@@ -94,10 +85,10 @@ export function DescautelaAlarm({ currentUser, cautelas }: Props) {
       setChannelReady(false);
       void supabase.removeChannel(channel);
     };
-  }, [currentUser?.id, hasActiveCautela, userRE]);
+  }, [currentUser?.id, userRE]);
 
   useEffect(() => {
-    if (!incomingAlarm || !hasActiveCautela) return;
+    if (!incomingAlarm) return;
 
     let context: AudioContext | null = null;
     let intervalId: number | undefined;
@@ -144,7 +135,7 @@ export function DescautelaAlarm({ currentUser, cautelas }: Props) {
       if (intervalId !== undefined) window.clearInterval(intervalId);
       if (context) void context.close().catch(() => {});
     };
-  }, [incomingAlarm, hasActiveCautela]);
+  }, [incomingAlarm]);
 
   const acknowledgeAlarm = async () => {
     if (!incomingAlarm) return;
@@ -163,7 +154,7 @@ export function DescautelaAlarm({ currentUser, cautelas }: Props) {
 
   return (
     <>
-      {incomingAlarm && hasActiveCautela && (
+      {incomingAlarm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
           <section role="alertdialog" aria-modal="true" aria-labelledby="descautela-alarm-title" className="w-full max-w-md rounded-2xl border-2 border-rose-500 bg-zinc-950 p-6 text-center shadow-2xl shadow-rose-950/60">
             <div className="mx-auto mb-4 flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-rose-600 text-white">
@@ -189,7 +180,7 @@ export function DescautelaAlarm({ currentUser, cautelas }: Props) {
           </section>
         </div>
       )}
-      {hasActiveCautela && !incomingAlarm && !channelReady && (
+      {userRE && !incomingAlarm && !channelReady && (
         <span className="sr-only"><Radio /> Conectando ao canal individual de alertas.</span>
       )}
     </>
@@ -251,7 +242,7 @@ export function DescautelaAlarmButton({ currentUser, cautela, canManageAlarms = 
         throw new Error('O banco não aceitou registrar o alarme. Verifique sua conexão e permissão.');
       }
 
-      setFeedback('Alarme registrado. O operador receberá o aviso ao estar conectado ao aplicativo.');
+      setFeedback('Alarme registrado no servidor. A entrega será verificada pelo aplicativo do destinatário.');
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Falha ao registrar o alarme.');
     } finally {
