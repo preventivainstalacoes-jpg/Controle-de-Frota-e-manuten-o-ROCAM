@@ -81,7 +81,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const normalizeProfileRole = (value: unknown): UserRole => {
-  const role = String(value ?? '').trim().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase();
+  const role = String(value ?? '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
   if (role === 'ADMIN' || role === 'ADMINISTRADOR') return 'ADMIN';
   if (role === 'ADJUNTO') return 'ADJUNTO';
   if (role === 'MECANICO' || role === 'MECÂNICO') return 'MECANICO';
