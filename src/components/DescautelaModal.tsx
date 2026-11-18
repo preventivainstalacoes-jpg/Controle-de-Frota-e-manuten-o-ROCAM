@@ -38,7 +38,7 @@ interface DescautelaModalProps {
       motivoBaixa?: string;
       fotosAvariasRetorno?: DamagePhoto[];
     }
-  ) => void;
+  ) => Promise<boolean>;
 }
 
 export const DescautelaModal: React.FC<DescautelaModalProps> = ({
@@ -128,7 +128,7 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
       prev.map((item) => (item.id === id ? { ...item, observacao: obs } : item))
     );
   };
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Operadores simples só podem devolver viaturas (motocicletas ou quatro rodas)
@@ -157,7 +157,7 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
       return;
     }
 
-    onFinalizeDescautela(cautela.id, {
+    const saved = await onFinalizeDescautela(cautela.id, {
       dataHoraRetorno,
       kmRetorno: kmRetornoValidado,
       combustivelRetorno,
@@ -170,7 +170,8 @@ export const DescautelaModal: React.FC<DescautelaModalProps> = ({
       fotosAvariasRetorno: fotosAvariasRetorno.length > 0 ? fotosAvariasRetorno : undefined,
     });
 
-    onClose();
+    if (saved) onClose();
+    else setErrorMessage('A descautela não foi concluída no banco de dados. Confira a conexão e tente novamente.');
   };
 
   const nonConformeCount = checklist.filter((c) => !c.conforme).length;
