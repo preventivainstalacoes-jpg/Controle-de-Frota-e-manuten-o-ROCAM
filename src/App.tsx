@@ -223,6 +223,7 @@ function AppContent() {
       showToast('Não foi possível registrar a cautela. A viatura pode já estar cautelada ou o banco de dados recusou o registro. Tente novamente e, se persistir, informe o administrador.', 'error');
       return false;
     }
+    showToast('Viatura cautelada com sucesso!', 'success');
     logActivity({
       tipo: 'CAUTELA',
       titulo: `Cautela Iniciada: ${cautelaData.prefixoViatura}`,
@@ -281,11 +282,16 @@ function AppContent() {
     setIsDescautelaModalOpen(true);
   };
 
-  const handleFinalizeDescautela = (
+  const handleFinalizeDescautela = async (
     id: string,
     descautelaData: Parameters<typeof finalizeDescautela>[1]
   ) => {
-    finalizeDescautela(id, descautelaData);
+    const saved = await finalizeDescautela(id, descautelaData);
+    if (!saved) {
+      showToast('Não foi possível concluir a descautela. Verifique a conexão e informe o administrador se o problema persistir.', 'error');
+      return false;
+    }
+    showToast('Viatura descautelada com sucesso!', 'success');
     const c = cautelas.find((item) => item.id === id);
     logActivity({
       tipo: descautelaData.houveAvaria ? 'AVARIA' : 'DESCAUTELA',
@@ -301,6 +307,7 @@ function AppContent() {
       badge: c?.prefixoViatura || 'ROCAM',
       linkTab: 'cautelas',
     });
+    return true;
   };
 
   const handleOpenDescautelarSelector = () => {
