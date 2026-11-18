@@ -567,35 +567,15 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       motivoBaixa?: string;
       fotosAvariasRetorno?: DamagePhoto[];
     }
-  ) => {
-    setCautelas((prev) =>
-      prev.map((c) => {
-        if (c.id === id) {
-          const kmPercorrido = Math.max(0, descautelaData.kmRetorno - c.kmSaida);
-          return {
-            ...c,
-            status: 'CONCLUIDA' as const,
-            dataHoraRetorno: descautelaData.dataHoraRetorno,
-            kmRetorno: descautelaData.kmRetorno,
-            kmPercorrido,
-            combustivelRetorno: descautelaData.combustivelRetorno,
-            recebedorNome: descautelaData.recebedorNome,
-            recebedorRE: descautelaData.recebedorRE,
-            observacoesRetorno: descautelaData.observacoesRetorno,
-            checklistRetorno: descautelaData.checklistRetorno,
-            houveAvaria: descautelaData.houveAvaria,
-            descricaoAvaria: descautelaData.descricaoAvaria,
-            viaturaBaixadaAposRetorno: descautelaData.baixarViatura || false,
-            fotosAvariasRetorno: descautelaData.fotosAvariasRetorno,
-          };
-        }
-        return c;
-      })
-    );
-
+  ): Promise<boolean> => {
+    const currentCautela = cautelas.find((c) => c.id === id);
+    if (!currentCautela) {
+      console.error('Cautela não encontrada para concluir a descautela.');
+      return false;
+    }
     const dbUpdate = {
       status:'CONCLUIDA',data_hora_retorno:descautelaData.dataHoraRetorno,km_retorno:descautelaData.kmRetorno,
-      km_percorrido:Math.max(0,descautelaData.kmRetorno-(cautelas.find(c=>c.id===id)?.kmSaida||0)),
+      km_percorrido:Math.max(0,descautelaData.kmRetorno-currentCautela.kmSaida),
       combustivel_retorno:descautelaData.combustivelRetorno,recebedor_nome:descautelaData.recebedorNome,recebedor_re:descautelaData.recebedorRE,
       observacoes_retorno:descautelaData.observacoesRetorno,checklist_retorno:descautelaData.checklistRetorno||[],houve_avaria:descautelaData.houveAvaria,
       descricao_avaria:descautelaData.descricaoAvaria,viatura_baixada:descautelaData.baixarViatura||false,fotos_retorno:descautelaData.fotosAvariasRetorno||[]
@@ -603,18 +583,11 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const { error: cautelaUpdateError } = await supabase.from('cautelas').update(dbUpdate).eq('id', id);
     if (cautelaUpdateError) {
       console.error('Erro ao salvar devolução da cautela no Supabase:', cautelaUpdateError);
-      return;
+      return false;
     }
 
     // Atualiza o hodômetro por uma função segura no banco.
     // Operadores/adjuntos só podem atualizar a viatura da própria cautela concluída.
-    const currentCautela = cautelas.find((c) => c.id === id);
-    if (!currentCautela) {
-      console.error('Devolução salva, mas a cautela não foi encontrada para atualizar a quilometragem.');
-      window.alert('A devolução foi registrada, mas não foi possível localizar a cautela para atualizar a quilometragem. Avise o administrador.');
-      return;
-    }
-
     const motivoBaixa = descautelaData.motivoBaixa
       || descautelaData.descricaoAvaria
       || 'Avaria constatada no retorno da cautela.';
@@ -628,8 +601,25 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (vehicleUpdateError) {
       console.error('Devolução salva, mas houve falha ao atualizar a quilometragem da viatura:', vehicleUpdateError);
       window.alert(`A devolução foi registrada, mas a quilometragem da viatura não foi atualizada: ${vehicleUpdateError.message}. Avise o administrador.`);
-      return;
+      return false;
     }
+
+    setCautelas((prev) => prev.map((c) => c.id === id ? {
+      ...c,
+      status: 'CONCLUIDA',
+      dataHoraRetorno: descautelaData.dataHoraRetorno,
+      kmRetorno: descautelaData.kmRetorno,
+      kmPercorrido: Math.max(0, descautelaData.kmRetorno - c.kmSaida),
+      combustivelRetorno: descautelaData.combustivelRetorno,
+      recebedorNome: descautelaData.recebedorNome,
+      recebedorRE: descautelaData.recebedorRE,
+      observacoesRetorno: descautelaData.observacoesRetorno,
+      checklistRetorno: descautelaData.checklistRetorno,
+      houveAvaria: descautelaData.houveAvaria,
+      descricaoAvaria: descautelaData.descricaoAvaria,
+      viaturaBaixadaAposRetorno: descautelaData.baixarViatura || false,
+      fotosAvariasRetorno: descautelaData.fotosAvariasRetorno,
+    } : c));
 
     setVehicles((prev) => prev.map((vehicle) => {
       if (vehicle.id !== currentCautela.viaturaId) return vehicle;
@@ -642,6 +632,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           : {}),
       };
     }));
+    return true;
   };
 
   const deleteCautela = (id: string) => {
